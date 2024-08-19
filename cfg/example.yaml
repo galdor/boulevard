@@ -8,7 +8,12 @@ logger:
 ---
 module: "http-server"
 name: "http"
-data: {}
+data:
+  listeners:
+    - address: ":8080"
+    - address: ":4430"
+      tls:
+        domains: ["localhost", "www.localhost"]
 
 ---
 module: "tcp-server"
