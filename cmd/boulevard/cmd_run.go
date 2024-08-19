@@ -6,6 +6,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	"go.n16f.net/boulevard/pkg/boulevard"
+	modhttpserver "go.n16f.net/boulevard/pkg/modules/httpserver"
+	modtcpserver "go.n16f.net/boulevard/pkg/modules/tcpserver"
 	"go.n16f.net/boulevard/pkg/service"
 	"go.n16f.net/program"
 )
@@ -26,6 +29,11 @@ func cmdRun(p *program.Program) {
 	}
 
 	cfg.BuildId = buildId
+
+	cfg.ModuleInfo = []*boulevard.ModuleInfo{
+		modhttpserver.ModuleInfo(),
+		modtcpserver.ModuleInfo(),
+	}
 
 	// Service
 	service, err := service.NewService(cfg)

@@ -1,0 +1,16 @@
+---
+logger:
+  backend_type: "terminal"
+  terminal_backend:
+    color: true
+  debug_level: 1
+
+---
+module: "http-server"
+name: "http"
+data: {}
+
+---
+module: "tcp-server"
+name: "tcp"
+data: {}

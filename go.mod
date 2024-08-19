@@ -6,7 +6,7 @@ require (
 	go.n16f.net/ejson v0.0.0-20240707135936-27789a89e2f3
 	go.n16f.net/log v0.0.0-20240707140441-2f7ab8f954a8
 	go.n16f.net/program v0.0.0-20240714172550-28d5a141755e
-	go.n16f.net/yamlutils v0.0.0-20240818114527-49c848554a17
+	go.n16f.net/yamlutils v0.0.0-20240818155238-fcdefaafa9a8
 )
 
 require (

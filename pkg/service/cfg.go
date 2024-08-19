@@ -1,18 +1,27 @@
 package service
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 
+	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/ejson"
 	"go.n16f.net/log"
 	"go.n16f.net/yamlutils"
 )
 
 type ServiceCfg struct {
-	BuildId string `json:"-"`
+	BuildId string `json:"-"` // [1]
 
 	Logger *log.LoggerCfg `json:"logger"`
+
+	ModuleInfo []*boulevard.ModuleInfo `json:"-"` // [1]
+	Modules    []*ModuleCfg            `json:"-"` // [2]
+
+	// [1] Provided by the caller of NewService.
+	// [2] Populated by ServiceCfg.Load.
 }
 
 func (cfg *ServiceCfg) ValidateJSON(v *ejson.Validator) {
@@ -25,5 +34,28 @@ func (cfg *ServiceCfg) Load(filePath string) error {
 		return fmt.Errorf("cannot read %q: %w", filePath, err)
 	}
 
-	return yamlutils.Load(data, cfg)
+	decoder := yamlutils.NewDecoder(data)
+
+	if err := decoder.Decode(cfg); err != nil {
+		if errors.Is(err, io.EOF) {
+			return fmt.Errorf("empty configuration")
+		}
+
+		return fmt.Errorf("cannot decode configuration: %w", err)
+	}
+
+	for {
+		var modCfg ModuleCfg
+		if err := decoder.Decode(&modCfg); err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+
+			return fmt.Errorf("cannot decode module configuration: %w", err)
+		}
+
+		cfg.Modules = append(cfg.Modules, &modCfg)
+	}
+
+	return nil
 }
