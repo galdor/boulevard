@@ -1,6 +1,9 @@
 package boulevard
 
-import "go.n16f.net/ejson"
+import (
+	"go.n16f.net/ejson"
+	"go.n16f.net/log"
+)
 
 type ModuleInfo struct {
 	Name           string
@@ -13,6 +16,6 @@ type ModuleCfg interface {
 }
 
 type Module interface {
-	Start() error
+	Start(*log.Logger) error
 	Stop()
 }

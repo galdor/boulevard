@@ -5,6 +5,7 @@ import (
 
 	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/ejson"
+	"go.n16f.net/log"
 )
 
 func ModuleInfo() *boulevard.ModuleInfo {
@@ -30,6 +31,7 @@ func NewModuleCfg() boulevard.ModuleCfg {
 
 type Module struct {
 	Cfg *ModuleCfg
+	Log *log.Logger
 
 	Listeners []*Listener
 }
@@ -43,13 +45,15 @@ func NewModule(modCfg boulevard.ModuleCfg) (boulevard.Module, error) {
 
 	mod.Listeners = make([]*Listener, len(cfg.Listeners))
 	for i, lCfg := range cfg.Listeners {
-		mod.Listeners[i] = NewListener(*lCfg)
+		mod.Listeners[i] = NewListener(&mod, *lCfg)
 	}
 
 	return &mod, nil
 }
 
-func (mod *Module) Start() error {
+func (mod *Module) Start(logger *log.Logger) error {
+	mod.Log = logger
+
 	for i, l := range mod.Listeners {
 		if err := l.Start(); err != nil {
 			for j := range i {

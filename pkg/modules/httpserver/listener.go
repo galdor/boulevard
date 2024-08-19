@@ -9,6 +9,7 @@ import (
 
 	"go.n16f.net/boulevard/pkg/netutils"
 	"go.n16f.net/ejson"
+	"go.n16f.net/log"
 )
 
 type ListenerCfg struct {
@@ -23,29 +24,37 @@ func (cfg *ListenerCfg) ValidateJSON(v *ejson.Validator) {
 }
 
 type Listener struct {
-	Cfg ListenerCfg
+	Module *Module
+	Cfg    ListenerCfg
+	Log    *log.Logger
 
 	server *http.Server
 
 	wg sync.WaitGroup
 }
 
-func NewListener(cfg ListenerCfg) *Listener {
+func NewListener(mod *Module, cfg ListenerCfg) *Listener {
 	l := Listener{
-		Cfg: cfg,
+		Module: mod,
+		Cfg:    cfg,
 	}
 
 	return &l
 }
 
 func (l *Listener) Start() error {
+	l.Log = l.Module.Log
+
 	listener, err := netutils.TCPListen(l.Cfg.Address, l.Cfg.TLS)
 	if err != nil {
 		return fmt.Errorf("cannot listen on %q: %w", l.Cfg.Address, err)
 	}
 
+	l.Log.Info("listening on %q", l.Cfg.Address)
+
 	l.server = &http.Server{
-		Addr: l.Cfg.Address,
+		Addr:     l.Cfg.Address,
+		ErrorLog: l.Log.StdLogger(log.LevelError),
 	}
 
 	l.wg.Add(1)
@@ -63,7 +72,6 @@ func (l *Listener) serve(listener net.Listener) {
 	defer l.wg.Done()
 
 	if err := l.server.Serve(listener); err != http.ErrServerClosed {
-		// TODO
-		// l.Log.Error("cannot run HTTP server: %v", err)
+		l.Log.Error("cannot run HTTP server: %v", err)
 	}
 }

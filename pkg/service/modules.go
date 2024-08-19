@@ -6,6 +6,7 @@ import (
 
 	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/ejson"
+	"go.n16f.net/log"
 )
 
 type ModuleCfg struct {
@@ -57,7 +58,9 @@ func (s *Service) startModules() error {
 	for name, mod := range s.modules {
 		s.Log.Debug(1, "starting module %q", name)
 
-		if err := mod.Start(); err != nil {
+		logger := s.Log.Child("module", log.Data{"module": name})
+
+		if err := mod.Start(logger); err != nil {
 			for _, startedMod := range startedMods {
 				startedMod.Stop()
 			}
