@@ -14,6 +14,14 @@ data:
     - address: ":4430"
       tls:
         domains: ["localhost", "www.localhost"]
+  handlers:
+    - path: "/boulevard/"
+      serve:
+        path: "."
+    - path: "/forbidden/"
+      reply:
+        status: 403
+        body: "access denied\n"
 
 ---
 module: "tcp-server"

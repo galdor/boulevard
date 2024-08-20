@@ -18,11 +18,14 @@ func ModuleInfo() *boulevard.ModuleInfo {
 
 type ModuleCfg struct {
 	Listeners []*ListenerCfg `json:"listeners"`
+	Handlers  []*Handler     `json:"handlers,omitempty"`
 }
 
 func (cfg *ModuleCfg) ValidateJSON(v *ejson.Validator) {
 	v.CheckArrayNotEmpty("listeners", cfg.Listeners)
 	v.CheckObjectArray("listeners", cfg.Listeners)
+
+	v.CheckObjectArray("handlers", cfg.Handlers)
 }
 
 func NewModuleCfg() boulevard.ModuleCfg {

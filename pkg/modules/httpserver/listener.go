@@ -54,6 +54,7 @@ func (l *Listener) Start() error {
 
 	l.server = &http.Server{
 		Addr:     l.Cfg.Address,
+		Handler:  l.Module,
 		ErrorLog: l.Log.StdLogger(log.LevelError),
 	}
 
