@@ -20,6 +20,8 @@ func main() {
 
 	p.AddOption("c", "cfg-file", "path", "",
 		"the path of the configuration file")
+	p.AddFlag("", "dump-cfg",
+		"print the configuration and exit")
 	p.AddFlag("", "validate-cfg",
 		"validate the configuration and exit")
 	p.AddFlag("v", "version",
@@ -60,6 +62,11 @@ func run(p *program.Program) {
 
 	if p.IsOptionSet("validate-cfg") {
 		p.Info("configuration validated successfully")
+		return
+	}
+
+	if p.IsOptionSet("dump-cfg") {
+		cfg.Dump(os.Stdout)
 		return
 	}
 

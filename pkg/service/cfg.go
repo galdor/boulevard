@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -55,6 +56,37 @@ func (cfg *ServiceCfg) Load(filePath string) error {
 		}
 
 		cfg.Modules = append(cfg.Modules, &modCfg)
+	}
+
+	return nil
+}
+
+func (cfg *ServiceCfg) Dump(w io.Writer) error {
+	// Ideally we would like the ability to dump the configuration using either
+	// JSON or YAML (e.g. with a --dump-cfg-format command line option).
+	// Infortunately gopkg.in/yaml.v3 does not support JSON tags and is a PITA
+	// to use anyway. So we use the JSON encoder (valid since these are also
+	// valid YAML documents) and add document boundaries ourselves. To be
+	// revisited when go.n16f.net/yaml is ready.
+
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+
+	if _, err := fmt.Fprintln(w, "---"); err != nil {
+		return err
+	}
+	if err := encoder.Encode(cfg); err != nil {
+		return err
+	}
+
+	for _, mod := range cfg.Modules {
+		if _, err := fmt.Fprintln(w, "---"); err != nil {
+			return err
+		}
+
+		if err := encoder.Encode(mod); err != nil {
+			return err
+		}
 	}
 
 	return nil
