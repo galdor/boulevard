@@ -18,8 +18,12 @@ var buildId string
 func main() {
 	p := program.NewProgram("boulevard", "a polyvalent reverse proxy")
 
-	p.AddOption("c", "cfg", "path", "", "the path of the configuration file")
-	p.AddFlag("v", "version", "print the build identifier and exit")
+	p.AddOption("c", "cfg-file", "path", "",
+		"the path of the configuration file")
+	p.AddFlag("", "validate-cfg",
+		"validate the configuration and exit")
+	p.AddFlag("v", "version",
+		"print the build identifier and exit")
 
 	p.SetMain(run)
 
@@ -34,7 +38,7 @@ func run(p *program.Program) {
 		return
 	}
 
-	cfgPath := p.OptionValue("cfg")
+	cfgPath := p.OptionValue("cfg-file")
 
 	// Configuration
 	var cfg service.ServiceCfg
@@ -52,6 +56,11 @@ func run(p *program.Program) {
 	cfg.ModuleInfo = []*boulevard.ModuleInfo{
 		modhttpserver.ModuleInfo(),
 		modtcpserver.ModuleInfo(),
+	}
+
+	if p.IsOptionSet("validate-cfg") {
+		p.Info("configuration validated successfully")
+		return
 	}
 
 	// Service
