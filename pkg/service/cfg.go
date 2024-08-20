@@ -17,6 +17,7 @@ type ServiceCfg struct {
 	BuildId string `json:"-"` // [1]
 
 	Logger *log.LoggerCfg `json:"logger"`
+	ACME   *ACMECfg       `json:"acme"`
 
 	ModuleInfo []*boulevard.ModuleInfo `json:"-"` // [1]
 	Modules    []*ModuleCfg            `json:"-"` // [2]

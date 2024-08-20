@@ -1,0 +1,18 @@
+services:
+  # We use Pebble to test certificate auto-provisioning.
+  pebble:
+    container_name: "boulevard-pebble"
+    image: "ghcr.io/letsencrypt/pebble:latest"
+    command: >
+      -config test/config/pebble-config.json
+      -strict
+    environment:
+      # We disable options that reproduce potential real world issues (such as
+      # nonces being rejected) because we are not trying to test
+      # go.n16f.net/acme, so no point in adding annoying delays during
+      # development and tests.
+      PEBBLE_WFE_NONCEREJECT: "0"
+      PEBBLE_VA_NOSLEEP: "1"
+    # The contain must be able to listen on the host so that it can connect to
+    # Boulevard for HTTP challenges.
+    network_mode: "host"
