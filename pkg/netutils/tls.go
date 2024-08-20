@@ -14,8 +14,7 @@ func (cfg *TLSCfg) ValidateJSON(v *ejson.Validator) {
 	v.CheckArrayNotEmpty("domains", cfg.Domains)
 	v.WithChild("domains", func() {
 		for i, domain := range cfg.Domains {
-			// TODO valid domain name
-			v.CheckStringNotEmpty(i, domain)
+			v.CheckDomainName(i, domain)
 		}
 	})
 }

@@ -18,8 +18,7 @@ type ListenerCfg struct {
 }
 
 func (cfg *ListenerCfg) ValidateJSON(v *ejson.Validator) {
-	// TODO valid address string
-	v.CheckStringNotEmpty("address", cfg.Address)
+	v.CheckListenAddress("address", cfg.Address)
 	v.CheckOptionalObject("tls", cfg.TLS)
 }
 

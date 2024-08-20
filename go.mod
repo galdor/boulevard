@@ -4,7 +4,7 @@ go 1.22.5
 
 require (
 	github.com/stretchr/testify v1.8.3
-	go.n16f.net/ejson v0.0.0-20240707135936-27789a89e2f3
+	go.n16f.net/ejson v0.0.0-20240820145652-4e9192313c14
 	go.n16f.net/log v0.0.0-20240820140728-fa52841d72cd
 	go.n16f.net/program v0.0.0-20240714172550-28d5a141755e
 	go.n16f.net/yamlutils v0.0.0-20240818155238-fcdefaafa9a8
