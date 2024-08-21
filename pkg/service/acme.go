@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"slices"
 
 	"go.n16f.net/acme"
 	"go.n16f.net/ejson"
@@ -11,7 +10,7 @@ import (
 
 type ACMECfg struct {
 	DatastorePath              string   `json:"datastore_path"`
-	ContactURIs                []string `json:"contact_uris"`
+	Contact                    []string `json:"contact"`
 	DirectoryURI               string   `json:"directory_uri,omitempty"`
 	HTTPChallengeSolverAddress string   `json:"http_challenge_solver_address,omitempty"`
 	Pebble                     bool     `json:"pebble,omitempty"`
@@ -20,9 +19,9 @@ type ACMECfg struct {
 func (cfg *ACMECfg) ValidateJSON(v *ejson.Validator) {
 	v.CheckStringNotEmpty("datastore_path", cfg.DatastorePath)
 
-	v.WithChild("contact_uris", func() {
-		for i, uri := range cfg.ContactURIs {
-			v.CheckStringURI(i, uri)
+	v.WithChild("contact", func() {
+		for i, address := range cfg.Contact {
+			v.CheckStringNotEmpty(i, address)
 		}
 	})
 
@@ -44,12 +43,17 @@ func (s *Service) initACMEClient() error {
 		return fmt.Errorf("cannot create file system datastore: %w", err)
 	}
 
+	contactURIs := make([]string, len(cfg.Contact))
+	for i, address := range cfg.Contact {
+		contactURIs[i] = "mailto:" + address
+	}
+
 	clientCfg := acme.ClientCfg{
 		Log:       logger,
 		DataStore: dataStore,
 
 		UserAgent:   s.httpUserAgent,
-		ContactURIs: slices.Clone(cfg.ContactURIs),
+		ContactURIs: contactURIs,
 
 		HTTPChallengeSolver: &acme.HTTPChallengeSolverCfg{
 			Address: cfg.HTTPChallengeSolverAddress,

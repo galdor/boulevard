@@ -7,8 +7,8 @@ logger:
 
 acme:
   datastore_path: "./local/acme"
-  contact_uris:
-    - "mailto:bob@example.com"
+  contact:
+    - "bob@example.com"
   pebble: true
 
 ---
