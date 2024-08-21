@@ -26,13 +26,12 @@ func NewModuleCfg() boulevard.ModuleCfg {
 }
 
 type Module struct {
-	Cfg *ModuleCfg
-	Log *log.Logger
-
-	// TODO
+	Cfg  *ModuleCfg
+	Data boulevard.ModuleData
+	Log  *log.Logger
 }
 
-func NewModule(modCfg boulevard.ModuleCfg) (boulevard.Module, error) {
+func NewModule(modCfg boulevard.ModuleCfg, modData boulevard.ModuleData) (boulevard.Module, error) {
 	cfg := modCfg.(*ModuleCfg)
 
 	mod := Module{

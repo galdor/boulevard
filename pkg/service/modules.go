@@ -40,7 +40,13 @@ func (s *Service) initModules() error {
 				modCfg.Name, err)
 		}
 
-		mod, err := info.Instantiate(cfg)
+		data := boulevard.ModuleData{
+			Name: modCfg.Name,
+
+			ACMEClient: s.acmeClient,
+		}
+
+		mod, err := info.Instantiate(cfg, data)
 		if err != nil {
 			return fmt.Errorf("cannot instantiate module %q: %w",
 				modCfg.Name, err)

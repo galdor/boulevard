@@ -3,6 +3,7 @@ package httpserver
 import (
 	"fmt"
 
+	"go.n16f.net/acme"
 	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/ejson"
 	"go.n16f.net/log"
@@ -36,19 +37,31 @@ type Module struct {
 	Cfg *ModuleCfg
 	Log *log.Logger
 
-	Listeners []*Listener
+	acmeClient *acme.Client
+	listeners  []*Listener
 }
 
-func NewModule(modCfg boulevard.ModuleCfg) (boulevard.Module, error) {
+func NewModule(modCfg boulevard.ModuleCfg, modData boulevard.ModuleData) (boulevard.Module, error) {
 	cfg := modCfg.(*ModuleCfg)
 
 	mod := Module{
 		Cfg: cfg,
+
+		acmeClient: modData.ACMEClient,
 	}
 
-	mod.Listeners = make([]*Listener, len(cfg.Listeners))
+	mod.listeners = make([]*Listener, len(cfg.Listeners))
 	for i, lCfg := range cfg.Listeners {
-		mod.Listeners[i] = NewListener(&mod, *lCfg)
+		if lCfg.TLS != nil {
+			lCfg.TLS.CertificateName = fmt.Sprintf("%s-%d", modData.Name, i)
+		}
+
+		listener, err := NewListener(&mod, *lCfg)
+		if err != nil {
+			return nil, fmt.Errorf("cannot create listener: %w", err)
+		}
+
+		mod.listeners[i] = listener
 	}
 
 	return &mod, nil
@@ -57,10 +70,10 @@ func NewModule(modCfg boulevard.ModuleCfg) (boulevard.Module, error) {
 func (mod *Module) Start(logger *log.Logger) error {
 	mod.Log = logger
 
-	for i, l := range mod.Listeners {
+	for i, l := range mod.listeners {
 		if err := l.Start(); err != nil {
 			for j := range i {
-				mod.Listeners[j].Stop()
+				mod.listeners[j].Stop()
 			}
 
 			return fmt.Errorf("cannot start listener: %w", err)
@@ -71,7 +84,7 @@ func (mod *Module) Start(logger *log.Logger) error {
 }
 
 func (mod *Module) Stop() {
-	for _, l := range mod.Listeners {
+	for _, l := range mod.listeners {
 		l.Stop()
 	}
 }
