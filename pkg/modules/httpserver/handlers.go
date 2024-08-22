@@ -8,47 +8,51 @@ import (
 	"go.n16f.net/ejson"
 )
 
-type Handler struct {
+type MatchSpec struct {
 	Method      string       `json:"method,omitempty"`
 	Path        string       `json:"path,omitempty"`
 	PathPattern *PathPattern `json:"-"`
+}
+
+func (s *MatchSpec) MarshalJSON() ([]byte, error) {
+	type MatchSpec2 MatchSpec
+	s2 := MatchSpec2(*s)
+
+	if s2.PathPattern != nil {
+		s2.Path = s2.PathPattern.String()
+	}
+
+	return json.Marshal(s2)
+}
+
+func (s *MatchSpec) UnmarshalJSON(data []byte) error {
+	type MatchSpec2 MatchSpec
+	s2 := MatchSpec2(*s)
+
+	if err := json.Unmarshal(data, &s2); err != nil {
+		return err
+	}
+
+	if s2.Path != "" {
+		var pp PathPattern
+
+		if err := pp.Parse(s2.Path); err != nil {
+			return fmt.Errorf("cannot parse path pattern: %w", err)
+		}
+
+		s2.PathPattern = &pp
+	}
+
+	*s = MatchSpec(s2)
+	return nil
+}
+
+type Handler struct {
+	Match MatchSpec `json:"match"`
 
 	Reply *ReplyAction `json:"reply,omitempty"`
 	Serve *ServeAction `json:"serve,omitempty"`
 	Proxy *ProxyAction `json:"proxy,omitempty"`
-}
-
-func (h *Handler) MarshalJSON() ([]byte, error) {
-	type Handler2 Handler
-	h2 := Handler2(*h)
-
-	if h2.PathPattern != nil {
-		h2.Path = h2.PathPattern.String()
-	}
-
-	return json.Marshal(h2)
-}
-
-func (h *Handler) UnmarshalJSON(data []byte) error {
-	type Handler2 Handler
-	h2 := Handler2(*h)
-
-	if err := json.Unmarshal(data, &h2); err != nil {
-		return err
-	}
-
-	if h2.Path != "" {
-		var pp PathPattern
-
-		if err := pp.Parse(h2.Path); err != nil {
-			return fmt.Errorf("cannot parse path pattern: %w", err)
-		}
-
-		h2.PathPattern = &pp
-	}
-
-	*h = Handler(h2)
-	return nil
 }
 
 type ReplyAction struct {
@@ -78,6 +82,8 @@ func (action *ProxyAction) ValidateJSON(v *ejson.Validator) {
 }
 
 func (h *Handler) ValidateJSON(v *ejson.Validator) {
+	v.CheckObject("match", &h.Match)
+
 	nbActions := 0
 	if h.Serve != nil {
 		nbActions++
@@ -132,11 +138,12 @@ func (mod *Module) findHandler(req *http.Request) *Handler {
 }
 
 func (h *Handler) matchRequest(req *http.Request) bool {
-	if h.Method != "" && h.Method != req.Method {
+	match := h.Match
+	if match.Method != "" && match.Method != req.Method {
 		return false
 	}
 
-	if h.PathPattern != nil && !h.PathPattern.Match(req.URL.Path) {
+	if match.PathPattern != nil && !match.PathPattern.Match(req.URL.Path) {
 		return false
 	}
 

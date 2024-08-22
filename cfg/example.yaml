@@ -21,10 +21,12 @@ data:
       tls:
         domains: ["localhost", "www.localhost"]
   handlers:
-    - path: "/boulevard/"
+    - match:
+        path: "/boulevard/"
       serve:
         path: "."
-    - path: "/forbidden/"
+    - match:
+        path: "/forbidden/"
       reply:
         status: 403
         body: "access denied\n"
