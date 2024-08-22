@@ -26,26 +26,17 @@ func NewModuleCfg() boulevard.ModuleCfg {
 }
 
 type Module struct {
-	Cfg  *ModuleCfg
-	Data boulevard.ModuleData
-	Log  *log.Logger
-
-	errChan chan<- error
+	Cfg *ModuleCfg
+	Log *log.Logger
 }
 
-func NewModule(modCfg boulevard.ModuleCfg, modData boulevard.ModuleData) (boulevard.Module, error) {
-	cfg := modCfg.(*ModuleCfg)
-
-	mod := Module{
-		Cfg: cfg,
-	}
-
-	return &mod, nil
+func NewModule() boulevard.Module {
+	return &Module{}
 }
 
-func (mod *Module) Start(logger *log.Logger, errChan chan<- error) error {
-	mod.Log = logger
-	mod.errChan = errChan
+func (mod *Module) Start(modCfg boulevard.ModuleCfg, modData *boulevard.ModuleData) error {
+	mod.Cfg = modCfg.(*ModuleCfg)
+	mod.Log = modData.Logger
 
 	// TODO
 

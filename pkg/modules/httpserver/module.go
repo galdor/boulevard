@@ -42,51 +42,45 @@ type Module struct {
 	listeners  []*Listener
 }
 
-func NewModule(modCfg boulevard.ModuleCfg, modData boulevard.ModuleData) (boulevard.Module, error) {
-	cfg := modCfg.(*ModuleCfg)
-
-	mod := Module{
-		Cfg: cfg,
-
-		acmeClient: modData.ACMEClient,
-	}
-
-	mod.listeners = make([]*Listener, len(cfg.Listeners))
-	for i, lCfg := range cfg.Listeners {
-		if lCfg.TLS != nil {
-			lCfg.TLS.CertificateName = fmt.Sprintf("%s-%d", modData.Name, i)
-		}
-
-		listener, err := NewListener(&mod, *lCfg)
-		if err != nil {
-			return nil, fmt.Errorf("cannot create listener: %w", err)
-		}
-
-		mod.listeners[i] = listener
-	}
-
-	return &mod, nil
+func NewModule() boulevard.Module {
+	return &Module{}
 }
 
-func (mod *Module) Start(logger *log.Logger, errChan chan<- error) error {
-	mod.Log = logger
-	mod.errChan = errChan
+func (mod *Module) Start(modCfg boulevard.ModuleCfg, modData *boulevard.ModuleData) error {
+	mod.Cfg = modCfg.(*ModuleCfg)
+	mod.Log = modData.Logger
 
-	for i, l := range mod.listeners {
-		if err := l.Start(); err != nil {
+	mod.errChan = modData.ErrChan
+	mod.acmeClient = modData.ACMEClient
+
+	mod.listeners = make([]*Listener, len(mod.Cfg.Listeners))
+
+	for i, cfg := range mod.Cfg.Listeners {
+		if cfg.TLS != nil {
+			cfg.TLS.CertificateName = fmt.Sprintf("%s-%d", modData.Name, i)
+		}
+
+		listener, err := NewListener(mod, *cfg)
+		if err != nil {
+			return fmt.Errorf("cannot create listener: %w", err)
+		}
+
+		if err := listener.Start(); err != nil {
 			for j := range i {
 				mod.listeners[j].Stop()
 			}
 
 			return fmt.Errorf("cannot start listener: %w", err)
 		}
+
+		mod.listeners[i] = listener
 	}
 
 	return nil
 }
 
 func (mod *Module) Stop() {
-	for _, l := range mod.listeners {
-		l.Stop()
+	for _, listener := range mod.listeners {
+		listener.Stop()
 	}
 }

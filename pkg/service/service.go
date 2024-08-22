@@ -13,8 +13,9 @@ type Service struct {
 	Cfg ServiceCfg
 	Log *log.Logger
 
-	moduleInfo map[string]*boulevard.ModuleInfo
-	modules    map[string]boulevard.Module
+	moduleInfo   map[string]*boulevard.ModuleInfo
+	modules      map[string]*Module
+	modulesMutex sync.Mutex
 
 	acmeClient *acme.Client
 
@@ -41,7 +42,7 @@ func NewService(cfg ServiceCfg) (*Service, error) {
 		Log: logger,
 
 		moduleInfo: make(map[string]*boulevard.ModuleInfo),
-		modules:    make(map[string]boulevard.Module),
+		modules:    make(map[string]*Module),
 
 		stopChan: make(chan struct{}),
 	}
@@ -49,10 +50,6 @@ func NewService(cfg ServiceCfg) (*Service, error) {
 	s.httpUserAgent = "boulevard/" + cfg.BuildId
 
 	if err := s.initACMEClient(); err != nil {
-		return nil, err
-	}
-
-	if err := s.initModules(); err != nil {
 		return nil, err
 	}
 
@@ -77,9 +74,9 @@ func (s *Service) Start() error {
 func (s *Service) Stop() {
 	s.Log.Debug(1, "stopping")
 
-	s.stopModules()
-	s.stopACMEClient()
-
 	close(s.stopChan)
 	s.wg.Wait()
+
+	s.stopModules()
+	s.stopACMEClient()
 }

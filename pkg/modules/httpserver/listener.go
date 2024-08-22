@@ -123,10 +123,21 @@ func (l *Listener) Stop() {
 	l.wg.Wait()
 }
 
+func (l *Listener) fatal(format string, args ...any) {
+	err := fmt.Errorf(format, args...)
+
+	select {
+	case l.Module.errChan <- err:
+	case <-l.ctx.Done():
+	}
+}
+
 func (l *Listener) serve(listener net.Listener) {
+	defer listener.Close()
 	defer l.wg.Done()
 
 	if err := l.server.Serve(listener); err != http.ErrServerClosed {
-		l.Module.errChan <- fmt.Errorf("cannot run HTTP server: %v", err)
+		l.fatal("cannot run HTTP server: %w", err)
+		return
 	}
 }

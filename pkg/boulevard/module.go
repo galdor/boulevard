@@ -9,7 +9,7 @@ import (
 type ModuleInfo struct {
 	Name           string
 	InstantiateCfg func() ModuleCfg
-	Instantiate    func(ModuleCfg, ModuleData) (Module, error)
+	Instantiate    func() Module
 }
 
 type ModuleCfg interface {
@@ -17,11 +17,15 @@ type ModuleCfg interface {
 }
 
 type ModuleData struct {
-	Name       string
+	Name string
+
+	Logger  *log.Logger
+	ErrChan chan<- error
+
 	ACMEClient *acme.Client
 }
 
 type Module interface {
-	Start(*log.Logger, chan<- error) error
+	Start(ModuleCfg, *ModuleData) error
 	Stop()
 }
