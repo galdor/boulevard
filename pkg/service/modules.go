@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/ejson"
@@ -66,7 +67,15 @@ func (s *Service) startModules() error {
 
 		logger := s.Log.Child("module", log.Data{"module": name})
 
-		if err := mod.Start(logger); err != nil {
+		errChan := make(chan error)
+		go func() {
+			for err := range errChan {
+				logger.Error("%v", err)
+				os.Exit(1)
+			}
+		}()
+
+		if err := mod.Start(logger, errChan); err != nil {
 			for _, startedMod := range startedMods {
 				startedMod.Stop()
 			}

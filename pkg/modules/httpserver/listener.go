@@ -127,6 +127,6 @@ func (l *Listener) serve(listener net.Listener) {
 	defer l.wg.Done()
 
 	if err := l.server.Serve(listener); err != http.ErrServerClosed {
-		l.Log.Error("cannot run HTTP server: %v", err)
+		l.Module.errChan <- fmt.Errorf("cannot run HTTP server: %v", err)
 	}
 }

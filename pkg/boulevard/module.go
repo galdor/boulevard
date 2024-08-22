@@ -22,6 +22,6 @@ type ModuleData struct {
 }
 
 type Module interface {
-	Start(*log.Logger) error
+	Start(*log.Logger, chan<- error) error
 	Stop()
 }

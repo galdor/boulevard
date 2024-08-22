@@ -37,6 +37,7 @@ type Module struct {
 	Cfg *ModuleCfg
 	Log *log.Logger
 
+	errChan    chan<- error
 	acmeClient *acme.Client
 	listeners  []*Listener
 }
@@ -67,8 +68,9 @@ func NewModule(modCfg boulevard.ModuleCfg, modData boulevard.ModuleData) (boulev
 	return &mod, nil
 }
 
-func (mod *Module) Start(logger *log.Logger) error {
+func (mod *Module) Start(logger *log.Logger, errChan chan<- error) error {
 	mod.Log = logger
+	mod.errChan = errChan
 
 	for i, l := range mod.listeners {
 		if err := l.Start(); err != nil {

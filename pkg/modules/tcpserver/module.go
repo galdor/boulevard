@@ -29,6 +29,8 @@ type Module struct {
 	Cfg  *ModuleCfg
 	Data boulevard.ModuleData
 	Log  *log.Logger
+
+	errChan chan<- error
 }
 
 func NewModule(modCfg boulevard.ModuleCfg, modData boulevard.ModuleData) (boulevard.Module, error) {
@@ -41,8 +43,9 @@ func NewModule(modCfg boulevard.ModuleCfg, modData boulevard.ModuleData) (boulev
 	return &mod, nil
 }
 
-func (mod *Module) Start(logger *log.Logger) error {
+func (mod *Module) Start(logger *log.Logger, errChan chan<- error) error {
 	mod.Log = logger
+	mod.errChan = errChan
 
 	// TODO
 
