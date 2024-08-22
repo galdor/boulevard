@@ -12,14 +12,14 @@ go.n16f.net/acme v0.0.0-20240821094752-6c11abc3f3fd h1:FEGncP8K//pd6ys99Wb305OTu
 go.n16f.net/acme v0.0.0-20240821094752-6c11abc3f3fd/go.mod h1:J4n+Fd4FnRK6nyXvPHDzf21Xa2I1zg0emP2fCH5AYS0=
 go.n16f.net/ejson v0.0.0-20240820145652-4e9192313c14 h1:zjqIpkKmSvpRfNagjLcoIgoC0KC0xkKk2+cQOnjPRAg=
 go.n16f.net/ejson v0.0.0-20240820145652-4e9192313c14/go.mod h1:96wBQ6dI+0R4sM0LK5OVPqQGRFoWyVtiLRendDKLAJ4=
+go.n16f.net/eyaml v0.0.0-20240822141541-96f4fcff8320 h1:8sDDPROjDfPyyS3pdnnaIt5t13XpXF/ARiv9HgkW8NI=
+go.n16f.net/eyaml v0.0.0-20240822141541-96f4fcff8320/go.mod h1:x/KvdOI641pgVwi9EomxsxlSt5kIxlGIdM0TFu4FaT4=
 go.n16f.net/log v0.0.0-20240820155337-9eef10dcf842 h1:fd8Yoy3KkR2LXQhej8cjGdp37PSUArlF1lDGI6SKFEA=
 go.n16f.net/log v0.0.0-20240820155337-9eef10dcf842/go.mod h1:BIWa3RtuDtvWHeBXuuhWS0NSRauDKbuM6t2WKD7J+fg=
 go.n16f.net/program v0.0.0-20240714172550-28d5a141755e h1:7o9q68B3+MVEg0p9Xsg+orLLpPT8i6yDck2jZn5rKSI=
 go.n16f.net/program v0.0.0-20240714172550-28d5a141755e/go.mod h1:MKuQtJLHafIg8LvIO6fNzt04Uzab+H3ByU1wphsuz/4=
 go.n16f.net/uuid v0.0.0-20240707135755-e4fd26b968ad h1:QYbHaaFqx6hMor1L6iMSmyhMFvXQXhKaNk9nefug07M=
 go.n16f.net/uuid v0.0.0-20240707135755-e4fd26b968ad/go.mod h1:hvPEWZmyP50in1DH72o5vUvoXFFyfRU6oL+p2tAcbgU=
-go.n16f.net/yamlutils v0.0.0-20240818155238-fcdefaafa9a8 h1:fIzMM0EtAI0g2ULZ1Up0bejxVgS2yn5MWX4o8u4FisQ=
-go.n16f.net/yamlutils v0.0.0-20240818155238-fcdefaafa9a8/go.mod h1:GPkF2eLHKRN+SPIEG0qbhitfD8XlGD8p/U8eD6OO1N4=
 golang.org/x/crypto v0.25.0 h1:ypSNr+bnYL2YhwoMt2zPxHFmbAN1KZs/njMG3hxUp30=
 golang.org/x/crypto v0.25.0/go.mod h1:T+wALwcMOSE0kXgUAnPAHqTLW+XHgcELELW8VaDgm/M=
 golang.org/x/net v0.27.0 h1:5K3Njcw06/l2y9vpGCSdcxWOYHOUk3dVNGDXN+FvAys=

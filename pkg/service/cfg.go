@@ -9,8 +9,8 @@ import (
 
 	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/ejson"
+	"go.n16f.net/eyaml"
 	"go.n16f.net/log"
-	"go.n16f.net/yamlutils"
 )
 
 type ServiceCfg struct {
@@ -36,7 +36,7 @@ func (cfg *ServiceCfg) Load(filePath string) error {
 		return fmt.Errorf("cannot read %q: %w", filePath, err)
 	}
 
-	decoder := yamlutils.NewDecoder(data)
+	decoder := eyaml.NewDecoder(data)
 
 	if err := decoder.Decode(cfg); err != nil {
 		if errors.Is(err, io.EOF) {
