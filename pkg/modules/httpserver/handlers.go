@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"go.n16f.net/boulevard/pkg/utils"
 	"go.n16f.net/ejson"
 )
 
@@ -95,6 +96,16 @@ func (mod *Module) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 		Subpath: subpath,
 	}
+
+	defer func() {
+		if v := recover(); v != nil {
+			msg := utils.RecoverValueString(v)
+			trace := utils.StackTrace(2, 20, true)
+
+			ctx.Log.Error("panic: %s\n%s", msg, trace)
+			ctx.ReplyError(500)
+		}
+	}()
 
 	h := mod.findHandler(&ctx)
 	if h == nil {
