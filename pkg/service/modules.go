@@ -17,7 +17,7 @@ type ModuleCfg struct {
 }
 
 func (cfg *ModuleCfg) ValidateJSON(v *ejson.Validator) {
-	// TODO
+	v.CheckStringNotEmpty("name", cfg.Name)
 }
 
 func (s *Service) initModules() error {
