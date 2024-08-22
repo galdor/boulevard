@@ -91,33 +91,35 @@ func TestPathPatternMatch(t *testing.T) {
 		pattern string
 		path    string
 		match   bool
+		subpath string
 	}{
-		{"/", "/", true},
-		{"/foo", "/foo", true},
-		{"/foo", "/foo/", true},
-		{"/foo", "/bar", false},
-		{"/foo/", "/foo", true},
-		{"/foo/", "/foo/", true},
-		{"/foo/", "/foo/bar", true},
-		{"/foo/", "/foo/bar/", true},
-		{"/foo/bar", "/foo", false},
-		{"/foo/bar/", "/foo", false},
-		{"/foo/bar", "/foo/bar", true},
-		{"/foo/bar/", "/foo/bar", true},
-		{"/foo/bar/", "/foo/bar/", true},
-		{"/foo/bar/", "/foo/bar/baz", true},
-		{"/*", "/", false},
-		{"/*", "/foo", true},
-		{"/*", "/foo/", true},
-		{"/*/", "/foo", true},
-		{"/*/", "/foo/", true},
-		{"/*/", "/foo/bar", true},
-		{"/*/", "/foo/bar/", true},
-		{"/foo/*/baz", "/foo", false},
-		{"/foo/*/baz", "/foo/bar", false},
-		{"/foo/*/baz", "/foo/bar/baz", true},
-		{"/foo/*/baz", "/foo/bar/baz", true},
-		{"/foo/*/baz", "/foo/bar/baz/", true},
+		{"/", "/", true, ""},
+		{"/foo", "/foo", true, ""},
+		{"/foo", "/foo/", true, ""},
+		{"/foo", "/bar", false, ""},
+		{"/foo/", "/foo", true, ""},
+		{"/foo/", "/foo/", true, ""},
+		{"/foo/", "/foo/bar", true, "bar"},
+		{"/foo/", "/foo/bar/", true, "bar"},
+		{"/foo/", "/foo/bar/baz", true, "bar/baz"},
+		{"/foo/bar", "/foo", false, ""},
+		{"/foo/bar/", "/foo", false, ""},
+		{"/foo/bar", "/foo/bar", true, ""},
+		{"/foo/bar/", "/foo/bar", true, ""},
+		{"/foo/bar/", "/foo/bar/", true, ""},
+		{"/foo/bar/", "/foo/bar/baz", true, "baz"},
+		{"/*", "/", false, ""},
+		{"/*", "/foo", true, ""},
+		{"/*", "/foo/", true, ""},
+		{"/*/", "/foo", true, ""},
+		{"/*/", "/foo/", true, ""},
+		{"/*/", "/foo/bar", true, "bar"},
+		{"/*/", "/foo/bar/", true, "bar"},
+		{"/foo/*/baz", "/foo", false, ""},
+		{"/foo/*/baz", "/foo/bar", false, ""},
+		{"/foo/*/baz", "/foo/bar/baz", true, ""},
+		{"/foo/*/baz", "/foo/bar/baz", true, ""},
+		{"/foo/*/baz", "/foo/bar/baz/", true, ""},
 	}
 
 	for _, test := range tests {
@@ -126,7 +128,10 @@ func TestPathPatternMatch(t *testing.T) {
 		var pattern PathPattern
 		err := pattern.Parse(test.pattern)
 		if assert.NoError(err, label) {
-			assert.Equal(test.match, pattern.Match(test.path), label)
+			match, subpath := pattern.Match(test.path)
+
+			assert.Equal(test.match, match, label)
+			assert.Equal(test.subpath, subpath, label)
 		}
 	}
 }

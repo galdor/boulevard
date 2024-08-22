@@ -90,7 +90,7 @@ func (pp *PathPattern) Parse(s string) error {
 	return nil
 }
 
-func (pp *PathPattern) Match(path string) bool {
+func (pp *PathPattern) Match(path string) (bool, string) {
 	var pathSegments []string
 
 	path = strings.Trim(path, "/")
@@ -100,20 +100,20 @@ func (pp *PathPattern) Match(path string) bool {
 
 	for _, patternSegment := range pp.Segments {
 		if len(pathSegments) == 0 {
-			return false
+			return false, ""
 		}
 
 		pathSegment := pathSegments[0]
 		pathSegments = pathSegments[1:]
 
 		if s := patternSegment.Value; s != "" && s != pathSegment {
-			return false
+			return false, ""
 		}
 	}
 
 	if len(pathSegments) > 0 && !pp.Prefix {
-		return false
+		return false, ""
 	}
 
-	return true
+	return true, strings.Join(pathSegments, "/")
 }

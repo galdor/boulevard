@@ -55,32 +55,6 @@ type Handler struct {
 	Proxy *ProxyAction `json:"proxy,omitempty"`
 }
 
-type ReplyAction struct {
-	Status int    `json:"status"`
-	Reason string `json:"reason,omitempty"`
-	Body   string `json:"body,omitempty"`
-}
-
-func (action *ReplyAction) ValidateJSON(v *ejson.Validator) {
-	v.CheckIntMinMax("status", action.Status, 200, 599)
-}
-
-type ServeAction struct {
-	Path string `json:"path"`
-}
-
-func (action *ServeAction) ValidateJSON(v *ejson.Validator) {
-	v.CheckStringNotEmpty("path", action.Path)
-}
-
-type ProxyAction struct {
-	// TODO
-}
-
-func (action *ProxyAction) ValidateJSON(v *ejson.Validator) {
-	// TODO
-}
-
 func (h *Handler) ValidateJSON(v *ejson.Validator) {
 	v.CheckObject("match", &h.Match)
 
@@ -108,13 +82,27 @@ func (h *Handler) ValidateJSON(v *ejson.Validator) {
 }
 
 func (mod *Module) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	h := mod.findHandler(req)
+	subpath := req.URL.Path
+	if len(subpath) > 0 && subpath[0] == '/' {
+		subpath = subpath[1:]
+	}
+
+	ctx := RequestContext{
+		Log: mod.Log,
+
+		Request:        req,
+		ResponseWriter: w,
+
+		Subpath: subpath,
+	}
+
+	h := mod.findHandler(&ctx)
 	if h == nil {
 		w.WriteHeader(404)
 		return
 	}
 
-	var fn func(*Handler, http.ResponseWriter, *http.Request)
+	var fn func(*Handler, *RequestContext)
 
 	switch {
 	case h.Reply != nil:
@@ -125,46 +113,32 @@ func (mod *Module) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		fn = mod.proxy
 	}
 
-	fn(h, w, req)
+	fn(h, &ctx)
 }
 
-func (mod *Module) findHandler(req *http.Request) *Handler {
+func (mod *Module) findHandler(ctx *RequestContext) *Handler {
 	for _, h := range mod.Cfg.Handlers {
-		if h.matchRequest(req) {
+		if h.matchRequest(ctx) {
 			return h
 		}
 	}
 	return nil
 }
 
-func (h *Handler) matchRequest(req *http.Request) bool {
-	match := h.Match
-	if match.Method != "" && match.Method != req.Method {
+func (h *Handler) matchRequest(ctx *RequestContext) bool {
+	matchSpec := h.Match
+	if matchSpec.Method != "" && matchSpec.Method != ctx.Request.Method {
 		return false
 	}
 
-	if match.PathPattern != nil && !match.PathPattern.Match(req.URL.Path) {
-		return false
+	if pattern := matchSpec.PathPattern; pattern != nil {
+		match, subpath := pattern.Match(ctx.Request.URL.Path)
+		if !match {
+			return false
+		}
+
+		ctx.Subpath = subpath
 	}
 
 	return true
-}
-
-func (mod *Module) reply(h *Handler, w http.ResponseWriter, req *http.Request) {
-	action := h.Reply
-
-	w.WriteHeader(action.Status)
-	w.Write([]byte(action.Body))
-}
-
-func (mod *Module) serve(h *Handler, w http.ResponseWriter, req *http.Request) {
-	// TODO
-	w.WriteHeader(501)
-	fmt.Fprintf(w, "serve action not implemented")
-}
-
-func (mod *Module) proxy(h *Handler, w http.ResponseWriter, req *http.Request) {
-	// TODO
-	w.WriteHeader(501)
-	fmt.Fprintf(w, "proxy action not implemented")
 }
