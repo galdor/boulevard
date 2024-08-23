@@ -5,6 +5,7 @@ import (
 
 	"go.n16f.net/acme"
 	"go.n16f.net/boulevard/pkg/boulevard"
+	"go.n16f.net/boulevard/pkg/netutils"
 	"go.n16f.net/ejson"
 	"go.n16f.net/log"
 )
@@ -18,8 +19,8 @@ func ModuleInfo() *boulevard.ModuleInfo {
 }
 
 type ModuleCfg struct {
-	Listeners []*ListenerCfg `json:"listeners"`
-	Handlers  []*Handler     `json:"handlers,omitempty"`
+	Listeners []*netutils.TCPListenerCfg `json:"listeners"`
+	Handlers  []*Handler                 `json:"handlers,omitempty"`
 }
 
 func (cfg *ModuleCfg) ValidateJSON(v *ejson.Validator) {
