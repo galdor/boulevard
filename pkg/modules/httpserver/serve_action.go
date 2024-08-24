@@ -10,16 +10,37 @@ import (
 	"go.n16f.net/ejson"
 )
 
-type ServeAction struct {
+type ServeActionCfg struct {
 	Path string `json:"path"`
 }
 
-func (action *ServeAction) ValidateJSON(v *ejson.Validator) {
-	v.CheckStringNotEmpty("path", action.Path)
+func (cfg *ServeActionCfg) ValidateJSON(v *ejson.Validator) {
+	v.CheckStringNotEmpty("path", cfg.Path)
 }
 
-func (mod *Module) serve(h *Handler, ctx *RequestContext) {
-	filePath := path.Join(h.Serve.Path, ctx.Subpath)
+type ServeAction struct {
+	Handler *Handler
+	Cfg     ServeActionCfg
+}
+
+func NewServeAction(h *Handler, cfg ServeActionCfg) (*ServeAction, error) {
+	a := ServeAction{
+		Handler: h,
+		Cfg:     cfg,
+	}
+
+	return &a, nil
+}
+
+func (a *ServeAction) Start() error {
+	return nil
+}
+
+func (a *ServeAction) Stop() {
+}
+
+func (a *ServeAction) HandleRequest(ctx *RequestContext) {
+	filePath := path.Join(a.Cfg.Path, ctx.Subpath)
 
 	info, err := os.Stat(filePath)
 	if err != nil {

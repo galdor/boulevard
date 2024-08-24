@@ -20,7 +20,7 @@ func ModuleInfo() *boulevard.ModuleInfo {
 
 type ModuleCfg struct {
 	Listeners []*netutils.TCPListenerCfg `json:"listeners"`
-	Handlers  []*Handler                 `json:"handlers,omitempty"`
+	Handlers  []*HandlerCfg              `json:"handlers,omitempty"`
 }
 
 func (cfg *ModuleCfg) ValidateJSON(v *ejson.Validator) {
@@ -40,6 +40,7 @@ type Module struct {
 
 	errChan    chan<- error
 	acmeClient *acme.Client
+	handlers   []*Handler
 	listeners  []*Listener
 }
 
@@ -54,8 +55,25 @@ func (mod *Module) Start(modCfg boulevard.ModuleCfg, modData *boulevard.ModuleDa
 	mod.errChan = modData.ErrChan
 	mod.acmeClient = modData.ACMEClient
 
-	mod.listeners = make([]*Listener, len(mod.Cfg.Listeners))
+	mod.handlers = make([]*Handler, len(mod.Cfg.Handlers))
+	for i, cfg := range mod.Cfg.Handlers {
+		handler, err := NewHandler(mod, *cfg)
+		if err != nil {
+			return fmt.Errorf("cannot create handler: %w", err)
+		}
 
+		if err := handler.Start(); err != nil {
+			for j := range i {
+				mod.handlers[j].Stop()
+			}
+
+			return fmt.Errorf("cannot start handler: %w", err)
+		}
+
+		mod.handlers[i] = handler
+	}
+
+	mod.listeners = make([]*Listener, len(mod.Cfg.Listeners))
 	for i, cfg := range mod.Cfg.Listeners {
 		if cfg.TLS != nil {
 			cfg.TLS.CertificateName = fmt.Sprintf("%s-%d", modData.Name, i)
@@ -84,4 +102,18 @@ func (mod *Module) Stop() {
 	for _, listener := range mod.listeners {
 		listener.Stop()
 	}
+
+	for _, handler := range mod.handlers {
+		handler.Stop()
+	}
+}
+
+func (mod *Module) findHandler(ctx *RequestContext) *Handler {
+	for _, h := range mod.handlers {
+		if h.MatchRequest(ctx) {
+			return h
+		}
+	}
+
+	return nil
 }

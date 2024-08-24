@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"go.n16f.net/boulevard/pkg/netutils"
+	"go.n16f.net/boulevard/pkg/utils"
 	"go.n16f.net/log"
 )
 
@@ -49,7 +50,7 @@ func (l *Listener) Start() error {
 
 	l.Server = &http.Server{
 		Addr:     l.TCPListener.Cfg.Address,
-		Handler:  l.Module,
+		Handler:  l,
 		ErrorLog: l.TCPListener.Log.StdLogger(log.LevelError),
 	}
 
@@ -84,4 +85,38 @@ func (l *Listener) serve() {
 		l.fatal("cannot run HTTP server: %w", err)
 		return
 	}
+}
+
+func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	subpath := req.URL.Path
+	if len(subpath) > 0 && subpath[0] == '/' {
+		subpath = subpath[1:]
+	}
+
+	ctx := RequestContext{
+		Log: l.Module.Log,
+
+		Request:        req,
+		ResponseWriter: w,
+
+		Subpath: subpath,
+	}
+
+	defer func() {
+		if v := recover(); v != nil {
+			msg := utils.RecoverValueString(v)
+			trace := utils.StackTrace(2, 20, true)
+
+			ctx.Log.Error("panic: %s\n%s", msg, trace)
+			ctx.ReplyError(500)
+		}
+	}()
+
+	h := l.Module.findHandler(&ctx)
+	if h == nil {
+		ctx.ReplyError(404)
+		return
+	}
+
+	h.Action.HandleRequest(&ctx)
 }

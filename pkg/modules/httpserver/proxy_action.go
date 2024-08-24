@@ -1,23 +1,39 @@
 package httpserver
 
 import (
-	"fmt"
-
 	"go.n16f.net/ejson"
 )
 
+type ProxyActionCfg struct {
+	// TODO
+}
+
+func (cfg *ProxyActionCfg) ValidateJSON(v *ejson.Validator) {
+	// TODO
+}
+
 type ProxyAction struct {
-	// TODO
+	Handler *Handler
+	Cfg     ProxyActionCfg
 }
 
-func (action *ProxyAction) ValidateJSON(v *ejson.Validator) {
-	// TODO
+func NewProxyAction(h *Handler, cfg ProxyActionCfg) (*ProxyAction, error) {
+	a := ProxyAction{
+		Handler: h,
+		Cfg:     cfg,
+	}
+
+	return &a, nil
 }
 
-func (mod *Module) proxy(h *Handler, ctx *RequestContext) {
-	w := ctx.ResponseWriter
+func (a *ProxyAction) Start() error {
+	return nil
+}
 
+func (a *ProxyAction) Stop() {
+}
+
+func (a *ProxyAction) HandleRequest(ctx *RequestContext) {
 	// TODO
-	w.WriteHeader(501)
-	fmt.Fprintf(w, "proxy action not implemented")
+	ctx.ReplyError(501)
 }
