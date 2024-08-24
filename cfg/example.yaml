@@ -13,7 +13,7 @@ acme:
 
 ---
 module: "http-server"
-name: "http"
+name: "web-server"
 data:
   listeners:
     - address: ":8080"
@@ -33,5 +33,12 @@ data:
 
 ---
 module: "tcp-server"
-name: "tcp"
-data: {}
+name: "irc-server"
+data:
+  listeners:
+    - address: ":6667"
+    - address: ":6697"
+      tls:
+        domains: ["localhost"]
+  proxy:
+    address: "localhost:6698"

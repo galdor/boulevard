@@ -1,9 +1,18 @@
 package tcpserver
 
 import (
+	"fmt"
+
+	"go.n16f.net/acme"
 	"go.n16f.net/boulevard/pkg/boulevard"
+	"go.n16f.net/boulevard/pkg/netutils"
 	"go.n16f.net/ejson"
 	"go.n16f.net/log"
+)
+
+const (
+	DefaultReadBufferSize  = 16 * 1024
+	DefaultWriteBufferSize = 16 * 1024
 )
 
 func ModuleInfo() *boulevard.ModuleInfo {
@@ -15,10 +24,39 @@ func ModuleInfo() *boulevard.ModuleInfo {
 }
 
 type ModuleCfg struct {
-	// TODO
+	Listeners []*netutils.TCPListenerCfg `json:"listeners"`
+
+	ReadBufferSize  int `json:"read_buffer_size,omitempty"`
+	WriteBufferSize int `json:"write_buffer_size,omitempty"`
+
+	Proxy ProxyAction `json:"proxy"`
 }
 
 func (cfg *ModuleCfg) ValidateJSON(v *ejson.Validator) {
+	v.CheckArrayNotEmpty("listeners", cfg.Listeners)
+	v.CheckObjectArray("listeners", cfg.Listeners)
+
+	if cfg.ReadBufferSize == 0 {
+		cfg.ReadBufferSize = DefaultReadBufferSize
+	} else {
+		v.CheckIntMin("read_buffer_size", cfg.ReadBufferSize, 1)
+	}
+
+	if cfg.WriteBufferSize == 0 {
+		cfg.WriteBufferSize = DefaultWriteBufferSize
+	} else {
+		v.CheckIntMin("write_buffer_size", cfg.WriteBufferSize, 1)
+	}
+
+	v.CheckObject("proxy", &cfg.Proxy)
+}
+
+type ProxyAction struct {
+	Address string `json:"address"`
+}
+
+func (a *ProxyAction) ValidateJSON(v *ejson.Validator) {
+	v.CheckStringNotEmpty("address", a.Address)
 }
 
 func NewModuleCfg() boulevard.ModuleCfg {
@@ -28,6 +66,10 @@ func NewModuleCfg() boulevard.ModuleCfg {
 type Module struct {
 	Cfg *ModuleCfg
 	Log *log.Logger
+
+	errChan    chan<- error
+	acmeClient *acme.Client
+	listeners  []*Listener
 }
 
 func NewModule() boulevard.Module {
@@ -38,11 +80,37 @@ func (mod *Module) Start(modCfg boulevard.ModuleCfg, modData *boulevard.ModuleDa
 	mod.Cfg = modCfg.(*ModuleCfg)
 	mod.Log = modData.Logger
 
-	// TODO
+	mod.errChan = modData.ErrChan
+	mod.acmeClient = modData.ACMEClient
+
+	mod.listeners = make([]*Listener, len(mod.Cfg.Listeners))
+
+	for i, cfg := range mod.Cfg.Listeners {
+		if cfg.TLS != nil {
+			cfg.TLS.CertificateName = fmt.Sprintf("%s-%d", modData.Name, i)
+		}
+
+		listener, err := NewListener(mod, *cfg)
+		if err != nil {
+			return fmt.Errorf("cannot create listener: %w", err)
+		}
+
+		if err := listener.Start(); err != nil {
+			for j := range i {
+				mod.listeners[j].Stop()
+			}
+
+			return fmt.Errorf("cannot start listener: %w", err)
+		}
+
+		mod.listeners[i] = listener
+	}
 
 	return nil
 }
 
 func (mod *Module) Stop() {
-	// TODO
+	for _, listener := range mod.listeners {
+		listener.Stop()
+	}
 }

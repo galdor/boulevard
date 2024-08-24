@@ -36,20 +36,20 @@ type TCPListener struct {
 	cancel context.CancelFunc
 }
 
-func NewTCPListener(ctx context.Context, cfg TCPListenerCfg) (*TCPListener, error) {
+func NewTCPListener(cfg TCPListenerCfg) (*TCPListener, error) {
 	if cfg.TLS != nil {
 		if cfg.ACMEClient == nil {
 			return nil, fmt.Errorf("missing ACME client for TLS support")
 		}
 	}
 
-	ctx2, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(context.Background())
 
 	l := TCPListener{
 		Cfg: cfg,
 		Log: cfg.Logger,
 
-		ctx:    ctx2,
+		ctx:    ctx,
 		cancel: cancel,
 	}
 
@@ -115,4 +115,13 @@ func (l *TCPListener) Start() error {
 func (l *TCPListener) Stop() {
 	l.cancel()
 	l.Listener.Close()
+}
+
+func (l *TCPListener) Accept() (net.Conn, error) {
+	conn, err := l.Listener.Accept()
+	if err != nil {
+		return nil, UnwrapOpError(err, "accept")
+	}
+
+	return conn, nil
 }
