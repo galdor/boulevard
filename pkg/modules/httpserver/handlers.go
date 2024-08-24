@@ -9,6 +9,45 @@ import (
 	"go.n16f.net/ejson"
 )
 
+type Handler struct {
+	Match MatchSpec `json:"match"`
+
+	Reply  *ReplyAction  `json:"reply,omitempty"`
+	Serve  *ServeAction  `json:"serve,omitempty"`
+	Proxy  *ProxyAction  `json:"proxy,omitempty"`
+	Status *StatusAction `json:"status,omitempty"`
+}
+
+func (h *Handler) ValidateJSON(v *ejson.Validator) {
+	v.CheckObject("match", &h.Match)
+
+	nbActions := 0
+	if h.Serve != nil {
+		nbActions++
+	}
+	if h.Reply != nil {
+		nbActions++
+	}
+	if h.Proxy != nil {
+		nbActions++
+	}
+	if h.Status != nil {
+		nbActions++
+	}
+
+	if nbActions == 0 {
+		v.AddError(nil, "missing_action", "handler must contain an action")
+	} else if nbActions > 1 {
+		v.AddError(nil, "multiple_actions",
+			"handler must contain a single action")
+	}
+
+	v.CheckOptionalObject("serve", h.Serve)
+	v.CheckOptionalObject("reply", h.Reply)
+	v.CheckOptionalObject("proxy", h.Proxy)
+	v.CheckOptionalObject("status", h.Status)
+}
+
 type MatchSpec struct {
 	Method      string       `json:"method,omitempty"`
 	Path        string       `json:"path,omitempty"`
@@ -46,40 +85,6 @@ func (s *MatchSpec) UnmarshalJSON(data []byte) error {
 
 	*s = MatchSpec(s2)
 	return nil
-}
-
-type Handler struct {
-	Match MatchSpec `json:"match"`
-
-	Reply *ReplyAction `json:"reply,omitempty"`
-	Serve *ServeAction `json:"serve,omitempty"`
-	Proxy *ProxyAction `json:"proxy,omitempty"`
-}
-
-func (h *Handler) ValidateJSON(v *ejson.Validator) {
-	v.CheckObject("match", &h.Match)
-
-	nbActions := 0
-	if h.Serve != nil {
-		nbActions++
-	}
-	if h.Reply != nil {
-		nbActions++
-	}
-	if h.Proxy != nil {
-		nbActions++
-	}
-
-	if nbActions == 0 {
-		v.AddError(nil, "missing_action", "handler must contain an action")
-	} else if nbActions > 1 {
-		v.AddError(nil, "multiple_actions",
-			"handler must contain a single action")
-	}
-
-	v.CheckOptionalObject("serve", h.Serve)
-	v.CheckOptionalObject("reply", h.Reply)
-	v.CheckOptionalObject("proxy", h.Proxy)
 }
 
 func (mod *Module) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -122,6 +127,8 @@ func (mod *Module) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		fn = mod.serve
 	case h.Proxy != nil:
 		fn = mod.proxy
+	case h.Status != nil:
+		fn = mod.status
 	}
 
 	fn(h, &ctx)
