@@ -85,6 +85,9 @@ func (s *Service) startModule(modCfg *ModuleCfg) error {
 		ErrChan: errChan,
 
 		ACMEClient: s.acmeClient,
+
+		ModuleStatus:   s.moduleStatus,
+		ModuleStatuses: s.moduleStatuses,
 	}
 
 	mod := Module{
@@ -163,4 +166,41 @@ func (s *Service) handleModuleError(name string, err error) {
 			}()
 		}
 	}()
+}
+
+func (s *Service) moduleStatus(name string) *boulevard.ModuleStatus {
+	s.modulesMutex.Lock()
+	defer s.modulesMutex.Unlock()
+
+	mod := s.modules[name]
+	if mod == nil {
+		return nil
+	}
+
+	status := boulevard.ModuleStatus{
+		Name: name,
+		Cfg:  mod.Cfg,
+		Data: mod.Module.StatusData(),
+	}
+
+	return &status
+}
+
+func (s *Service) moduleStatuses() []*boulevard.ModuleStatus {
+	s.modulesMutex.Lock()
+	defer s.modulesMutex.Unlock()
+
+	var statuses []*boulevard.ModuleStatus
+
+	for name, mod := range s.modules {
+		status := boulevard.ModuleStatus{
+			Name: name,
+			Info: mod.Info,
+			Data: mod.Module.StatusData(),
+		}
+
+		statuses = append(statuses, &status)
+	}
+
+	return statuses
 }

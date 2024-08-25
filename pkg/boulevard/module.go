@@ -23,9 +23,21 @@ type ModuleData struct {
 	ErrChan chan<- error
 
 	ACMEClient *acme.Client
+
+	ModuleStatus   func(string) *ModuleStatus
+	ModuleStatuses func() []*ModuleStatus
 }
 
 type Module interface {
 	Start(ModuleCfg, *ModuleData) error
 	Stop()
+
+	StatusData() any
+}
+
+type ModuleStatus struct {
+	Name string
+	Info *ModuleInfo
+	Cfg  ModuleCfg
+	Data any
 }

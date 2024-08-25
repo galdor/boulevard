@@ -23,7 +23,7 @@ type Listener struct {
 
 func NewListener(mod *Module, cfg netutils.TCPListenerCfg) (*Listener, error) {
 	cfg.Logger = mod.Log
-	cfg.ACMEClient = mod.acmeClient
+	cfg.ACMEClient = mod.Data.ACMEClient
 
 	tcpListener, err := netutils.NewTCPListener(cfg)
 	if err != nil {
@@ -72,7 +72,7 @@ func (l *Listener) fatal(format string, args ...any) {
 	err := fmt.Errorf(format, args...)
 
 	select {
-	case l.Module.errChan <- err:
+	case l.Module.Data.ErrChan <- err:
 	case <-l.ctx.Done():
 	}
 }

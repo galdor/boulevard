@@ -22,7 +22,7 @@ data:
         domains: ["localhost", "www.localhost"]
   handlers:
     - match:
-        path: "/status/"
+        path: "/status"
       status: {}
     - match:
         path: "/boulevard/"

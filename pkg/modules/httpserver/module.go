@@ -3,7 +3,6 @@ package httpserver
 import (
 	"fmt"
 
-	"go.n16f.net/acme"
 	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/boulevard/pkg/netutils"
 	"go.n16f.net/ejson"
@@ -35,13 +34,12 @@ func NewModuleCfg() boulevard.ModuleCfg {
 }
 
 type Module struct {
-	Cfg *ModuleCfg
-	Log *log.Logger
+	Cfg  *ModuleCfg
+	Log  *log.Logger
+	Data *boulevard.ModuleData
 
-	errChan    chan<- error
-	acmeClient *acme.Client
-	handlers   []*Handler
-	listeners  []*Listener
+	handlers  []*Handler
+	listeners []*Listener
 }
 
 func NewModule() boulevard.Module {
@@ -51,9 +49,7 @@ func NewModule() boulevard.Module {
 func (mod *Module) Start(modCfg boulevard.ModuleCfg, modData *boulevard.ModuleData) error {
 	mod.Cfg = modCfg.(*ModuleCfg)
 	mod.Log = modData.Logger
-
-	mod.errChan = modData.ErrChan
-	mod.acmeClient = modData.ACMEClient
+	mod.Data = modData
 
 	mod.handlers = make([]*Handler, len(mod.Cfg.Handlers))
 	for i, cfg := range mod.Cfg.Handlers {

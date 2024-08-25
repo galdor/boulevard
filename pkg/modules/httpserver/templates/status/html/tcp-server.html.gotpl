@@ -1,0 +1,21 @@
+<table>
+  <thead>
+    <tr>
+      <th>Address</th>
+      <th>TLS domains</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {{range .Listeners}}
+    <tr>
+      <td>{{.Address}}</td>
+      {{with .TLSDomains}}
+      <td>{{join . ", "}}</td>
+      {{else}}
+      <td>—</td>
+      {{end}}
+    </tr>
+    {{end}}
+  </tbody>
+</table>
