@@ -6,14 +6,15 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"strings"
+	texttemplate "text/template"
 )
 
 var functions = map[string]any{
 	"join": strings.Join,
 }
 
-func LoadHTMLTemplates(filesystem fs.FS, patterns ...string) (*htmltemplate.Template, error) {
-	rootTpl := htmltemplate.New("")
+func LoadTextTemplates(filesystem fs.FS, patterns ...string) (*texttemplate.Template, error) {
+	rootTpl := texttemplate.New("")
 
 	rootTpl = rootTpl.Option("missingkey=error")
 	rootTpl = rootTpl.Funcs(functions)
@@ -23,6 +24,28 @@ func LoadHTMLTemplates(filesystem fs.FS, patterns ...string) (*htmltemplate.Temp
 	// relative path in the filesystem.
 	//
 	// Also doing it ourselves allows us to drop file extensions.
+
+	err := walkFS(filesystem, ".txt.gotpl",
+		func(filename string, data []byte) error {
+			tpl := rootTpl.New(filename)
+			if _, err := tpl.Parse(string(data)); err != nil {
+				return fmt.Errorf("cannot parse template %q: %w", filename, err)
+			}
+
+			return nil
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	return rootTpl, nil
+}
+
+func LoadHTMLTemplates(filesystem fs.FS, patterns ...string) (*htmltemplate.Template, error) {
+	rootTpl := htmltemplate.New("")
+
+	rootTpl = rootTpl.Option("missingkey=error")
+	rootTpl = rootTpl.Funcs(functions)
 
 	err := walkFS(filesystem, ".html.gotpl",
 		func(filename string, data []byte) error {

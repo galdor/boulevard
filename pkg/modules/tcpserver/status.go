@@ -5,8 +5,8 @@ type Status struct {
 }
 
 type ListenerStatus struct {
-	Address    string
-	TLSDomains []string
+	Address    string   `json:"address"`
+	TLSDomains []string `json:"tls_domains,omitempty"`
 }
 
 func (mod *Module) StatusData() any {

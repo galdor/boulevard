@@ -1,0 +1,5 @@
+BOULEVARD STATUS
+{{range $i, $mod := .Modules}}
+MODULE {{.Name}}
+{{index $.ModuleData $i}}
+{{end}}

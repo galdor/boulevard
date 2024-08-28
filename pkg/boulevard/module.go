@@ -36,8 +36,8 @@ type Module interface {
 }
 
 type ModuleStatus struct {
-	Name string
-	Info *ModuleInfo
-	Cfg  ModuleCfg
-	Data any
+	Name string      `json:"name"`
+	Info *ModuleInfo `json:"-"`
+	Cfg  ModuleCfg   `json:"-"`
+	Data any         `json:"data"`
 }

@@ -3,11 +3,13 @@ package httpserver
 import (
 	"bytes"
 	"embed"
+	"encoding/json"
 	"fmt"
 	htmltemplate "html/template"
 	"path"
 	"slices"
 	"strings"
+	texttemplate "text/template"
 
 	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/ejson"
@@ -16,18 +18,27 @@ import (
 //go:embed templates/**/*
 var htmlTemplateFS embed.FS
 
+var statusMediaTypes = []*MediaType{
+	MediaTypeText,
+	MediaTypeHTML,
+	MediaTypeJSON,
+}
+
+type StatusData struct {
+	Modules []*boulevard.ModuleStatus `json:"modules"`
+}
+
 type StatusActionCfg struct {
-	// TODO
 }
 
 func (cfg *StatusActionCfg) ValidateJSON(v *ejson.Validator) {
-	// TODO
 }
 
 type StatusAction struct {
 	Handler *Handler
 	Cfg     StatusActionCfg
 
+	textTemplates *texttemplate.Template
 	htmlTemplates *htmltemplate.Template
 }
 
@@ -41,6 +52,13 @@ func NewStatusAction(h *Handler, cfg StatusActionCfg) (*StatusAction, error) {
 }
 
 func (a *StatusAction) Start() error {
+	textTemplates, err := boulevard.LoadTextTemplates(htmlTemplateFS,
+		"templates/status/text/*.gotpl")
+	if err != nil {
+		return fmt.Errorf("cannot load text templates: %w", err)
+	}
+	a.textTemplates = textTemplates
+
 	htmlTemplates, err := boulevard.LoadHTMLTemplates(htmlTemplateFS,
 		"templates/status/html/*.gotpl")
 	if err != nil {
@@ -63,26 +81,24 @@ func (a *StatusAction) HandleRequest(ctx *RequestContext) {
 			return strings.Compare(ms1.Name, ms2.Name)
 		})
 
-	tplData := struct {
-		Modules    []*boulevard.ModuleStatus
-		ModuleData []htmltemplate.HTML
-	}{
-		Modules:    modStatuses,
-		ModuleData: make([]htmltemplate.HTML, len(modStatuses)),
+	status := StatusData{
+		Modules: modStatuses,
 	}
 
-	for i, mod := range modStatuses {
-		content, err := a.renderHTMLTemplate(ctx, mod.Info.Name, mod.Data)
-		if err != nil {
-			ctx.ReplyError(500)
-			return
-		}
+	var fn func(*RequestContext, *StatusData) ([]byte, error)
 
-		tplData.ModuleData[i] = htmltemplate.HTML(content)
+	switch ctx.NegotiateMediaType(statusMediaTypes) {
+	case MediaTypeText:
+		fn = a.textContent
+	case MediaTypeHTML:
+		fn = a.htmlContent
+	case MediaTypeJSON:
+		fn = a.jsonContent
 	}
 
-	content, err := a.renderHTMLTemplate(ctx, "status", tplData)
+	content, err := fn(ctx, &status)
 	if err != nil {
+		ctx.Log.Error("cannot render status data: %v", err)
 		ctx.ReplyError(500)
 		return
 	}
@@ -90,12 +106,82 @@ func (a *StatusAction) HandleRequest(ctx *RequestContext) {
 	ctx.Reply(200, bytes.NewReader(content))
 }
 
+func (a *StatusAction) textContent(ctx *RequestContext, status *StatusData) ([]byte, error) {
+	tplData := struct {
+		Modules    []*boulevard.ModuleStatus
+		ModuleData []string
+	}{
+		Modules:    status.Modules,
+		ModuleData: make([]string, len(status.Modules)),
+	}
+
+	for i, mod := range status.Modules {
+		content, err := a.renderTextTemplate(ctx, mod.Info.Name, mod.Data)
+		if err != nil {
+			return nil, fmt.Errorf("cannot render template %q: %w",
+				mod.Info.Name, err)
+		}
+
+		tplData.ModuleData[i] = string(content)
+	}
+
+	content, err := a.renderTextTemplate(ctx, "status", tplData)
+	if err != nil {
+		return nil, fmt.Errorf("cannot render template %q: %w",
+			"status", err)
+	}
+
+	return content, nil
+}
+
+func (a *StatusAction) htmlContent(ctx *RequestContext, status *StatusData) ([]byte, error) {
+	tplData := struct {
+		Modules    []*boulevard.ModuleStatus
+		ModuleData []htmltemplate.HTML
+	}{
+		Modules:    status.Modules,
+		ModuleData: make([]htmltemplate.HTML, len(status.Modules)),
+	}
+
+	for i, mod := range status.Modules {
+		content, err := a.renderHTMLTemplate(ctx, mod.Info.Name, mod.Data)
+		if err != nil {
+			return nil, fmt.Errorf("cannot render template %q: %w",
+				mod.Info.Name, err)
+		}
+
+		tplData.ModuleData[i] = htmltemplate.HTML(content)
+	}
+
+	content, err := a.renderHTMLTemplate(ctx, "status", tplData)
+	if err != nil {
+		return nil, fmt.Errorf("cannot render template %q: %w",
+			"status", err)
+	}
+
+	return content, nil
+}
+
+func (a *StatusAction) jsonContent(ctx *RequestContext, status *StatusData) ([]byte, error) {
+	return json.MarshalIndent(status, "", "  ")
+}
+
+func (a *StatusAction) renderTextTemplate(ctx *RequestContext, name string, data any) ([]byte, error) {
+	name = path.Join("templates/status/text", name)
+
+	var buf bytes.Buffer
+	if err := a.textTemplates.ExecuteTemplate(&buf, name, data); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
 func (a *StatusAction) renderHTMLTemplate(ctx *RequestContext, name string, data any) ([]byte, error) {
 	name = path.Join("templates/status/html", name)
 
 	var buf bytes.Buffer
 	if err := a.htmlTemplates.ExecuteTemplate(&buf, name, data); err != nil {
-		ctx.Log.Error("cannot render template %q: %v", name, err)
 		return nil, err
 	}
 

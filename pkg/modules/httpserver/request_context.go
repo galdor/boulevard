@@ -34,3 +34,31 @@ func (ctx *RequestContext) ReplyError(status int) {
 	msg := fmt.Sprintf("%d %s\n", status, http.StatusText(status))
 	ctx.Reply(status, strings.NewReader(msg))
 }
+
+func (ctx *RequestContext) NegotiateMediaType(supportedTypes []*MediaType) *MediaType {
+	ranges := ctx.AcceptedMediaRanges()
+	if len(ranges) == 0 {
+		ranges = append(ranges, &MediaRange{}) // accept */* by default
+	}
+
+	return NegotiateMediaType(ranges, supportedTypes)
+}
+
+func (ctx *RequestContext) AcceptedMediaRanges() []*MediaRange {
+	value := ctx.Request.Header.Get("Accept")
+	parts := strings.Split(value, ",")
+
+	var ranges []*MediaRange
+	for _, part := range parts {
+		part = strings.Trim(part, " \t")
+
+		var r MediaRange
+		if err := r.Parse(part); err != nil {
+			continue
+		}
+
+		ranges = append(ranges, &r)
+	}
+
+	return ranges
+}
