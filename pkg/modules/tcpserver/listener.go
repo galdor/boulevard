@@ -72,6 +72,14 @@ func (l *Listener) Stop() {
 	l.wg.Wait()
 }
 
+func (l *Listener) CountConnections() int64 {
+	l.connectionsMutex.Lock()
+	n := len(l.connections)
+	l.connectionsMutex.Unlock()
+
+	return int64(n)
+}
+
 func (l *Listener) fatal(format string, args ...any) {
 	err := fmt.Errorf(format, args...)
 

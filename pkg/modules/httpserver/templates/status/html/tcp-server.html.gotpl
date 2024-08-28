@@ -3,6 +3,7 @@
     <tr>
       <th>Address</th>
       <th>TLS domains</th>
+      <th>Connections</th>
     </tr>
   </thead>
 
@@ -15,6 +16,7 @@
       {{else}}
       <td>—</td>
       {{end}}
+      <td>{{.NbConnections}}</td>
     </tr>
     {{end}}
   </tbody>

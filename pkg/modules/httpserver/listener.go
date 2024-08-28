@@ -3,8 +3,10 @@ package httpserver
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"sync"
+	"sync/atomic"
 
 	"go.n16f.net/boulevard/pkg/netutils"
 	"go.n16f.net/boulevard/pkg/utils"
@@ -15,6 +17,8 @@ type Listener struct {
 	Module      *Module
 	TCPListener *netutils.TCPListener
 	Server      *http.Server
+
+	nbConnections atomic.Int64
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -49,9 +53,10 @@ func (l *Listener) Start() error {
 	}
 
 	l.Server = &http.Server{
-		Addr:     l.TCPListener.Cfg.Address,
-		Handler:  l,
-		ErrorLog: l.TCPListener.Log.StdLogger(log.LevelError),
+		Addr:      l.TCPListener.Cfg.Address,
+		Handler:   l,
+		ErrorLog:  l.TCPListener.Log.StdLogger(log.LevelError),
+		ConnState: l.connState,
 	}
 
 	l.wg.Add(1)
@@ -66,6 +71,10 @@ func (l *Listener) Stop() {
 	l.wg.Wait()
 
 	l.TCPListener.Stop()
+}
+
+func (l *Listener) CountConnections() int64 {
+	return l.nbConnections.Load()
 }
 
 func (l *Listener) fatal(format string, args ...any) {
@@ -84,6 +93,15 @@ func (l *Listener) serve() {
 	if err != http.ErrServerClosed {
 		l.fatal("cannot run HTTP server: %w", err)
 		return
+	}
+}
+
+func (l *Listener) connState(conn net.Conn, state http.ConnState) {
+	switch state {
+	case http.StateNew:
+		l.nbConnections.Add(1)
+	case http.StateClosed:
+		l.nbConnections.Add(-1)
 	}
 }
 

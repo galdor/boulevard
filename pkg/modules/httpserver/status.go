@@ -5,8 +5,9 @@ type Status struct {
 }
 
 type ListenerStatus struct {
-	Address    string   `json:"address"`
-	TLSDomains []string `json:"tls_domains,omitempty"`
+	Address       string   `json:"address"`
+	TLSDomains    []string `json:"tls_domains,omitempty"`
+	NbConnections int64    `json:"nb_connections"`
 }
 
 func (mod *Module) StatusData() any {
@@ -14,7 +15,8 @@ func (mod *Module) StatusData() any {
 
 	for i, l := range mod.listeners {
 		status := ListenerStatus{
-			Address: l.TCPListener.Cfg.Address,
+			Address:       l.TCPListener.Cfg.Address,
+			NbConnections: l.CountConnections(),
 		}
 
 		if tls := l.TCPListener.Cfg.TLS; tls != nil {

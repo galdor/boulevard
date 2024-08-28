@@ -1,5 +1,5 @@
 
   LISTENERS
   {{- range .Listeners}}
-  {{.Address}} {{with .TLSDomains}}{{join . ", "}}{{else}}—{{end}}
+  {{.Address}} {{with .TLSDomains}}{{join . ","}}{{else}}—{{end}} {{.NbConnections}}
   {{- end -}}
