@@ -8,7 +8,7 @@ require (
 	go.n16f.net/ejson v0.0.0-20240820145652-4e9192313c14
 	go.n16f.net/eyaml v0.0.0-20240822141541-96f4fcff8320
 	go.n16f.net/log v0.0.0-20240820155337-9eef10dcf842
-	go.n16f.net/program v0.0.0-20240714172550-28d5a141755e
+	go.n16f.net/program v0.0.0-20240831125021-3669d150b233
 )
 
 require (

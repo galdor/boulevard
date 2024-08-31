@@ -35,7 +35,7 @@
   <body>
     <h1>Boulevard status</h1>
     {{range $i, $mod := .Modules}}
-    <h2 title="{{.Info.Name}} module">{{.Name}}</h2>
+    <h2 title="Module: {{.Info.Type}}">{{.Name}}</h2>
     {{index $.ModuleData $i}}
     {{end}}
   </body>

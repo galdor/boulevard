@@ -116,10 +116,10 @@ func (a *StatusAction) textContent(ctx *RequestContext, status *StatusData) ([]b
 	}
 
 	for i, mod := range status.Modules {
-		content, err := a.renderTextTemplate(ctx, mod.Info.Name, mod.Data)
+		content, err := a.renderTextTemplate(ctx, mod.Info.Type, mod.Data)
 		if err != nil {
 			return nil, fmt.Errorf("cannot render template %q: %w",
-				mod.Info.Name, err)
+				mod.Info.Type, err)
 		}
 
 		tplData.ModuleData[i] = string(content)
@@ -144,10 +144,10 @@ func (a *StatusAction) htmlContent(ctx *RequestContext, status *StatusData) ([]b
 	}
 
 	for i, mod := range status.Modules {
-		content, err := a.renderHTMLTemplate(ctx, mod.Info.Name, mod.Data)
+		content, err := a.renderHTMLTemplate(ctx, mod.Info.Type, mod.Data)
 		if err != nil {
 			return nil, fmt.Errorf("cannot render template %q: %w",
-				mod.Info.Name, err)
+				mod.Info.Type, err)
 		}
 
 		tplData.ModuleData[i] = htmltemplate.HTML(content)

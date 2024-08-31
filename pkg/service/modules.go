@@ -8,6 +8,7 @@ import (
 	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/ejson"
 	"go.n16f.net/log"
+	"go.n16f.net/program"
 )
 
 type Module struct {
@@ -19,18 +20,37 @@ type Module struct {
 }
 
 type ModuleCfg struct {
-	Module string          `json:"module"`
-	Name   string          `json:"name"`
-	Data   json.RawMessage `json:"data"`
+	Module string `json:"module"`
+
+	HTTPServer json.RawMessage `json:"http_server,omitempty"`
+	TCPServer  json.RawMessage `json:"tcp_server,omitempty"`
 }
 
 func (cfg *ModuleCfg) ValidateJSON(v *ejson.Validator) {
-	v.CheckStringNotEmpty("name", cfg.Name)
+	v.CheckStringNotEmpty("module", cfg.Module)
+
+	// TODO One single module cfg field
+}
+
+func (cfg *ModuleCfg) ModuleTypeAndData() (string, []byte) {
+	var t string
+	var data []byte
+
+	switch {
+	case cfg.HTTPServer != nil:
+		t, data = "http_server", cfg.HTTPServer
+	case cfg.TCPServer != nil:
+		t, data = "tcp_server", cfg.TCPServer
+	default:
+		program.Panicf("missing module configuration in %#v", cfg)
+	}
+
+	return t, data
 }
 
 func (s *Service) startModules() error {
 	for _, i := range s.Cfg.ModuleInfo {
-		s.moduleInfo[i.Name] = i
+		s.moduleInfo[i.Type] = i
 	}
 
 	s.modulesMutex.Lock()
@@ -44,7 +64,7 @@ func (s *Service) startModules() error {
 				s.stopModule(startedMod)
 			}
 
-			return fmt.Errorf("cannot start module %q: %w", modCfg.Name, err)
+			return fmt.Errorf("cannot start module %q: %w", modCfg.Module, err)
 		}
 	}
 
@@ -52,34 +72,38 @@ func (s *Service) startModules() error {
 }
 
 func (s *Service) startModule(modCfg *ModuleCfg) error {
-	if _, found := s.modules[modCfg.Name]; found {
-		return fmt.Errorf("duplicate module name %q", modCfg.Name)
+	modName := modCfg.Module
+
+	if _, found := s.modules[modName]; found {
+		return fmt.Errorf("duplicate module name %q", modName)
 	}
 
-	info, found := s.moduleInfo[modCfg.Module]
+	modType, cfgData := modCfg.ModuleTypeAndData()
+
+	info, found := s.moduleInfo[modType]
 	if !found {
-		return fmt.Errorf("unknown module type %q", modCfg.Module)
+		return fmt.Errorf("unknown module type %q", modType)
 	}
 
 	cfg := info.InstantiateCfg()
-	if err := ejson.Unmarshal(modCfg.Data, cfg); err != nil {
+	if err := ejson.Unmarshal(cfgData, cfg); err != nil {
 		return fmt.Errorf("cannot parse configuration of module %q: %w",
-			modCfg.Name, err)
+			modName, err)
 	}
 
-	s.Log.Debug(1, "starting %s module %q", modCfg.Module, modCfg.Name)
+	s.Log.Debug(1, "starting %s module %q", modType, modName)
 
-	logger := s.Log.Child("module", log.Data{"module": modCfg.Name})
+	logger := s.Log.Child("module", log.Data{"module": modName})
 
 	errChan := make(chan error)
 	go func() {
 		if err := <-errChan; err != nil {
-			s.handleModuleError(modCfg.Name, err)
+			s.handleModuleError(modName, err)
 		}
 	}()
 
-	data := boulevard.ModuleData{
-		Name: modCfg.Name,
+	modData := boulevard.ModuleData{
+		Name: modName,
 
 		Logger:  logger,
 		ErrChan: errChan,
@@ -93,17 +117,17 @@ func (s *Service) startModule(modCfg *ModuleCfg) error {
 	mod := Module{
 		Info:   info,
 		Cfg:    modCfg,
-		Data:   &data,
+		Data:   &modData,
 		Logger: logger,
 		Module: info.Instantiate(),
 	}
 
-	if err := mod.Module.Start(cfg, &data); err != nil {
+	if err := mod.Module.Start(cfg, &modData); err != nil {
 		close(errChan)
 		return err
 	}
 
-	s.modules[modCfg.Name] = &mod
+	s.modules[modName] = &mod
 
 	return nil
 }
@@ -160,8 +184,7 @@ func (s *Service) handleModuleError(name string, err error) {
 				defer s.modulesMutex.Unlock()
 
 				if err := s.startModule(mod.Cfg); err != nil {
-					mod.Logger.Error("cannot restart module %q: %v",
-						mod.Cfg.Name, err)
+					mod.Logger.Error("cannot restart module %q: %v", name, err)
 				}
 			}()
 		}

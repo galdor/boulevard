@@ -12,9 +12,8 @@ acme:
   pebble: true
 
 ---
-module: "http-server"
-name: "web-server"
-data:
+module: "web-server"
+http_server:
   listeners:
     - address: ":8080"
     - address: ":4430"
@@ -35,9 +34,8 @@ data:
         body: "access denied\n"
 
 ---
-module: "tcp-server"
-name: "irc-server"
-data:
+module: "irc-server"
+tcp_server:
   listeners:
     - address: ":6667"
     - address: ":6697"

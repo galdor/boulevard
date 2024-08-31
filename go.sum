@@ -16,8 +16,8 @@ go.n16f.net/eyaml v0.0.0-20240822141541-96f4fcff8320 h1:8sDDPROjDfPyyS3pdnnaIt5t
 go.n16f.net/eyaml v0.0.0-20240822141541-96f4fcff8320/go.mod h1:x/KvdOI641pgVwi9EomxsxlSt5kIxlGIdM0TFu4FaT4=
 go.n16f.net/log v0.0.0-20240820155337-9eef10dcf842 h1:fd8Yoy3KkR2LXQhej8cjGdp37PSUArlF1lDGI6SKFEA=
 go.n16f.net/log v0.0.0-20240820155337-9eef10dcf842/go.mod h1:BIWa3RtuDtvWHeBXuuhWS0NSRauDKbuM6t2WKD7J+fg=
-go.n16f.net/program v0.0.0-20240714172550-28d5a141755e h1:7o9q68B3+MVEg0p9Xsg+orLLpPT8i6yDck2jZn5rKSI=
-go.n16f.net/program v0.0.0-20240714172550-28d5a141755e/go.mod h1:MKuQtJLHafIg8LvIO6fNzt04Uzab+H3ByU1wphsuz/4=
+go.n16f.net/program v0.0.0-20240831125021-3669d150b233 h1:w6l9nKkbXF4uIfgnwjNc5SqDk0ug9n0Tp18P28kjflU=
+go.n16f.net/program v0.0.0-20240831125021-3669d150b233/go.mod h1:MKuQtJLHafIg8LvIO6fNzt04Uzab+H3ByU1wphsuz/4=
 go.n16f.net/uuid v0.0.0-20240707135755-e4fd26b968ad h1:QYbHaaFqx6hMor1L6iMSmyhMFvXQXhKaNk9nefug07M=
 go.n16f.net/uuid v0.0.0-20240707135755-e4fd26b968ad/go.mod h1:hvPEWZmyP50in1DH72o5vUvoXFFyfRU6oL+p2tAcbgU=
 golang.org/x/crypto v0.25.0 h1:ypSNr+bnYL2YhwoMt2zPxHFmbAN1KZs/njMG3hxUp30=

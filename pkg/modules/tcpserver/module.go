@@ -17,7 +17,7 @@ const (
 
 func ModuleInfo() *boulevard.ModuleInfo {
 	return &boulevard.ModuleInfo{
-		Name:           "tcp-server",
+		Type:           "tcp_server",
 		InstantiateCfg: NewModuleCfg,
 		Instantiate:    NewModule,
 	}

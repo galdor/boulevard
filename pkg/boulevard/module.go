@@ -7,7 +7,7 @@ import (
 )
 
 type ModuleInfo struct {
-	Name           string
+	Type           string
 	InstantiateCfg func() ModuleCfg
 	Instantiate    func() Module
 }

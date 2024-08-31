@@ -9,8 +9,8 @@ import (
 	"sync/atomic"
 
 	"go.n16f.net/boulevard/pkg/netutils"
-	"go.n16f.net/boulevard/pkg/utils"
 	"go.n16f.net/log"
+	"go.n16f.net/program"
 )
 
 type Listener struct {
@@ -122,8 +122,8 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	defer func() {
 		if v := recover(); v != nil {
-			msg := utils.RecoverValueString(v)
-			trace := utils.StackTrace(2, 20, true)
+			msg := program.RecoverValueString(v)
+			trace := program.StackTrace(2, 20, true)
 
 			ctx.Log.Error("panic: %s\n%s", msg, trace)
 			ctx.ReplyError(500)

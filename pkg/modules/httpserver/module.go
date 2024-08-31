@@ -11,7 +11,7 @@ import (
 
 func ModuleInfo() *boulevard.ModuleInfo {
 	return &boulevard.ModuleInfo{
-		Name:           "http-server",
+		Type:           "http_server",
 		InstantiateCfg: NewModuleCfg,
 		Instantiate:    NewModule,
 	}
