@@ -6,10 +6,17 @@ import (
 	"time"
 
 	"go.n16f.net/boulevard/pkg/boulevard"
+	modhttpserver "go.n16f.net/boulevard/pkg/modules/httpserver"
+	modtcpserver "go.n16f.net/boulevard/pkg/modules/tcpserver"
 	"go.n16f.net/ejson"
 	"go.n16f.net/log"
 	"go.n16f.net/program"
 )
+
+var DefaultModules = []*boulevard.ModuleInfo{
+	modhttpserver.ModuleInfo(),
+	modtcpserver.ModuleInfo(),
+}
 
 type Module struct {
 	Info   *boulevard.ModuleInfo

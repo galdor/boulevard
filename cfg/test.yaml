@@ -1,0 +1,11 @@
+---
+logger:
+  backend_type: "terminal"
+  terminal_backend: {}
+  debug_level: 1
+
+acme:
+  datastore_path: "/tmp/boulevard/acme"
+  contact:
+    - "bob@example.com"
+  pebble: true

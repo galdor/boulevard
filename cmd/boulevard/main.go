@@ -6,9 +6,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"go.n16f.net/boulevard/pkg/boulevard"
-	modhttpserver "go.n16f.net/boulevard/pkg/modules/httpserver"
-	modtcpserver "go.n16f.net/boulevard/pkg/modules/tcpserver"
 	"go.n16f.net/boulevard/pkg/service"
 	"go.n16f.net/program"
 )
@@ -54,11 +51,7 @@ func run(p *program.Program) {
 	}
 
 	cfg.BuildId = buildId
-
-	cfg.ModuleInfo = []*boulevard.ModuleInfo{
-		modhttpserver.ModuleInfo(),
-		modtcpserver.ModuleInfo(),
-	}
+	cfg.ModuleInfo = service.DefaultModules
 
 	if p.IsOptionSet("validate-cfg") {
 		p.Info("configuration validated successfully")
