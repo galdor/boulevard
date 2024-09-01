@@ -20,11 +20,14 @@ func ModuleInfo() *boulevard.ModuleInfo {
 type ModuleCfg struct {
 	Listeners []*netutils.TCPListenerCfg `json:"listeners"`
 	Handlers  []*HandlerCfg              `json:"handlers,omitempty"`
+	Auth      *AuthCfg                   `json:"authentication,omitempty"`
 }
 
 func (cfg *ModuleCfg) ValidateJSON(v *ejson.Validator) {
 	v.CheckArrayNotEmpty("listeners", cfg.Listeners)
 	v.CheckObjectArray("listeners", cfg.Listeners)
+
+	v.CheckOptionalObject("authentication", cfg.Auth)
 
 	v.CheckObjectArray("handlers", cfg.Handlers)
 }
@@ -38,8 +41,9 @@ type Module struct {
 	Log  *log.Logger
 	Data *boulevard.ModuleData
 
-	handlers  []*Handler
 	listeners []*Listener
+	handlers  []*Handler
+	Auth      Auth
 }
 
 func NewModule() boulevard.Module {
@@ -91,6 +95,15 @@ func (mod *Module) Start(modCfg boulevard.ModuleCfg, modData *boulevard.ModuleDa
 		mod.listeners[i] = listener
 	}
 
+	if authCfg := mod.Cfg.Auth; authCfg != nil {
+		auth, err := NewAuth(authCfg)
+		if err != nil {
+			return fmt.Errorf("cannot initialize authentication: %w", err)
+		}
+
+		mod.Auth = auth
+	}
+
 	return nil
 }
 
@@ -106,7 +119,7 @@ func (mod *Module) Stop() {
 
 func (mod *Module) findHandler(ctx *RequestContext) *Handler {
 	for _, h := range mod.handlers {
-		if h.MatchRequest(ctx) {
+		if h.matchRequest(ctx) {
 			return h
 		}
 	}

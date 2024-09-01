@@ -15,6 +15,8 @@ type RequestContext struct {
 	ResponseWriter http.ResponseWriter
 
 	Subpath string // always relative
+
+	Auth Auth
 }
 
 func (ctx *RequestContext) Reply(status int, data io.Reader) {

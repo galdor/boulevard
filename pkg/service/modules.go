@@ -29,7 +29,25 @@ type ModuleCfg struct {
 func (cfg *ModuleCfg) ValidateJSON(v *ejson.Validator) {
 	v.CheckStringNotEmpty("module", cfg.Module)
 
-	// TODO One single module cfg field
+	modFields := []json.RawMessage{
+		cfg.HTTPServer,
+		cfg.TCPServer,
+	}
+
+	nbMods := 0
+	for _, modField := range modFields {
+		if modField != nil {
+			nbMods++
+		}
+	}
+
+	if nbMods == 0 {
+		v.AddError(nil, "invalid_configuration",
+			"missing module configuration")
+	} else if nbMods > 1 {
+		v.AddError(nil, "invalid_configuration",
+			"cannot provide multiple module configurations")
+	}
 }
 
 func (cfg *ModuleCfg) ModuleTypeAndData() (string, []byte) {
@@ -87,8 +105,7 @@ func (s *Service) startModule(modCfg *ModuleCfg) error {
 
 	cfg := info.InstantiateCfg()
 	if err := ejson.Unmarshal(cfgData, cfg); err != nil {
-		return fmt.Errorf("cannot parse configuration of module %q: %w",
-			modName, err)
+		return fmt.Errorf("cannot parse configuration: %w", err)
 	}
 
 	s.Log.Debug(1, "starting %s module %q", modType, modName)

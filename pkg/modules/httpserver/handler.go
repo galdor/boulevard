@@ -9,6 +9,7 @@ import (
 
 type HandlerCfg struct {
 	Match MatchCfg `json:"match"`
+	Auth  *AuthCfg `json:"authentication,omitempty"`
 
 	Reply  *ReplyActionCfg  `json:"reply,omitempty"`
 	Serve  *ServeActionCfg  `json:"serve,omitempty"`
@@ -18,6 +19,7 @@ type HandlerCfg struct {
 
 func (cfg *HandlerCfg) ValidateJSON(v *ejson.Validator) {
 	v.CheckObject("match", &cfg.Match)
+	v.CheckOptionalObject("authentication", cfg.Auth)
 
 	nbActions := 0
 	if cfg.Serve != nil {
@@ -88,6 +90,8 @@ func (cfg *MatchCfg) UnmarshalJSON(data []byte) error {
 type Handler struct {
 	Module *Module
 	Cfg    HandlerCfg
+
+	Auth   Auth
 	Action Action
 }
 
@@ -95,6 +99,15 @@ func NewHandler(mod *Module, cfg HandlerCfg) (*Handler, error) {
 	h := Handler{
 		Module: mod,
 		Cfg:    cfg,
+	}
+
+	if authCfg := cfg.Auth; authCfg != nil {
+		auth, err := NewAuth(authCfg)
+		if err != nil {
+			return nil, fmt.Errorf("cannot initialize authentication: %w", err)
+		}
+
+		h.Auth = auth
 	}
 
 	var action Action
@@ -130,7 +143,7 @@ func (h *Handler) Stop() {
 	h.Action.Stop()
 }
 
-func (h *Handler) MatchRequest(ctx *RequestContext) bool {
+func (h *Handler) matchRequest(ctx *RequestContext) bool {
 	matchSpec := h.Cfg.Match
 	if matchSpec.Method != "" && matchSpec.Method != ctx.Request.Method {
 		return false
@@ -143,6 +156,10 @@ func (h *Handler) MatchRequest(ctx *RequestContext) bool {
 		}
 
 		ctx.Subpath = subpath
+	}
+
+	if h.Auth != nil {
+		ctx.Auth = h.Auth
 	}
 
 	return true

@@ -118,12 +118,14 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		ResponseWriter: w,
 
 		Subpath: subpath,
+
+		Auth: l.Module.Auth,
 	}
 
 	defer func() {
 		if v := recover(); v != nil {
 			msg := program.RecoverValueString(v)
-			trace := program.StackTrace(2, 20, true)
+			trace := program.StackTrace(0, 20, true)
 
 			ctx.Log.Error("panic: %s\n%s", msg, trace)
 			ctx.ReplyError(500)
@@ -134,6 +136,13 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if h == nil {
 		ctx.ReplyError(404)
 		return
+	}
+
+	if ctx.Auth != nil {
+		if err := ctx.Auth.AuthenticateRequest(&ctx); err != nil {
+			ctx.Log.Error("authentication error: %v", err)
+			return
+		}
 	}
 
 	h.Action.HandleRequest(&ctx)
