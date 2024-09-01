@@ -1,13 +1,13 @@
 package service
 
 import (
-	"errors"
 	"fmt"
-	"io/fs"
+	"net/url"
 	"os"
 	"testing"
 	"time"
 
+	"go.n16f.net/boulevard/pkg/httputils"
 	"go.n16f.net/program"
 )
 
@@ -38,14 +38,13 @@ func setTestDirectory() {
 func createTestACMEDatastore() {
 	// The datastore directory has to be a fixed path so that we can reference
 	// it from cfg/test.yaml.
+	//
+	// Usually we would delete it first to make sure we start from a clean
+	// state, but the last thing we want is to have to regenerate TLS
+	// certificates each time we run tests during development (5+ secondes even
+	// with Pebble).
 
 	dirPath := "/tmp/boulevard/acme"
-
-	if err := os.RemoveAll(dirPath); err != nil {
-		if !errors.Is(err, fs.ErrNotExist) {
-			abort("cannot delete directory %q: %v", dirPath, err)
-		}
-	}
 
 	if err := os.MkdirAll(dirPath, 0700); err != nil {
 		abort("cannot create directory %q: %w", dirPath, err)
@@ -69,6 +68,15 @@ func initTestService() {
 	if err := service.Start(); err != nil {
 		abort("cannot start service: %v", err)
 	}
+}
+
+func testHTTPClient(t *testing.T) *httputils.TestClient {
+	baseURI := url.URL{
+		Scheme: "http",
+		Host:   "localhost:8080",
+	}
+
+	return httputils.NewTestClient(t, &baseURI)
 }
 
 func abort(format string, args ...any) {

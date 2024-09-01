@@ -49,7 +49,8 @@ func (a *BasicAuth) AuthenticateRequest(ctx *RequestContext) error {
 	scheme := authorization[:space]
 
 	if strings.ToLower(scheme) != "basic" {
-		ctx.ReplyError(403)
+		a.setWWWAuthenticate(ctx)
+		ctx.ReplyError(401)
 		return fmt.Errorf("invalid authorization scheme %q", scheme)
 	}
 
