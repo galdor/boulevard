@@ -44,6 +44,11 @@ http_server:
       reply:
         status: 403
         body: "access denied\n"
+    - match:
+        path: "/proxy/"
+      proxy:
+        # Target the NGINX server running in Docker
+        uri: "http://localhost:9000"
 
 ---
 module: "irc-server"
