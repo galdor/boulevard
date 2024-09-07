@@ -8,7 +8,7 @@ require (
 	go.n16f.net/ejson v0.0.0-20240820145652-4e9192313c14
 	go.n16f.net/eyaml v0.0.0-20240822141541-96f4fcff8320
 	go.n16f.net/log v0.0.0-20240820155337-9eef10dcf842
-	go.n16f.net/program v0.0.0-20240901143028-03cbb58cd2e5
+	go.n16f.net/program v0.0.0-20240905080349-5f3363143961
 	golang.org/x/crypto v0.26.0
 )
 

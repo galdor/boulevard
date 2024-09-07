@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"net/url"
 	"os"
 	"testing"
@@ -27,11 +26,11 @@ func TestMain(m *testing.M) {
 func setTestDirectory() {
 	dirPath, err := program.ModuleDirectoryPath()
 	if err != nil {
-		abort("cannot obtain module directory path: %v", err)
+		program.Abort("cannot obtain module directory path: %v", err)
 	}
 
 	if err := os.Chdir(dirPath); err != nil {
-		abort("cannot change directory to %q: %v", dirPath, err)
+		program.Abort("cannot change directory to %q: %v", dirPath, err)
 	}
 }
 
@@ -47,14 +46,14 @@ func createTestACMEDatastore() {
 	dirPath := "/tmp/boulevard/acme"
 
 	if err := os.MkdirAll(dirPath, 0700); err != nil {
-		abort("cannot create directory %q: %w", dirPath, err)
+		program.Abort("cannot create directory %q: %w", dirPath, err)
 	}
 }
 
 func initTestService() {
 	var cfg ServiceCfg
 	if err := cfg.Load(testCfgPath); err != nil {
-		abort("cannot load configuration from %q: %v", testCfgPath, err)
+		program.Abort("cannot load configuration from %q: %v", testCfgPath, err)
 	}
 
 	cfg.BuildId = "test-" + time.Now().Format(time.RFC3339)
@@ -62,11 +61,11 @@ func initTestService() {
 
 	service, err := NewService(cfg)
 	if err != nil {
-		abort("cannot create service: %v", err)
+		program.Abort("cannot create service: %v", err)
 	}
 
 	if err := service.Start(); err != nil {
-		abort("cannot start service: %v", err)
+		program.Abort("cannot start service: %v", err)
 	}
 }
 
@@ -77,11 +76,6 @@ func testHTTPClient(t *testing.T) *httputils.TestClient {
 	}
 
 	return httputils.NewTestClient(t, &baseURI)
-}
-
-func abort(format string, args ...any) {
-	fmt.Fprintf(os.Stderr, format+"\n", args...)
-	os.Exit(1)
 }
 
 func TestService(t *testing.T) {

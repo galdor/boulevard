@@ -47,7 +47,7 @@ func (a HashAlgorithm) HashFunction() func() hash.Hash {
 	case HashAlgorithmSHA3512:
 		fn = sha3.New512
 	default:
-		program.Panicf("unhandled hash algorithm %q", a)
+		program.Panic("unhandled hash algorithm %q", a)
 	}
 
 	return fn
@@ -146,7 +146,7 @@ func NewAuth(cfg *AuthCfg) (Auth, error) {
 	case cfg.Bearer != nil:
 		auth = &BearerAuth{}
 	default:
-		program.Panicf("incomplete authentication configuration")
+		program.Panic("incomplete authentication configuration")
 	}
 
 	if err := auth.Init(cfg); err != nil {
@@ -167,7 +167,7 @@ func transformAuthSecret(secret string, authCfg *AuthCfg) string {
 	case cfg.HMAC != nil:
 		secret2 = transformAuthSecretHMAC(secret, cfg.HMAC)
 	default:
-		program.Panicf("incomplete secrets configuration")
+		program.Panic("incomplete secrets configuration")
 	}
 
 	return secret2

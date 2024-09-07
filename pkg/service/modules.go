@@ -67,7 +67,7 @@ func (cfg *ModuleCfg) ModuleTypeAndData() (string, []byte) {
 	case cfg.TCPServer != nil:
 		t, data = "tcp_server", cfg.TCPServer
 	default:
-		program.Panicf("missing module configuration in %#v", cfg)
+		program.Panic("missing module configuration in %#v", cfg)
 	}
 
 	return t, data
