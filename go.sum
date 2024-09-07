@@ -10,8 +10,8 @@ github.com/stretchr/testify v1.8.3 h1:RP3t2pwF7cMEbC1dqtB6poj3niw/9gnV4Cjg5oW5gt
 github.com/stretchr/testify v1.8.3/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 go.n16f.net/acme v0.0.0-20240821094752-6c11abc3f3fd h1:FEGncP8K//pd6ys99Wb305OTuNlK6bcc6wFe14+bPZk=
 go.n16f.net/acme v0.0.0-20240821094752-6c11abc3f3fd/go.mod h1:J4n+Fd4FnRK6nyXvPHDzf21Xa2I1zg0emP2fCH5AYS0=
-go.n16f.net/ejson v0.0.0-20240820145652-4e9192313c14 h1:zjqIpkKmSvpRfNagjLcoIgoC0KC0xkKk2+cQOnjPRAg=
-go.n16f.net/ejson v0.0.0-20240820145652-4e9192313c14/go.mod h1:96wBQ6dI+0R4sM0LK5OVPqQGRFoWyVtiLRendDKLAJ4=
+go.n16f.net/ejson v0.0.0-20240907120716-91e9fd49c46a h1:au8e3CaPefINGrxKTDLEAKty4ySObB3y+A/KnJdOgT4=
+go.n16f.net/ejson v0.0.0-20240907120716-91e9fd49c46a/go.mod h1:96wBQ6dI+0R4sM0LK5OVPqQGRFoWyVtiLRendDKLAJ4=
 go.n16f.net/eyaml v0.0.0-20240822141541-96f4fcff8320 h1:8sDDPROjDfPyyS3pdnnaIt5t13XpXF/ARiv9HgkW8NI=
 go.n16f.net/eyaml v0.0.0-20240822141541-96f4fcff8320/go.mod h1:x/KvdOI641pgVwi9EomxsxlSt5kIxlGIdM0TFu4FaT4=
 go.n16f.net/log v0.0.0-20240820155337-9eef10dcf842 h1:fd8Yoy3KkR2LXQhej8cjGdp37PSUArlF1lDGI6SKFEA=

@@ -22,7 +22,7 @@ type TCPListenerCfg struct {
 }
 
 func (cfg *TCPListenerCfg) ValidateJSON(v *ejson.Validator) {
-	v.CheckListenAddress("address", cfg.Address)
+	v.CheckNetworkAddress("address", cfg.Address)
 	v.CheckOptionalObject("tls", cfg.TLS)
 }
 

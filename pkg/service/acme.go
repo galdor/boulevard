@@ -26,7 +26,7 @@ func (cfg *ACMECfg) ValidateJSON(v *ejson.Validator) {
 	})
 
 	if cfg.HTTPChallengeSolverAddress != "" {
-		v.CheckListenAddress("address", cfg.HTTPChallengeSolverAddress)
+		v.CheckNetworkAddress("address", cfg.HTTPChallengeSolverAddress)
 	}
 }
 
