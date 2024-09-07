@@ -22,7 +22,7 @@ func TestServiceBasicAuth(t *testing.T) {
 		return c.SendRequest("GET", uriPath, header, nil, nil)
 	}
 
-	basicAuthorization := func(username, password string) string {
+	auth := func(username, password string) string {
 		credentials := []byte(username + ":" + password)
 		return "Basic " + base64.StdEncoding.EncodeToString(credentials)
 	}
@@ -50,32 +50,38 @@ func TestServiceBasicAuth(t *testing.T) {
 	require.Equal(403, res.StatusCode)
 
 	// Invalid credentials
-	res = sendRequest(uriPath, "Authorization",
-		basicAuthorization("eve", "foo"))
+	res = sendRequest(uriPath, "Authorization", auth("eve", "foo"))
 	require.Equal(403, res.StatusCode)
 
-	res = sendRequest(uriPath, "Authorization",
-		basicAuthorization("bob", "hello"))
+	res = sendRequest(uriPath, "Authorization", auth("bob", "hello"))
 	require.Equal(403, res.StatusCode)
 
 	// Valid credentials
-	res = sendRequest(uriPath, "Authorization",
-		basicAuthorization("bob", "foo"))
+	res = sendRequest(uriPath, "Authorization", auth("bob", "foo"))
 	require.Equal(200, res.StatusCode)
 
-	res = sendRequest(uriPath, "Authorization",
-		basicAuthorization("alice", "bar"))
+	res = sendRequest(uriPath, "Authorization", auth("alice", "bar"))
 	require.Equal(200, res.StatusCode)
 
 	// Credential files
 	uriPath = "/auth/basic/credential-file"
 
-	res = sendRequest(uriPath, "Authorization",
-		basicAuthorization("eve", "foo"))
+	res = sendRequest(uriPath, "Authorization", auth("eve", "foo"))
 	require.Equal(403, res.StatusCode)
 
-	res = sendRequest(uriPath, "Authorization",
-		basicAuthorization("bob", "foo"))
+	res = sendRequest(uriPath, "Authorization", auth("bob", "foo"))
+	require.Equal(200, res.StatusCode)
+
+	// Global auth
+	uriPath = "/auth/global"
+
+	res = sendRequest(uriPath)
+	require.Equal(401, res.StatusCode)
+
+	res = sendRequest(uriPath, "Authorization", auth("bob", "foo"))
+	require.Equal(403, res.StatusCode)
+
+	res = sendRequest(uriPath, "Authorization", auth("eve", "baz"))
 	require.Equal(200, res.StatusCode)
 }
 
@@ -92,7 +98,7 @@ func TestServiceBearerAuth(t *testing.T) {
 		return c.SendRequest("GET", uriPath, header, nil, nil)
 	}
 
-	basicAuthorization := func(token string) string {
+	auth := func(token string) string {
 		return "Bearer " + token
 	}
 
@@ -115,27 +121,22 @@ func TestServiceBearerAuth(t *testing.T) {
 	require.Equal(401, res.StatusCode)
 
 	// Invalid credentials
-	res = sendRequest(uriPath, "Authorization",
-		basicAuthorization("hello"))
+	res = sendRequest(uriPath, "Authorization", auth("hello"))
 	require.Equal(403, res.StatusCode)
 
 	// Valid credentials
-	res = sendRequest(uriPath, "Authorization",
-		basicAuthorization("foo"))
+	res = sendRequest(uriPath, "Authorization", auth("foo"))
 	require.Equal(200, res.StatusCode)
 
-	res = sendRequest(uriPath, "Authorization",
-		basicAuthorization("bar"))
+	res = sendRequest(uriPath, "Authorization", auth("bar"))
 	require.Equal(200, res.StatusCode)
 
 	// Credential files
 	uriPath = "/auth/bearer/token-file"
 
-	res = sendRequest(uriPath, "Authorization",
-		basicAuthorization("hello"))
+	res = sendRequest(uriPath, "Authorization", auth("hello"))
 	require.Equal(403, res.StatusCode)
 
-	res = sendRequest(uriPath, "Authorization",
-		basicAuthorization("foo"))
+	res = sendRequest(uriPath, "Authorization", auth("foo"))
 	require.Equal(200, res.StatusCode)
 }
