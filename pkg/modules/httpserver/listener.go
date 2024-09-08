@@ -132,12 +132,37 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	}()
 
+	// Identify the numeric IP address of the client
+	clientAddr, _, err := netutils.ParseNumericAddress(req.RemoteAddr)
+	if err != nil {
+		ctx.Log.Error("cannot parse remote address %q: %v", req.RemoteAddr, err)
+		ctx.ReplyError(500)
+		return
+	}
+	ctx.ClientAddress = clientAddr
+
+	// Identify the host (hostname or IP address) provided by the client either
+	// in the Host header field for HTTP 1.x (defaulting to the host part of the
+	// request URI if the Host field is not set in HTTP 1.0) or in the
+	// ":authority" pseudo-header field for HTTP 2. We have to split the address
+	// because the net/http module uses the <host>:<port> representation.
+	host, _, err := net.SplitHostPort(req.Host)
+	if err != nil {
+		ctx.Log.Error("cannot parse host %q: %v", req.Host, err)
+		ctx.ReplyError(500)
+		return
+	}
+	ctx.Host = host
+
+	// Find the first handler matching the request
 	h := l.Module.findHandler(&ctx)
 	if h == nil {
 		ctx.ReplyError(404)
 		return
 	}
 
+	// Authenticate the request using either the authentication settings of the
+	// handler or those defined at the top-level of the module.
 	if ctx.Auth != nil {
 		if err := ctx.Auth.AuthenticateRequest(&ctx); err != nil {
 			ctx.Log.Error("authentication error: %v", err)
@@ -145,5 +170,6 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
+	// Handle the request
 	h.Action.HandleRequest(&ctx)
 }

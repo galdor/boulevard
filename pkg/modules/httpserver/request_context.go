@@ -3,6 +3,7 @@ package httpserver
 import (
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 
@@ -14,7 +15,9 @@ type RequestContext struct {
 	Request        *http.Request
 	ResponseWriter http.ResponseWriter
 
-	Subpath string // always relative
+	ClientAddress net.IP
+	Host          string
+	Subpath       string // always relative
 
 	Auth Auth
 }

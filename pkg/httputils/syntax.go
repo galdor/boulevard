@@ -3,7 +3,7 @@ package httputils
 import "strings"
 
 func SplitTokenList(s string) []string {
-	// See RFC 9110 5.6.1 Lists
+	// See RFC 9110 5.6.1. Lists
 	//
 	// If we were implementing a proper parser, we would make sure that tokens
 	// only contain valid characters (e.g. "foo bar" is not a proper token due
@@ -23,4 +23,19 @@ func SplitTokenList(s string) []string {
 	}
 
 	return tokens
+}
+
+func AppendToTokenList(s string, tokens ...string) string {
+	if len(tokens) == 0 {
+		return s
+	}
+
+	tokenString := strings.Join(tokens, ", ")
+
+	s = strings.TrimRight(s, ", \t")
+	if s == "" {
+		return tokenString
+	}
+
+	return s + ", " + tokenString
 }

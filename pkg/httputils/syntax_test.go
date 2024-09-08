@@ -37,3 +37,36 @@ func TestSplitTokenList(t *testing.T) {
 		assert.Equal(test.tokens, tokens, label)
 	}
 }
+
+func TestAppendToTokenList(t *testing.T) {
+	assert := assert.New(t)
+
+	tests := []struct {
+		s      string
+		tokens []string
+		result string
+	}{
+		{"",
+			[]string{},
+			""},
+		{"foo",
+			[]string{},
+			"foo"},
+		{"foo",
+			[]string{"bar"},
+			"foo, bar"},
+		{"foo, bar",
+			[]string{"a", "b", "c"},
+			"foo, bar, a, b, c"},
+		{"foo	,,",
+			[]string{"bar"},
+			"foo, bar"},
+	}
+
+	for _, test := range tests {
+		label := fmt.Sprintf("%q %v", test.s, test.tokens)
+
+		result := AppendToTokenList(test.s, test.tokens...)
+		assert.Equal(test.result, result, label)
+	}
+}
