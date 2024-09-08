@@ -46,7 +46,7 @@ http_server:
         body: "access denied\n"
     - match:
         path: "/proxy/"
-      proxy:
+      reverse_proxy:
         # Target the NGINX server running in Docker
         uri: "http://localhost:9000"
 

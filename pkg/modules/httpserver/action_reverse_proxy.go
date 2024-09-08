@@ -13,23 +13,23 @@ import (
 	"go.n16f.net/ejson"
 )
 
-type ProxyActionCfg struct {
+type ReverseProxyActionCfg struct {
 	URI string `json:"uri"`
 }
 
-func (cfg *ProxyActionCfg) ValidateJSON(v *ejson.Validator) {
+func (cfg *ReverseProxyActionCfg) ValidateJSON(v *ejson.Validator) {
 	httputils.CheckHTTPURI(v, "uri", cfg.URI)
 }
 
-type ProxyAction struct {
+type ReverseProxyAction struct {
 	Handler *Handler
-	Cfg     ProxyActionCfg
+	Cfg     ReverseProxyActionCfg
 
 	transport *http.Transport
 	uri       *url.URL
 }
 
-func NewProxyAction(h *Handler, cfg ProxyActionCfg) (*ProxyAction, error) {
+func NewReverseProxyAction(h *Handler, cfg ReverseProxyActionCfg) (*ReverseProxyAction, error) {
 	uri, err := url.Parse(cfg.URI)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse URI: %w", err)
@@ -57,7 +57,7 @@ func NewProxyAction(h *Handler, cfg ProxyActionCfg) (*ProxyAction, error) {
 		ExpectContinueTimeout: time.Second,
 	}
 
-	a := ProxyAction{
+	a := ReverseProxyAction{
 		Handler: h,
 		Cfg:     cfg,
 
@@ -68,15 +68,15 @@ func NewProxyAction(h *Handler, cfg ProxyActionCfg) (*ProxyAction, error) {
 	return &a, nil
 }
 
-func (a *ProxyAction) Start() error {
+func (a *ReverseProxyAction) Start() error {
 	return nil
 }
 
-func (a *ProxyAction) Stop() {
+func (a *ReverseProxyAction) Stop() {
 	a.transport.CloseIdleConnections()
 }
 
-func (a *ProxyAction) HandleRequest(ctx *RequestContext) {
+func (a *ReverseProxyAction) HandleRequest(ctx *RequestContext) {
 	req := a.rewriteRequest(ctx)
 
 	res, err := a.transport.RoundTrip(req)
@@ -96,7 +96,7 @@ func (a *ProxyAction) HandleRequest(ctx *RequestContext) {
 	}
 }
 
-func (a *ProxyAction) rewriteRequest(ctx *RequestContext) *http.Request {
+func (a *ReverseProxyAction) rewriteRequest(ctx *RequestContext) *http.Request {
 	req := ctx.Request.Clone(context.Background())
 	header := req.Header
 
@@ -109,7 +109,7 @@ func (a *ProxyAction) rewriteRequest(ctx *RequestContext) *http.Request {
 	return req
 }
 
-func (a *ProxyAction) initRequestHeader(header http.Header) {
+func (a *ReverseProxyAction) initRequestHeader(header http.Header) {
 	// RFC 9110 7.6.1. Connection: "Intermediaries MUST parse a received
 	// Connection header field before a message is forwarded and, for each
 	// connection-option in this field, remove any header or trailer field(s)
@@ -145,7 +145,7 @@ func (a *ProxyAction) initRequestHeader(header http.Header) {
 	}
 }
 
-func (a *ProxyAction) initResponseHeader(ctx *RequestContext, res *http.Response) {
+func (a *ReverseProxyAction) initResponseHeader(ctx *RequestContext, res *http.Response) {
 	header := ctx.ResponseWriter.Header()
 
 	for name, fields := range res.Header {

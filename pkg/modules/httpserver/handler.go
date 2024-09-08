@@ -11,10 +11,10 @@ type HandlerCfg struct {
 	Match MatchCfg `json:"match"`
 	Auth  *AuthCfg `json:"authentication,omitempty"`
 
-	Reply  *ReplyActionCfg  `json:"reply,omitempty"`
-	Serve  *ServeActionCfg  `json:"serve,omitempty"`
-	Proxy  *ProxyActionCfg  `json:"proxy,omitempty"`
-	Status *StatusActionCfg `json:"status,omitempty"`
+	Reply        *ReplyActionCfg        `json:"reply,omitempty"`
+	Serve        *ServeActionCfg        `json:"serve,omitempty"`
+	ReverseProxy *ReverseProxyActionCfg `json:"reverse_proxy,omitempty"`
+	Status       *StatusActionCfg       `json:"status,omitempty"`
 }
 
 func (cfg *HandlerCfg) ValidateJSON(v *ejson.Validator) {
@@ -28,7 +28,7 @@ func (cfg *HandlerCfg) ValidateJSON(v *ejson.Validator) {
 	if cfg.Reply != nil {
 		nbActions++
 	}
-	if cfg.Proxy != nil {
+	if cfg.ReverseProxy != nil {
 		nbActions++
 	}
 	if cfg.Status != nil {
@@ -44,7 +44,7 @@ func (cfg *HandlerCfg) ValidateJSON(v *ejson.Validator) {
 
 	v.CheckOptionalObject("serve", cfg.Serve)
 	v.CheckOptionalObject("reply", cfg.Reply)
-	v.CheckOptionalObject("proxy", cfg.Proxy)
+	v.CheckOptionalObject("reverse_proxy", cfg.ReverseProxy)
 	v.CheckOptionalObject("status", cfg.Status)
 }
 
@@ -118,8 +118,8 @@ func NewHandler(mod *Module, cfg HandlerCfg) (*Handler, error) {
 		action, err = NewReplyAction(&h, *cfg.Reply)
 	case cfg.Serve != nil:
 		action, err = NewServeAction(&h, *cfg.Serve)
-	case cfg.Proxy != nil:
-		action, err = NewProxyAction(&h, *cfg.Proxy)
+	case cfg.ReverseProxy != nil:
+		action, err = NewReverseProxyAction(&h, *cfg.ReverseProxy)
 	case cfg.Status != nil:
 		action, err = NewStatusAction(&h, *cfg.Status)
 	default:
