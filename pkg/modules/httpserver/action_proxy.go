@@ -91,7 +91,7 @@ func (a *ProxyAction) HandleRequest(ctx *RequestContext) {
 	ctx.ResponseWriter.WriteHeader(res.StatusCode)
 
 	if _, err := io.Copy(ctx.ResponseWriter, res.Body); err != nil {
-		ctx.Log.Error("cannot copy response body: %w", err)
+		ctx.Log.Error("cannot copy response body: %v", err)
 		return
 	}
 }
