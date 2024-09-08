@@ -98,20 +98,51 @@ func (a *ProxyAction) HandleRequest(ctx *RequestContext) {
 
 func (a *ProxyAction) rewriteRequest(ctx *RequestContext) *http.Request {
 	req := ctx.Request.Clone(context.Background())
-	uri := req.URL
 	header := req.Header
 
 	// Rewrite the URI to target the upstream server
-	uri.Scheme = a.uri.Scheme
-	uri.Host = a.uri.Host
+	req.URL.Scheme = a.uri.Scheme
+	req.URL.Host = a.uri.Host
+
+	a.initRequestHeader(header)
+
+	return req
+}
+
+func (a *ProxyAction) initRequestHeader(header http.Header) {
+	// RFC 9110 7.6.1. Connection: "Intermediaries MUST parse a received
+	// Connection header field before a message is forwarded and, for each
+	// connection-option in this field, remove any header or trailer field(s)
+	// from the message with the same name as the connection-option, and then
+	// remove the Connection header field itself (or replace it with the
+	// intermediary's own control options for the forwarded message)."
+	connectionFields := httputils.SplitTokenList(header.Get("Connection"))
+	for _, name := range connectionFields {
+		header.Del(name)
+	}
+
+	// Header fields listed in RFC 2616 (13.5.1 End-to-end and Hop-by-hop
+	// Headers) should probably be deleted too.
+	var rfc2616Fields = []string{
+		"Connection",
+		"Keep-Alive",
+		"Proxy-Authenticate",
+		"Proxy-Authorization",
+		"TE",
+		"Trailers",
+		"Transfer-Encoding",
+		"Upgrade",
+	}
+
+	for _, name := range rfc2616Fields {
+		header.Del(name)
+	}
 
 	// Disable the user agent automatically set by the net/http module if we do
 	// not provide one.
 	if userAgent := header.Get("User-Agent"); userAgent == "" {
 		header.Set("User-Agent", "")
 	}
-
-	return req
 }
 
 func (a *ProxyAction) initResponseHeader(ctx *RequestContext, res *http.Response) {
