@@ -21,6 +21,13 @@ http_server:
         domains: ["localhost", "www.localhost"]
   handlers:
     - match:
+        path: "/hello"
+      reply:
+        status: 200
+        header:
+          Server: "Boulevard"
+        body: "Hello world!\n"
+    - match:
         path: "/status"
       status: {}
     - match:

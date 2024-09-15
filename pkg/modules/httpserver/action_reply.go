@@ -9,6 +9,7 @@ import (
 type ReplyActionCfg struct {
 	Status int    `json:"status"`
 	Reason string `json:"reason,omitempty"`
+	Header Header `json:"header,omitempty"`
 	Body   string `json:"body,omitempty"`
 }
 
@@ -38,5 +39,6 @@ func (a *ReplyAction) Stop() {
 }
 
 func (a *ReplyAction) HandleRequest(ctx *RequestContext) {
+	a.Cfg.Header.Apply(ctx.ResponseWriter.Header())
 	ctx.Reply(a.Cfg.Status, strings.NewReader(a.Cfg.Body))
 }
