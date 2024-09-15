@@ -23,7 +23,6 @@ http_server:
     - match:
         path: "/hello"
       reply:
-        status: 200
         header:
           Server: "Boulevard"
         body: "Hello world!\n"
@@ -44,7 +43,6 @@ http_server:
             # bob:secret
             - "bob:f5a5207a8729b1f709cb710311751eb2fc8acad5a1fb8ac991b736e69b6529a3"
       reply:
-        status: 200
         body: "access autorized\n"
     - match:
         path: "/forbidden/"
@@ -67,7 +65,6 @@ http_server:
     - match:
         path: "/backend/hello"
       reply:
-        status: 200
         body: "Hello world!\n"
 
 ---

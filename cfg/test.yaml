@@ -22,7 +22,6 @@ http_server:
     - match:
         path: "/hello"
       reply:
-        status: 200
         body: "hello"
     # Authentication tests
     - match:
@@ -76,13 +75,11 @@ http_server:
     - match:
         path: "/backend/ping"
       reply:
-        status: 200
         body: "pong"
     - match:
         method: "POST"
         path: "/backend/data"
       reply:
-        status: 200
         body: "ok" # TODO request body length (requires templating)
     - match:
         path: "/backend/redirect"
