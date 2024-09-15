@@ -55,6 +55,8 @@ http_server:
         path: "/backend/"
       reverse_proxy:
         uri: "http://localhost:9000"
+        response_header:
+          Server: "Boulevard"
 
 ---
 module: "backend-server"
