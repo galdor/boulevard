@@ -1,9 +1,11 @@
 package httputils
 
 import (
+	"bytes"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 
 	"go.n16f.net/program"
@@ -27,7 +29,7 @@ func NewTestClient(t *testing.T, baseURI *url.URL) *TestClient {
 	return &c
 }
 
-func (c *TestClient) SendRequest(method, uriRefString string, header http.Header, reqBody io.Reader, resBody *[]byte) *http.Response {
+func (c *TestClient) SendRequest(method, uriRefString string, header http.Header, reqBody, resBody any) *http.Response {
 	uriRef, err := url.Parse(uriRefString)
 	if err != nil {
 		c.fail("cannot parse URI reference %q: %v", uriRefString, err)
@@ -35,7 +37,7 @@ func (c *TestClient) SendRequest(method, uriRefString string, header http.Header
 
 	uri := c.baseURI.ResolveReference(uriRef)
 
-	req, err := http.NewRequest(method, uri.String(), reqBody)
+	req, err := http.NewRequest(method, uri.String(), c.reqBodyReader(reqBody))
 	if err != nil {
 		c.fail("cannot create HTTP request: %v", err)
 	}
@@ -52,16 +54,56 @@ func (c *TestClient) SendRequest(method, uriRefString string, header http.Header
 	}
 	defer res.Body.Close()
 
-	resBodyData, err := io.ReadAll(res.Body)
-	if err != nil {
+	if err := c.readResponseBody(res.Body, resBody); err != nil {
 		c.fail("cannot read response body: %v", err)
 	}
 
-	if resBody != nil {
-		*resBody = resBodyData
+	return res
+}
+
+func (c *TestClient) reqBodyReader(reqBody any) io.Reader {
+	var r io.Reader
+
+	switch rb := reqBody.(type) {
+	case nil:
+		return nil
+	case io.Reader:
+		r = rb
+	case []byte:
+		r = bytes.NewReader(rb)
+	case string:
+		r = strings.NewReader(rb)
+	default:
+		program.Panic("unhandled request body %#v (%T)", reqBody, reqBody)
 	}
 
-	return res
+	return r
+}
+
+func (c *TestClient) readResponseBody(r io.Reader, resBody any) error {
+	switch rb := resBody.(type) {
+	case nil:
+		return nil
+	case io.Writer:
+		_, err := io.Copy(rb, r)
+		return err
+	case *[]byte:
+		data, err := io.ReadAll(r)
+		if err != nil {
+			return err
+		}
+		*rb = data
+	case *string:
+		data, err := io.ReadAll(r)
+		if err != nil {
+			return err
+		}
+		*rb = string(data)
+	default:
+		program.Panic("unhandled response body %#v (%T)", resBody, resBody)
+	}
+
+	return nil
 }
 
 func (c *TestClient) fail(format string, args ...any) {

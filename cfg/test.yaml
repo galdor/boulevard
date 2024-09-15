@@ -11,7 +11,7 @@ acme:
   pebble: true
 
 ---
-module: "http-server"
+module: "frontend-server"
 http_server:
   listeners:
     - address: ":8080"
@@ -56,3 +56,26 @@ http_server:
           token_file_path: "test/bearer-tokens.txt"
       reply:
         status: 200
+    # Reverse proxy tests
+    - match:
+        path: "/backend/"
+      reverse_proxy:
+        uri: "http://localhost:9000"
+
+---
+module: "backend-server"
+http_server:
+  listeners:
+    - address: ":9000"
+  handlers:
+    - match:
+        path: "/backend/ping"
+      reply:
+        status: 200
+        body: "pong"
+    - match:
+        method: "POST"
+        path: "/backend/data"
+      reply:
+        status: 200
+        body: "ok" # TODO request body length (requires templating)
