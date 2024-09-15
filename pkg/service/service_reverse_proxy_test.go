@@ -24,4 +24,9 @@ func TestServiceReverseProxy(t *testing.T) {
 	res = c.SendRequest("POST", "/backend/data", nil, "foo", &resBody)
 	require.Equal(200, res.StatusCode)
 	require.Equal("ok", resBody) // TODO "3" (requires templating)
+
+	// Redirection
+	res = c.SendRequest("GET", "/backend/redirect", nil, nil, nil)
+	require.Equal(302, res.StatusCode)
+	require.Equal("/hello", res.Header.Get("Location"))
 }

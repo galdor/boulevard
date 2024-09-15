@@ -3,10 +3,12 @@ package httputils
 import (
 	"bytes"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"go.n16f.net/program"
 )
@@ -19,8 +21,30 @@ type TestClient struct {
 }
 
 func NewTestClient(t *testing.T, baseURI *url.URL) *TestClient {
+	dialer := net.Dialer{
+		Timeout: 10 * time.Second,
+	}
+
+	transport := http.Transport{
+		DialContext: dialer.DialContext,
+
+		MaxIdleConns: 10,
+
+		IdleConnTimeout:       10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+
+	client := http.Client{
+		Timeout:   10 * time.Second,
+		Transport: &transport,
+
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
 	c := TestClient{
-		httpClient: http.DefaultClient,
+		httpClient: &client,
 		baseURI:    baseURI,
 
 		t: t,
