@@ -71,18 +71,6 @@ func TestServiceBasicAuth(t *testing.T) {
 
 	res = sendRequest(uriPath, "Authorization", auth("bob", "foo"))
 	require.Equal(200, res.StatusCode)
-
-	// Global auth
-	uriPath = "/auth/global"
-
-	res = sendRequest(uriPath)
-	require.Equal(401, res.StatusCode)
-
-	res = sendRequest(uriPath, "Authorization", auth("bob", "foo"))
-	require.Equal(403, res.StatusCode)
-
-	res = sendRequest(uriPath, "Authorization", auth("eve", "baz"))
-	require.Equal(200, res.StatusCode)
 }
 
 func TestServiceBearerAuth(t *testing.T) {

@@ -118,8 +118,6 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		ResponseWriter: w,
 
 		Subpath: subpath,
-
-		Auth: l.Module.Auth,
 	}
 
 	defer func() {
@@ -161,8 +159,7 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Authenticate the request using either the authentication settings of the
-	// handler or those defined at the top-level of the module.
+	// Authenticate the request if necessary
 	if ctx.Auth != nil {
 		if err := ctx.Auth.AuthenticateRequest(&ctx); err != nil {
 			ctx.Log.Error("authentication error: %v", err)

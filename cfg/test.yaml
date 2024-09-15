@@ -18,10 +18,6 @@ http_server:
     - address: ":4430"
       tls:
         domains: ["localhost"]
-  authentication:
-    basic:
-      credentials:
-        - "eve:baa5a0964d3320fbc0c6a922140453c8513ea24ab8fd0577034804a967248096"
   handlers:
     # Authentication tests
     - match:
