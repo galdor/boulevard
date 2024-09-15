@@ -16,10 +16,3 @@ services:
     # The contain must be able to listen on the host so that it can connect to
     # Boulevard for HTTP challenges.
     network_mode: "host"
-  nginx:
-    container_name: "boulevard-nginx"
-    image: "nginx:1.27"
-    ports:
-      - "9000:9000"
-    volumes:
-      - "./docker-compose/nginx/nginx.conf:/etc/nginx/nginx.conf:ro"
