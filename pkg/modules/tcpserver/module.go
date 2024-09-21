@@ -29,7 +29,7 @@ type ModuleCfg struct {
 	ReadBufferSize  int `json:"read_buffer_size,omitempty"`
 	WriteBufferSize int `json:"write_buffer_size,omitempty"`
 
-	Proxy ProxyAction `json:"proxy"`
+	ReverseProxy ReverseProxyAction `json:"reverse_proxy"`
 }
 
 func (cfg *ModuleCfg) ValidateJSON(v *ejson.Validator) {
@@ -48,14 +48,14 @@ func (cfg *ModuleCfg) ValidateJSON(v *ejson.Validator) {
 		v.CheckIntMin("write_buffer_size", cfg.WriteBufferSize, 1)
 	}
 
-	v.CheckObject("proxy", &cfg.Proxy)
+	v.CheckObject("reverse_proxy", &cfg.ReverseProxy)
 }
 
-type ProxyAction struct {
+type ReverseProxyAction struct {
 	Address string `json:"address"`
 }
 
-func (a *ProxyAction) ValidateJSON(v *ejson.Validator) {
+func (a *ReverseProxyAction) ValidateJSON(v *ejson.Validator) {
 	v.CheckStringNotEmpty("address", a.Address)
 }
 

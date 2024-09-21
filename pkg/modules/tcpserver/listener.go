@@ -110,11 +110,11 @@ func (l *Listener) handleConnection(conn net.Conn) {
 		return
 	}
 
-	proxyCfg := l.Module.Cfg.Proxy
-	proxyConn, err := net.Dial("tcp", proxyCfg.Address)
+	cfg := l.Module.Cfg.ReverseProxy
+	proxyConn, err := net.Dial("tcp", cfg.Address)
 	if err != nil {
 		err = netutils.UnwrapOpError(err, "accept")
-		l.Module.Log.Error("cannot connect to %q: %v", proxyCfg.Address, err)
+		l.Module.Log.Error("cannot connect to %q: %v", cfg.Address, err)
 		conn.Close()
 		return
 	}

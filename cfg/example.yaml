@@ -75,5 +75,5 @@ tcp_server:
     - address: ":6697"
       tls:
         domains: ["localhost"]
-  proxy:
+  reverse_proxy:
     address: "localhost:6698"
