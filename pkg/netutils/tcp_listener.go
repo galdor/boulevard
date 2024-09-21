@@ -15,7 +15,7 @@ type TCPListenerCfg struct {
 	Address string  `json:"address"`
 	TLS     *TLSCfg `json:"tls,omitempty"`
 
-	Logger     *log.Logger  `json:"-"` // [1]
+	Log        *log.Logger  `json:"-"` // [1]
 	ACMEClient *acme.Client `json:"-"` // [1]
 
 	// [1] Provided by the caller of NewListener.
@@ -47,7 +47,7 @@ func NewTCPListener(cfg TCPListenerCfg) (*TCPListener, error) {
 
 	l := TCPListener{
 		Cfg: cfg,
-		Log: cfg.Logger,
+		Log: cfg.Log,
 
 		ctx:    ctx,
 		cancel: cancel,

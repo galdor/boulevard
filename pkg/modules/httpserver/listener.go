@@ -26,7 +26,7 @@ type Listener struct {
 }
 
 func NewListener(mod *Module, cfg netutils.TCPListenerCfg) (*Listener, error) {
-	cfg.Logger = mod.Log
+	cfg.Log = mod.Log
 	cfg.ACMEClient = mod.Data.ACMEClient
 
 	tcpListener, err := netutils.NewTCPListener(cfg)
