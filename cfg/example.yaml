@@ -50,22 +50,15 @@ http_server:
         status: 403
         body: "access denied\n"
     - match:
-        path: "/backend/"
+        path: "/nginx/"
       reverse_proxy:
-        uri: "http://localhost:9000"
+        uri: "http://localhost:9001"
         response_header:
           Server: "Boulevard"
-
----
-module: "backend-server"
-http_server:
-  listeners:
-    - address: ":9000"
-  handlers:
     - match:
-        path: "/backend/hello"
-      reply:
-        body: "Hello world!\n"
+        path: "/fpm/"
+      fastcgi:
+        address: "localhost:9000"
 
 ---
 module: "irc-server"

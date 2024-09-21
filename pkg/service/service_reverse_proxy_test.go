@@ -2,6 +2,7 @@ package service
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -16,17 +17,17 @@ func TestServiceReverseProxy(t *testing.T) {
 	var resBody string
 
 	// GET request without a body
-	res = c.SendRequest("GET", "/backend/ping", nil, nil, &resBody)
+	res = c.SendRequest("GET", "/nginx/ping", nil, nil, &resBody)
 	require.Equal(200, res.StatusCode)
 	require.Equal("pong", resBody)
 
 	// POST request with a body
-	res = c.SendRequest("POST", "/backend/data", nil, "foo", &resBody)
+	res = c.SendRequest("POST", "/nginx/data", nil, "foo", &resBody)
 	require.Equal(200, res.StatusCode)
-	require.Equal("ok", resBody) // TODO "3" (requires templating)
+	require.Equal("3", resBody)
 
 	// Redirection
-	res = c.SendRequest("GET", "/backend/redirect", nil, nil, nil)
+	res = c.SendRequest("GET", "/nginx/redirect", nil, nil, nil)
 	require.Equal(302, res.StatusCode)
-	require.Equal("/hello", res.Header.Get("Location"))
+	require.True(strings.HasSuffix(res.Header.Get("Location"), "/hello"))
 }

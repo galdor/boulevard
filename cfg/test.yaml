@@ -62,28 +62,6 @@ http_server:
         status: 200
     # Reverse proxy tests
     - match:
-        path: "/backend/"
+        path: "/nginx/"
       reverse_proxy:
-        uri: "http://localhost:9000"
-
----
-module: "backend-server"
-http_server:
-  listeners:
-    - address: ":9000"
-  handlers:
-    - match:
-        path: "/backend/ping"
-      reply:
-        body: "pong"
-    - match:
-        method: "POST"
-        path: "/backend/data"
-      reply:
-        body: "ok" # TODO request body length (requires templating)
-    - match:
-        path: "/backend/redirect"
-      reply:
-        status: 302
-        header:
-          Location: "/hello"
+        uri: "http://localhost:9002"

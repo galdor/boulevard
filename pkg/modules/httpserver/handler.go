@@ -15,6 +15,7 @@ type HandlerCfg struct {
 	Serve        *ServeActionCfg        `json:"serve,omitempty"`
 	ReverseProxy *ReverseProxyActionCfg `json:"reverse_proxy,omitempty"`
 	Status       *StatusActionCfg       `json:"status,omitempty"`
+	FastCGI      *FastCGIActionCfg      `json:"fastcgi,omitempty"`
 }
 
 func (cfg *HandlerCfg) ValidateJSON(v *ejson.Validator) {
@@ -34,6 +35,9 @@ func (cfg *HandlerCfg) ValidateJSON(v *ejson.Validator) {
 	if cfg.Status != nil {
 		nbActions++
 	}
+	if cfg.FastCGI != nil {
+		nbActions++
+	}
 
 	if nbActions == 0 {
 		v.AddError(nil, "missing_action", "handler must contain an action")
@@ -46,6 +50,7 @@ func (cfg *HandlerCfg) ValidateJSON(v *ejson.Validator) {
 	v.CheckOptionalObject("reply", cfg.Reply)
 	v.CheckOptionalObject("reverse_proxy", cfg.ReverseProxy)
 	v.CheckOptionalObject("status", cfg.Status)
+	v.CheckOptionalObject("fastcgi", cfg.FastCGI)
 }
 
 type MatchCfg struct {
@@ -122,6 +127,8 @@ func NewHandler(mod *Module, cfg HandlerCfg) (*Handler, error) {
 		action, err = NewReverseProxyAction(&h, *cfg.ReverseProxy)
 	case cfg.Status != nil:
 		action, err = NewStatusAction(&h, *cfg.Status)
+	case cfg.FastCGI != nil:
+		action, err = NewFastCGIAction(&h, *cfg.FastCGI)
 	default:
 		return nil, fmt.Errorf("missing action configuration")
 	}
