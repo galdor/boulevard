@@ -9,8 +9,11 @@ import (
 func cmdValues(p *program.Program) {
 	address := p.ArgumentValue("address")
 
+	logger := log.DefaultLogger("fastcgi")
+	logger.DebugLevel = p.DebugLevel
+
 	clientCfg := fastcgi.ClientCfg{
-		Log:     log.DefaultLogger("fastcgi"),
+		Log:     logger,
 		Address: address,
 	}
 
@@ -19,19 +22,8 @@ func cmdValues(p *program.Program) {
 		p.Fatal("cannot create client: %v", err)
 	}
 
-	names := []string{
-		"FCGI_MAX_CONNS",
-		"FCGI_MAX_REQS",
-		"FCGI_MPXS_CONNS",
-	}
-
-	pairs, err := client.FetchValues(names)
-	if err != nil {
-		p.Fatal("cannot fetch values: %v", err)
-	}
-
 	t := program.NewKeyValueTable()
-	for _, pair := range pairs {
+	for _, pair := range client.Values() {
 		t.AddRow(pair.Name, pair.Value)
 	}
 

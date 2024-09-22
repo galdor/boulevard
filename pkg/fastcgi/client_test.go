@@ -20,16 +20,10 @@ func TestClientValues(t *testing.T) {
 	c := newTestClient(t)
 	defer c.Close()
 
-	names := []string{
-		"FCGI_MPXS_CONNS", // the only value returned by FPM
-		"UNKNOWN_NAME",
-	}
+	values := c.Values()
 
-	pairs, err := c.FetchValues(names)
-	require.NoError(err)
-
-	require.Len(pairs, 1)
-	require.Equal(names[0], pairs[0].Name)
+	require.Len(values, 1) // FPM only sets FCGI_MPXS_CONNS
+	require.Equal("FCGI_MPXS_CONNS", values[0].Name)
 }
 
 func newTestClient(t *testing.T) *Client {

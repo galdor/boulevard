@@ -1,14 +1,14 @@
 package fastcgi
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"slices"
+	"strconv"
 	"sync"
-	"time"
 
 	"go.n16f.net/boulevard/pkg/netutils"
 	"go.n16f.net/ejson"
@@ -33,14 +33,22 @@ type Client struct {
 
 	readerWg sync.WaitGroup
 
-	valuesListeners     []chan NameValuePairs
-	valuesListenerMutex sync.Mutex
+	values     NameValuePairs
+	valueMutex sync.Mutex
+
+	maxConcurrentConnections int
+	maxConcurrentRequests    int
+	multiplexConnections     bool
 }
 
 func NewClient(cfg *ClientCfg) (*Client, error) {
 	c := Client{
 		Cfg: cfg,
 		Log: cfg.Log,
+
+		maxConcurrentConnections: 1,
+		maxConcurrentRequests:    1,
+		multiplexConnections:     false,
 	}
 
 	// We do not need to establish a connection until the first request, but
@@ -61,40 +69,12 @@ func (c *Client) Close() {
 	}
 }
 
-func (c *Client) FetchValues(names []string) (NameValuePairs, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+func (c *Client) Values() NameValuePairs {
+	c.valueMutex.Lock()
+	values := slices.Clone(c.values)
+	c.valueMutex.Unlock()
 
-	return c.FetchValuesWithContext(ctx, names)
-}
-
-func (c *Client) FetchValuesWithContext(ctx context.Context, names []string) (NameValuePairs, error) {
-	body := GetValuesBody{
-		Names: names,
-	}
-
-	record := Record{
-		Version:    1,
-		RecordType: RecordTypeGetValues,
-		RequestId:  0,
-		Body:       &body,
-	}
-
-	listener := c.createValuesListener()
-
-	if err := c.writeRecord(&record); err != nil {
-		c.deleteValuesListener(listener)
-		return nil, fmt.Errorf("cannot write record: %w", err)
-	}
-
-	select {
-	case pairs := <-listener:
-		return pairs, nil
-
-	case <-ctx.Done():
-		c.deleteValuesListener(listener)
-		return nil, ctx.Err()
-	}
+	return values
 }
 
 func (c *Client) reconnect() error {
@@ -108,8 +88,55 @@ func (c *Client) reconnect() error {
 
 	c.conn = conn
 
+	if err := c.fetchValues(); err != nil {
+		conn.Close()
+		c.conn = nil
+		return fmt.Errorf("cannot write initial %q request: %w",
+			RecordTypeGetValues, err)
+	}
+
 	c.readerWg.Add(1)
 	go c.read()
+
+	return nil
+}
+
+func (c *Client) fetchValues() error {
+	names := []string{
+		"FCGI_MAX_CONNS",
+		"FCGI_MAX_REQS",
+		"FCGI_MPXS_CONNS",
+	}
+
+	body := GetValuesBody{
+		Names: names,
+	}
+
+	record := Record{
+		Version:    1,
+		RecordType: RecordTypeGetValues,
+		RequestId:  0,
+		Body:       &body,
+	}
+
+	if err := c.writeRecord(&record); err != nil {
+		return fmt.Errorf("cannot write record: %w", err)
+	}
+
+	var r Record
+	if err := r.Read(c.conn); err != nil {
+		return fmt.Errorf("cannot read record: %w", err)
+	}
+
+	if r.RecordType != RecordTypeGetValuesResult {
+		return fmt.Errorf("received unexpected record %q, expected record %q",
+			r.RecordType, RecordTypeGetValuesResult)
+	}
+
+	err := c.processRecordGetValuesResult(&r, r.Body.(*GetValuesResultBody))
+	if err != nil {
+		return fmt.Errorf("cannot process record: %w", err)
+	}
 
 	return nil
 }
@@ -164,7 +191,61 @@ func (c *Client) processRecord(r *Record) error {
 }
 
 func (c *Client) processRecordGetValuesResult(r *Record, body *GetValuesResultBody) error {
-	c.notifyValuesListeners(body.Pairs)
+	parseUInt := func(p NameValuePair) (int, error) {
+		i, err := strconv.ParseInt(p.Value, 10, 64)
+		if err != nil {
+			return 0, fmt.Errorf("invalid integer %q for value %q",
+				p.Value, p.Name)
+		} else if i < 0 {
+			return 0, fmt.Errorf("invalid negative integer %d for value %q",
+				i, p.Name)
+		} else if i > math.MaxInt {
+			return 0, fmt.Errorf("integer %d too large for value %q "+
+				"(must be lower or equal to %d)",
+				i, p.Name, math.MaxInt)
+		}
+
+		return int(i), nil
+	}
+
+	for _, pair := range body.Pairs {
+		switch pair.Name {
+		case "FCGI_MAX_CONNS":
+			i, err := parseUInt(pair)
+			if err != nil {
+				return err
+			}
+
+			c.maxConcurrentConnections = i
+
+		case "FCGI_MAX_REQS":
+			i, err := parseUInt(pair)
+			if err != nil {
+				return err
+			}
+
+			c.maxConcurrentRequests = i
+
+		case "FCGI_MPXS_CONNS":
+			i, err := parseUInt(pair)
+			if err != nil {
+				return err
+			} else if i > 1 {
+				return fmt.Errorf("invalid value %d for value %q",
+					i, "FCGI_MPXS_CONNS")
+			}
+
+			c.multiplexConnections = i > 0
+
+		default:
+			c.Log.Debug(1, "ignoring unknown value %q", pair.Name)
+		}
+	}
+
+	c.valueMutex.Lock()
+	c.values = body.Pairs
+	c.valueMutex.Unlock()
+
 	return nil
 }
 
@@ -185,37 +266,4 @@ func (c *Client) writeRecord(r *Record) error {
 	}
 
 	return nil
-}
-
-func (c *Client) createValuesListener() chan NameValuePairs {
-	listener := make(chan NameValuePairs, 1)
-
-	c.valuesListenerMutex.Lock()
-	c.valuesListeners = append(c.valuesListeners, listener)
-	c.valuesListenerMutex.Unlock()
-
-	return listener
-}
-
-func (c *Client) deleteValuesListener(listener chan NameValuePairs) {
-	c.valuesListenerMutex.Lock()
-	c.valuesListeners = slices.DeleteFunc(c.valuesListeners,
-		func(l chan NameValuePairs) bool {
-			return l == listener
-		})
-	c.valuesListenerMutex.Unlock()
-
-	close(listener)
-}
-
-func (c *Client) notifyValuesListeners(pairs NameValuePairs) {
-	c.valuesListenerMutex.Lock()
-	defer c.valuesListenerMutex.Unlock()
-
-	for _, listener := range c.valuesListeners {
-		listener <- pairs
-		close(listener)
-	}
-
-	c.valuesListeners = nil
 }
