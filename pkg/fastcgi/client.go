@@ -145,7 +145,7 @@ func (c *Client) processRecord(r *Record) error {
 		err = c.processRecordGetValuesResult(r, r.Body.(*GetValuesResultBody))
 
 	case RecordTypeUnknownType:
-		// TODO
+		err = c.processRecordUnknownType(r, r.Body.(*UnknownTypeBody))
 
 	case RecordTypeEndRequest:
 		// TODO
@@ -166,6 +166,10 @@ func (c *Client) processRecord(r *Record) error {
 func (c *Client) processRecordGetValuesResult(r *Record, body *GetValuesResultBody) error {
 	c.notifyValuesListeners(body.Pairs)
 	return nil
+}
+
+func (c *Client) processRecordUnknownType(r *Record, body *UnknownTypeBody) error {
+	return fmt.Errorf("server does not support record type %d", body.Type)
 }
 
 func (c *Client) writeRecord(r *Record) error {
