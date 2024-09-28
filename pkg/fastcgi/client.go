@@ -1,6 +1,7 @@
 package fastcgi
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -13,6 +14,12 @@ import (
 	"go.n16f.net/boulevard/pkg/netutils"
 	"go.n16f.net/ejson"
 	"go.n16f.net/log"
+)
+
+var (
+	ErrClientShutdown            = errors.New("client shutdown in progress")
+	ErrServerOverloaded          = errors.New("server overloaded")
+	ErrTooManyConcurrentRequests = errors.New("too many concurrent requests")
 )
 
 type ClientCfg struct {
@@ -39,6 +46,24 @@ type Client struct {
 	maxConcurrentConnections int
 	maxConcurrentRequests    int
 	multiplexConnections     bool
+
+	requests     []*Request
+	requestMutex sync.Mutex
+}
+
+type Request struct {
+	Id uint16
+
+	Stdout io.Writer
+	Stderr io.Writer
+
+	ResponseChan chan<- *Response
+}
+
+type Response struct {
+	AppStatus      uint32
+	ProtocolStatus ProtocolStatus
+	Error          error
 }
 
 func NewClient(cfg *ClientCfg) (*Client, error) {
@@ -61,6 +86,11 @@ func NewClient(cfg *ClientCfg) (*Client, error) {
 }
 
 func (c *Client) Close() {
+	// Careful, the function must not be closed from the reader goroutine since
+	// it waits for the reader to terminate.
+
+	c.deleteRequests()
+
 	if c.conn != nil {
 		c.conn.Close()
 		c.readerWg.Wait()
@@ -75,6 +105,155 @@ func (c *Client) Values() NameValuePairs {
 	c.valueMutex.Unlock()
 
 	return values
+}
+
+func (c *Client) SendRequest(role Role, params NameValuePairs, stdin, data io.Reader, stdout, stderr io.Writer) (uint32, error) {
+	if c.conn == nil {
+		if err := c.reconnect(); err != nil {
+			return 0, err
+		}
+	}
+
+	reqId, resChan, found := c.createRequest(stdout, stderr)
+	if !found {
+		return 0, ErrTooManyConcurrentRequests
+	}
+	defer close(resChan)
+
+	beginReq := &BeginRequestBody{
+		Role:           role,
+		KeepConnection: true,
+	}
+
+	err := c.writeRecord(RecordTypeBeginRequest, reqId, beginReq)
+	if err != nil {
+		c.deleteRequest(reqId)
+		return 0, fmt.Errorf("cannot write %q record: %w",
+			RecordTypeBeginRequest, err)
+	}
+
+	paramData, err := params.Encode()
+	if err != nil {
+		c.deleteRequest(reqId)
+		return 0, fmt.Errorf("cannot encode parameters: %w", err)
+	}
+
+	paramReader := bytes.NewReader(paramData)
+	if err := c.writeStream(RecordTypeParams, reqId, paramReader); err != nil {
+		c.deleteRequest(reqId)
+		return 0, fmt.Errorf("cannot write parameter stream: %w", err)
+	}
+
+	// 6.1 "When a role protocol calls for transmitting a stream other than
+	// FCGI_STDERR, at least one record of the stream type is always
+	// transmitted, even if the stream is empty."
+
+	if (role == RoleResponder || role == RoleFilter) && stdin == nil {
+		stdin = bytes.NewReader([]byte(nil))
+	}
+
+	if stdin != nil {
+		if err := c.writeStream(RecordTypeStdin, reqId, stdin); err != nil {
+			c.deleteRequest(reqId)
+			return 0, fmt.Errorf("cannot write stdin stream: %w", err)
+		}
+	}
+
+	if role == RoleFilter && data == nil {
+		data = bytes.NewReader([]byte(nil))
+	}
+
+	if data != nil {
+		if err := c.writeStream(RecordTypeData, reqId, data); err != nil {
+			c.deleteRequest(reqId)
+			return 0, fmt.Errorf("cannot write data stream: %w", err)
+		}
+	}
+
+	res := <-resChan
+	if res.Error != nil {
+		return 0, res.Error
+	}
+
+	switch res.ProtocolStatus {
+	case ProtocolStatusCannotMultiplexConnection:
+		// It is not clear if having a separate error type for this error is
+		// useful. Ultimately it means that the server cannot handle this
+		// connection, i.e. it is overloaded.
+		return 0, ErrServerOverloaded
+	case ProtocolStatusOverloaded:
+		return 0, ErrServerOverloaded
+	case ProtocolStatusUnknownRole:
+		return 0, fmt.Errorf("unknown role %q", role)
+	}
+
+	return res.AppStatus, nil
+}
+
+func (c *Client) createRequest(stdout, stderr io.Writer) (uint16, chan *Response, bool) {
+	c.requestMutex.Lock()
+	defer c.requestMutex.Unlock()
+
+	for id, req := range c.requests {
+		if req == nil {
+			resChan := make(chan *Response, 1)
+
+			c.requests[id] = &Request{
+				Id: uint16(id),
+
+				Stdout: stdout,
+				Stderr: stderr,
+
+				ResponseChan: resChan,
+			}
+
+			return uint16(id), resChan, true
+		}
+	}
+
+	return 0, nil, false
+}
+
+func (c *Client) findRequest(id uint16) *Request {
+	c.requestMutex.Lock()
+	req := c.requests[id]
+	c.requestMutex.Unlock()
+
+	return req
+}
+
+func (c *Client) abortAndDeleteRequest(req *Request, err error) error {
+	if err := c.writeRecord(RecordTypeAbortRequest, 0, nil); err != nil {
+		return fmt.Errorf("cannot write %q record: %w",
+			RecordTypeAbortRequest, err)
+	}
+
+	res := Response{Error: err}
+	req.ResponseChan <- &res
+
+	c.deleteRequest(req.Id)
+
+	return nil
+}
+
+func (c *Client) deleteRequest(id uint16) {
+	c.requestMutex.Lock()
+	c.requests[id] = nil
+	c.requestMutex.Unlock()
+}
+
+func (c *Client) deleteRequests() {
+	c.requestMutex.Lock()
+	defer c.requestMutex.Unlock()
+
+	for _, req := range c.requests {
+		if req != nil {
+			res := Response{Error: ErrClientShutdown}
+			req.ResponseChan <- &res
+		}
+	}
+
+	c.requests = nil
 }
 
 func (c *Client) reconnect() error {
@@ -95,6 +274,8 @@ func (c *Client) reconnect() error {
 			RecordTypeGetValues, err)
 	}
 
+	c.requests = make([]*Request, c.maxConcurrentRequests)
+
 	c.readerWg.Add(1)
 	go c.read()
 
@@ -112,14 +293,7 @@ func (c *Client) fetchValues() error {
 		Names: names,
 	}
 
-	record := Record{
-		Version:    1,
-		RecordType: RecordTypeGetValues,
-		RequestId:  0,
-		Body:       &body,
-	}
-
-	if err := c.writeRecord(&record); err != nil {
+	if err := c.writeRecord(RecordTypeGetValues, 0, &body); err != nil {
 		return fmt.Errorf("cannot write record: %w", err)
 	}
 
@@ -147,7 +321,7 @@ func (c *Client) read() {
 	for {
 		var r Record
 		if err := r.Read(c.conn); err != nil {
-			if errors.Is(err, io.EOF) {
+			if errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) {
 				return
 			}
 
@@ -157,7 +331,7 @@ func (c *Client) read() {
 		}
 
 		if err := c.processRecord(&r); err != nil {
-			c.Log.Error("cannot process record: %v", err)
+			c.Log.Error("cannot process %q record: %v", r.RecordType, err)
 			c.conn.Close()
 			return
 		}
@@ -175,13 +349,13 @@ func (c *Client) processRecord(r *Record) error {
 		err = c.processRecordUnknownType(r, r.Body.(*UnknownTypeBody))
 
 	case RecordTypeEndRequest:
-		// TODO
+		err = c.processRecordEndRequest(r, r.Body.(*EndRequestBody))
 
 	case RecordTypeStdout:
-		// TODO
+		err = c.processRecordStdout(r, r.Body.([]byte))
 
 	case RecordTypeStderr:
-		// TODO
+		err = c.processRecordStderr(r, r.Body.([]byte))
 
 	default:
 		err = fmt.Errorf("unhandled record type %q", r.RecordType)
@@ -191,7 +365,7 @@ func (c *Client) processRecord(r *Record) error {
 }
 
 func (c *Client) processRecordGetValuesResult(r *Record, body *GetValuesResultBody) error {
-	parseUInt := func(p NameValuePair) (int, error) {
+	parseUInt := func(p NameValuePair, max int64) (int, error) {
 		i, err := strconv.ParseInt(p.Value, 10, 64)
 		if err != nil {
 			return 0, fmt.Errorf("invalid integer %q for value %q",
@@ -199,10 +373,10 @@ func (c *Client) processRecordGetValuesResult(r *Record, body *GetValuesResultBo
 		} else if i < 0 {
 			return 0, fmt.Errorf("invalid negative integer %d for value %q",
 				i, p.Name)
-		} else if i > math.MaxInt {
+		} else if i > max {
 			return 0, fmt.Errorf("integer %d too large for value %q "+
 				"(must be lower or equal to %d)",
-				i, p.Name, math.MaxInt)
+				i, p.Name, max)
 		}
 
 		return int(i), nil
@@ -211,7 +385,7 @@ func (c *Client) processRecordGetValuesResult(r *Record, body *GetValuesResultBo
 	for _, pair := range body.Pairs {
 		switch pair.Name {
 		case "FCGI_MAX_CONNS":
-			i, err := parseUInt(pair)
+			i, err := parseUInt(pair, math.MaxUint32)
 			if err != nil {
 				return err
 			}
@@ -219,7 +393,7 @@ func (c *Client) processRecordGetValuesResult(r *Record, body *GetValuesResultBo
 			c.maxConcurrentConnections = i
 
 		case "FCGI_MAX_REQS":
-			i, err := parseUInt(pair)
+			i, err := parseUInt(pair, math.MaxUint16)
 			if err != nil {
 				return err
 			}
@@ -227,7 +401,7 @@ func (c *Client) processRecordGetValuesResult(r *Record, body *GetValuesResultBo
 			c.maxConcurrentRequests = i
 
 		case "FCGI_MPXS_CONNS":
-			i, err := parseUInt(pair)
+			i, err := parseUInt(pair, math.MaxUint32)
 			if err != nil {
 				return err
 			} else if i > 1 {
@@ -253,16 +427,103 @@ func (c *Client) processRecordUnknownType(r *Record, body *UnknownTypeBody) erro
 	return fmt.Errorf("server does not support record type %d", body.Type)
 }
 
-func (c *Client) writeRecord(r *Record) error {
-	if c.conn == nil {
-		if err := c.reconnect(); err != nil {
+func (c *Client) processRecordEndRequest(r *Record, body *EndRequestBody) error {
+	req := c.findRequest(r.RequestId)
+	if req == nil {
+		return nil
+	}
+
+	res := Response{
+		AppStatus:      body.AppStatus,
+		ProtocolStatus: body.ProtocolStatus,
+	}
+
+	req.ResponseChan <- &res
+
+	c.deleteRequest(r.RequestId)
+
+	return nil
+}
+
+func (c *Client) processRecordStdout(r *Record, body []byte) error {
+	req := c.findRequest(r.RequestId)
+	if req == nil {
+		return nil
+	}
+
+	if _, err := req.Stdout.Write(body); err != nil {
+		reqErr := fmt.Errorf("cannot write stdout: %v", err)
+
+		if err := c.abortAndDeleteRequest(req, reqErr); err != nil {
 			return err
+		}
+
+		return nil
+	}
+
+	return nil
+}
+
+func (c *Client) processRecordStderr(r *Record, body []byte) error {
+	req := c.findRequest(r.RequestId)
+	if req == nil {
+		return nil
+	}
+
+	if _, err := req.Stderr.Write(body); err != nil {
+		reqErr := fmt.Errorf("cannot write stderr: %v", err)
+
+		if err := c.abortAndDeleteRequest(req, reqErr); err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	return nil
+}
+
+func (c *Client) writeRecord(rtype RecordType, id uint16, body any) error {
+	record := Record{
+		Version:    1,
+		RecordType: rtype,
+		RequestId:  id,
+		Body:       body,
+	}
+
+	if err := record.Write(c.conn); err != nil {
+		err = netutils.UnwrapOpError(err, "writev")
+		err = netutils.UnwrapOpError(err, "write")
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) writeStream(rtype RecordType, id uint16, stream io.Reader) error {
+	// It would be interesting to benchmark different buffer size. Maximum is
+	// 65535 bytes since the record size is an unsigned 16 bit integer.
+	const bufSize = 16 * 1024
+
+	var buf [bufSize]byte
+
+	for {
+		n, err := stream.Read(buf[:])
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+
+			return fmt.Errorf("cannot read stream: %w", err)
+		}
+
+		if err := c.writeRecord(rtype, id, buf[:n]); err != nil {
+			return fmt.Errorf("cannot write record: %w", err)
 		}
 	}
 
-	if err := r.Write(c.conn); err != nil {
-		err = netutils.UnwrapOpError(err, "write")
-		return err
+	if err := c.writeRecord(rtype, id, nil); err != nil {
+		return fmt.Errorf("cannot write record: %w", err)
 	}
 
 	return nil

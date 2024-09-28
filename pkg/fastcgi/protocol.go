@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"net"
 
 	"go.n16f.net/boulevard/pkg/netutils"
 	"go.n16f.net/program"
@@ -143,13 +144,13 @@ const (
 func (p ProtocolStatus) Encode() (value uint8) {
 	switch p {
 	case ProtocolStatusRequestComplete:
-		value = 1
+		value = 0
 	case ProtocolStatusCannotMultiplexConnection:
-		value = 2
+		value = 1
 	case ProtocolStatusOverloaded:
-		value = 3
+		value = 2
 	case ProtocolStatusUnknownRole:
-		value = 4
+		value = 3
 
 	default:
 		program.Panic("unhandled protocol status %q", p)
@@ -160,13 +161,13 @@ func (p ProtocolStatus) Encode() (value uint8) {
 
 func (p *ProtocolStatus) Decode(value uint8) error {
 	switch value {
-	case 1:
+	case 0:
 		*p = ProtocolStatusRequestComplete
-	case 2:
+	case 1:
 		*p = ProtocolStatusCannotMultiplexConnection
-	case 3:
+	case 2:
 		*p = ProtocolStatusOverloaded
-	case 4:
+	case 3:
 		*p = ProtocolStatusUnknownRole
 
 	default:
@@ -336,16 +337,13 @@ func (body *BeginRequestBody) Decode(data []byte) error {
 }
 
 type AbortRequestBody struct {
-	// TODO
 }
 
 func (body *AbortRequestBody) Encode() ([]byte, error) {
-	// TODO
 	return nil, nil
 }
 
 func (body *AbortRequestBody) Decode(data []byte) error {
-	// TODO
 	return nil
 }
 
@@ -374,76 +372,6 @@ func (body *EndRequestBody) Decode(data []byte) error {
 		return err
 	}
 
-	return nil
-}
-
-type ParamsBody struct {
-	// TODO
-}
-
-func (body *ParamsBody) Encode() ([]byte, error) {
-	// TODO
-	return nil, nil
-}
-
-func (body *ParamsBody) Decode(data []byte) error {
-	// TODO
-	return nil
-}
-
-type StdinBody struct {
-	// TODO
-}
-
-func (body *StdinBody) Encode() ([]byte, error) {
-	// TODO
-	return nil, nil
-}
-
-func (body *StdinBody) Decode(data []byte) error {
-	// TODO
-	return nil
-}
-
-type StdoutBody struct {
-	// TODO
-}
-
-func (body *StdoutBody) Encode() ([]byte, error) {
-	// TODO
-	return nil, nil
-}
-
-func (body *StdoutBody) Decode(data []byte) error {
-	// TODO
-	return nil
-}
-
-type StderrBody struct {
-	// TODO
-}
-
-func (body *StderrBody) Encode() ([]byte, error) {
-	// TODO
-	return nil, nil
-}
-
-func (body *StderrBody) Decode(data []byte) error {
-	// TODO
-	return nil
-}
-
-type DataBody struct {
-	// TODO
-}
-
-func (body *DataBody) Encode() ([]byte, error) {
-	// TODO
-	return nil, nil
-}
-
-func (body *DataBody) Decode(data []byte) error {
-	// TODO
 	return nil
 }
 
@@ -513,42 +441,53 @@ type Record struct {
 	Version    uint8
 	RecordType RecordType
 	RequestId  uint16
-	Body       Body
+	Body       any // DiscreteBody or []byte
 }
 
-type Body interface {
+type DiscreteBody interface {
 	Encode() ([]byte, error)
 	Decode([]byte) error
 }
 
 func (r *Record) Write(w io.Writer) error {
-	var body []byte
+	var bodyData []byte
 	var err error
 
-	if r.Body != nil {
-		body, err = r.Body.Encode()
+	switch body := r.Body.(type) {
+	case DiscreteBody:
+		bodyData, err = body.Encode()
 		if err != nil {
 			return fmt.Errorf("cannot encode body: %w", err)
 		}
 
-		if len(body) > math.MaxUint16 {
+		if len(bodyData) > math.MaxUint16 {
 			return fmt.Errorf("body too large")
 		}
+
+	case []byte:
+		bodyData = body
+
+	case nil:
+
+	default:
+		program.Panic("unhandled body %#v (%T)", r.Body, r.Body)
 	}
 
-	buf := make([]byte, 8)
+	header := make([]byte, 8)
 
-	buf[0] = uint8(r.Version)
-	buf[1] = r.RecordType.Encode()
-	binary.BigEndian.PutUint16(buf[2:], r.RequestId)
-	binary.BigEndian.PutUint16(buf[4:], uint16(len(body)))
-	buf[6] = 0 // padding length
-	buf[7] = 0 // reserved
+	header[0] = uint8(r.Version)
+	header[1] = r.RecordType.Encode()
+	binary.BigEndian.PutUint16(header[2:], r.RequestId)
+	binary.BigEndian.PutUint16(header[4:], uint16(len(bodyData)))
+	header[6] = 0 // padding length
+	header[7] = 0 // reserved
 
-	buf = append(buf, body...)
+	buffs := net.Buffers{header, bodyData}
+	if _, err := buffs.WriteTo(w); err != nil {
+		return err
+	}
 
-	_, err = w.Write(buf)
-	return err
+	return nil
 }
 
 func (r *Record) Read(reader io.Reader) error {
@@ -575,12 +514,12 @@ func (r *Record) Read(reader io.Reader) error {
 
 	// Body
 	bodyLength := int(contentLength) + int(paddingLength)
-	body := make([]byte, bodyLength)
-	if _, err := io.ReadFull(reader, body[:]); err != nil {
+	bodyData := make([]byte, bodyLength)
+	if _, err := io.ReadFull(reader, bodyData[:]); err != nil {
 		err = netutils.UnwrapOpError(err, "read")
 		return fmt.Errorf("cannot read body: %w", err)
 	}
-	body = body[:contentLength]
+	bodyData = bodyData[:contentLength]
 
 	switch r.RecordType {
 	case RecordTypeBeginRequest:
@@ -590,15 +529,15 @@ func (r *Record) Read(reader io.Reader) error {
 	case RecordTypeEndRequest:
 		r.Body = &EndRequestBody{}
 	case RecordTypeParams:
-		r.Body = &ParamsBody{}
+		r.Body = bodyData
 	case RecordTypeStdin:
-		r.Body = &StdinBody{}
+		r.Body = bodyData
 	case RecordTypeStdout:
-		r.Body = &StdoutBody{}
+		r.Body = bodyData
 	case RecordTypeStderr:
-		r.Body = &StderrBody{}
+		r.Body = bodyData
 	case RecordTypeData:
-		r.Body = &DataBody{}
+		r.Body = bodyData
 	case RecordTypeGetValues:
 		r.Body = &GetValuesBody{}
 	case RecordTypeGetValuesResult:
@@ -608,8 +547,11 @@ func (r *Record) Read(reader io.Reader) error {
 	}
 
 	if r.Body != nil {
-		if err := r.Body.Decode(body); err != nil {
-			return fmt.Errorf("cannot decode body: %w", err)
+		if body, ok := r.Body.(DiscreteBody); ok {
+			if err := body.Decode(bodyData); err != nil {
+				return fmt.Errorf("cannot decode body of %q record: %w",
+					r.RecordType, err)
+			}
 		}
 	}
 
