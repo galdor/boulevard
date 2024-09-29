@@ -39,7 +39,13 @@ func cmdSendRequest(p *program.Program) {
 		p.Fatal("cannot send request: %v", err)
 	}
 
-	// TODO print header with -i/--include
+	if p.IsOptionSet("header") {
+		for _, field := range res.Header.Fields {
+			fmt.Printf("%s: %s\n", field.Name, field.Value)
+		}
+
+		fmt.Println()
+	}
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)

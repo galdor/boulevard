@@ -22,6 +22,7 @@ func main() {
 	c.AddArgument("address", "the address of the server")
 	c.AddTrailingArgument("parameter",
 		"a request parameter formatted as \"<name>=<value>\"")
+	c.AddFlag("", "header", "print the response header")
 	c.AddOption("r", "role", "role", string(fastcgi.RoleResponder),
 		"the FastCGI role of the server")
 	c.AddFlag("", "stdin", "send the standard input as request input")
