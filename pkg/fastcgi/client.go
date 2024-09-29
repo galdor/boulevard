@@ -22,6 +22,20 @@ var (
 	ErrTooManyConcurrentRequests = errors.New("too many concurrent requests")
 )
 
+type AppError struct {
+	Status uint32
+	Stderr string
+}
+
+func (err *AppError) Error() string {
+	msg := fmt.Sprintf("application failed with status %d", err.Status)
+	if err.Stderr != "" {
+		msg += ": " + err.Stderr
+	}
+
+	return msg
+}
+
 type ClientCfg struct {
 	Log *log.Logger `json:"-"`
 
@@ -54,16 +68,29 @@ type Client struct {
 type Request struct {
 	Id uint16
 
-	Stdout io.Writer
-	Stderr io.Writer
+	Header     Header
+	HeaderRead bool
 
-	ResponseChan chan<- *Response
+	Events chan *ResponseEvent
+	Stderr bytes.Buffer
+
+	ResultChan chan<- *RequestResult
+}
+
+type RequestResult struct {
+	Header Header
+	Events <-chan *ResponseEvent
+	Error  error
 }
 
 type Response struct {
-	AppStatus      uint32
-	ProtocolStatus ProtocolStatus
-	Error          error
+	Header Header
+	Events <-chan *ResponseEvent
+}
+
+type ResponseEvent struct {
+	Data  []byte
+	Error error
 }
 
 func NewClient(cfg *ClientCfg) (*Client, error) {
@@ -107,41 +134,57 @@ func (c *Client) Values() NameValuePairs {
 	return values
 }
 
-func (c *Client) SendRequest(role Role, params NameValuePairs, stdin, data io.Reader, stdout, stderr io.Writer) (uint32, error) {
+func (c *Client) SendRequest(role Role, params NameValuePairs, stdin, data io.Reader) (*Response, error) {
 	if c.conn == nil {
 		if err := c.reconnect(); err != nil {
-			return 0, err
+			return nil, err
 		}
 	}
 
-	reqId, resChan, found := c.createRequest(stdout, stderr)
+	reqId, resChan, found := c.createRequest()
 	if !found {
-		return 0, ErrTooManyConcurrentRequests
+		return nil, ErrTooManyConcurrentRequests
 	}
 	defer close(resChan)
 
-	beginReq := &BeginRequestBody{
+	if err := c.writeRequest(role, params, stdin, data, reqId); err != nil {
+		c.deleteRequest(reqId)
+		return nil, err
+	}
+
+	res := <-resChan
+	if res.Error != nil {
+		return nil, res.Error
+	}
+
+	response := Response{
+		Header: res.Header,
+		Events: res.Events,
+	}
+
+	return &response, nil
+}
+
+func (c *Client) writeRequest(role Role, params NameValuePairs, stdin, data io.Reader, reqId uint16) error {
+	beginReq := BeginRequestBody{
 		Role:           role,
 		KeepConnection: true,
 	}
 
-	err := c.writeRecord(RecordTypeBeginRequest, reqId, beginReq)
+	err := c.writeRecord(RecordTypeBeginRequest, reqId, &beginReq)
 	if err != nil {
-		c.deleteRequest(reqId)
-		return 0, fmt.Errorf("cannot write %q record: %w",
+		return fmt.Errorf("cannot write %q record: %w",
 			RecordTypeBeginRequest, err)
 	}
 
 	paramData, err := params.Encode()
 	if err != nil {
-		c.deleteRequest(reqId)
-		return 0, fmt.Errorf("cannot encode parameters: %w", err)
+		return fmt.Errorf("cannot encode parameters: %w", err)
 	}
 
 	paramReader := bytes.NewReader(paramData)
 	if err := c.writeStream(RecordTypeParams, reqId, paramReader); err != nil {
-		c.deleteRequest(reqId)
-		return 0, fmt.Errorf("cannot write parameter stream: %w", err)
+		return fmt.Errorf("cannot write parameter stream: %w", err)
 	}
 
 	// 6.1 "When a role protocol calls for transmitting a stream other than
@@ -154,8 +197,7 @@ func (c *Client) SendRequest(role Role, params NameValuePairs, stdin, data io.Re
 
 	if stdin != nil {
 		if err := c.writeStream(RecordTypeStdin, reqId, stdin); err != nil {
-			c.deleteRequest(reqId)
-			return 0, fmt.Errorf("cannot write stdin stream: %w", err)
+			return fmt.Errorf("cannot write stdin stream: %w", err)
 		}
 	}
 
@@ -165,46 +207,25 @@ func (c *Client) SendRequest(role Role, params NameValuePairs, stdin, data io.Re
 
 	if data != nil {
 		if err := c.writeStream(RecordTypeData, reqId, data); err != nil {
-			c.deleteRequest(reqId)
-			return 0, fmt.Errorf("cannot write data stream: %w", err)
+			return fmt.Errorf("cannot write data stream: %w", err)
 		}
 	}
 
-	res := <-resChan
-	if res.Error != nil {
-		return 0, res.Error
-	}
-
-	switch res.ProtocolStatus {
-	case ProtocolStatusCannotMultiplexConnection:
-		// It is not clear if having a separate error type for this error is
-		// useful. Ultimately it means that the server cannot handle this
-		// connection, i.e. it is overloaded.
-		return 0, ErrServerOverloaded
-	case ProtocolStatusOverloaded:
-		return 0, ErrServerOverloaded
-	case ProtocolStatusUnknownRole:
-		return 0, fmt.Errorf("unknown role %q", role)
-	}
-
-	return res.AppStatus, nil
+	return nil
 }
 
-func (c *Client) createRequest(stdout, stderr io.Writer) (uint16, chan *Response, bool) {
+func (c *Client) createRequest() (uint16, chan *RequestResult, bool) {
 	c.requestMutex.Lock()
 	defer c.requestMutex.Unlock()
 
 	for id, req := range c.requests {
 		if req == nil {
-			resChan := make(chan *Response, 1)
+			resChan := make(chan *RequestResult, 1)
 
 			c.requests[id] = &Request{
 				Id: uint16(id),
 
-				Stdout: stdout,
-				Stderr: stderr,
-
-				ResponseChan: resChan,
+				ResultChan: resChan,
 			}
 
 			return uint16(id), resChan, true
@@ -222,20 +243,6 @@ func (c *Client) findRequest(id uint16) *Request {
 	return req
 }
 
-func (c *Client) abortAndDeleteRequest(req *Request, err error) error {
-	if err := c.writeRecord(RecordTypeAbortRequest, 0, nil); err != nil {
-		return fmt.Errorf("cannot write %q record: %w",
-			RecordTypeAbortRequest, err)
-	}
-
-	res := Response{Error: err}
-	req.ResponseChan <- &res
-
-	c.deleteRequest(req.Id)
-
-	return nil
-}
-
 func (c *Client) deleteRequest(id uint16) {
 	c.requestMutex.Lock()
 	c.requests[id] = nil
@@ -248,8 +255,12 @@ func (c *Client) deleteRequests() {
 
 	for _, req := range c.requests {
 		if req != nil {
-			res := Response{Error: ErrClientShutdown}
-			req.ResponseChan <- &res
+			if req.HeaderRead {
+				req.Events <- &ResponseEvent{Error: ErrClientShutdown}
+				close(req.Events)
+			} else {
+				req.ResultChan <- &RequestResult{Error: ErrClientShutdown}
+			}
 		}
 	}
 
@@ -433,12 +444,34 @@ func (c *Client) processRecordEndRequest(r *Record, body *EndRequestBody) error 
 		return nil
 	}
 
-	res := Response{
-		AppStatus:      body.AppStatus,
-		ProtocolStatus: body.ProtocolStatus,
+	var err error
+
+	if body.ProtocolStatus == ProtocolStatusCannotMultiplexConnection {
+		// It is not clear if having a separate error type for this error is
+		// useful. Ultimately it means that the server cannot handle this
+		// connection, i.e. it is overloaded.
+		err = ErrServerOverloaded
+	} else if body.ProtocolStatus == ProtocolStatusOverloaded {
+		err = ErrServerOverloaded
+	} else if body.ProtocolStatus == ProtocolStatusUnknownRole {
+		err = errors.New("unknown request role")
+	} else if body.AppStatus != 0 {
+		err = &AppError{Status: body.AppStatus, Stderr: req.Stderr.String()}
 	}
 
-	req.ResponseChan <- &res
+	if req.HeaderRead {
+		if err != nil {
+			req.Events <- &ResponseEvent{Error: err}
+		}
+
+		close(req.Events)
+	} else {
+		if err == nil {
+			err = errors.New("request ended without response")
+		}
+
+		req.ResultChan <- &RequestResult{Error: err}
+	}
 
 	c.deleteRequest(r.RequestId)
 
@@ -451,14 +484,30 @@ func (c *Client) processRecordStdout(r *Record, body []byte) error {
 		return nil
 	}
 
-	if _, err := req.Stdout.Write(body); err != nil {
-		reqErr := fmt.Errorf("cannot write stdout: %v", err)
+	if req.HeaderRead {
+		req.Events <- &ResponseEvent{Data: body}
+	} else {
+		headerEnd, bodyData, err := req.Header.Parse(body)
+		if err != nil {
+			err = fmt.Errorf("cannot parse response header: %w", err)
+			req.ResultChan <- &RequestResult{Error: err}
 
-		if err := c.abortAndDeleteRequest(req, reqErr); err != nil {
 			return err
 		}
 
-		return nil
+		if headerEnd {
+			req.HeaderRead = true
+
+			events := make(chan *ResponseEvent)
+
+			req.ResultChan <- &RequestResult{
+				Header: req.Header,
+				Events: events,
+			}
+
+			req.Events = events
+			req.Events <- &ResponseEvent{Data: bodyData}
+		}
 	}
 
 	return nil
@@ -470,15 +519,7 @@ func (c *Client) processRecordStderr(r *Record, body []byte) error {
 		return nil
 	}
 
-	if _, err := req.Stderr.Write(body); err != nil {
-		reqErr := fmt.Errorf("cannot write stderr: %v", err)
-
-		if err := c.abortAndDeleteRequest(req, reqErr); err != nil {
-			return err
-		}
-
-		return nil
-	}
+	req.Stderr.Write(body)
 
 	return nil
 }

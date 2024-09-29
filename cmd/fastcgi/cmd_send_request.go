@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"go.n16f.net/boulevard/pkg/fastcgi"
 	"go.n16f.net/program"
@@ -32,13 +34,34 @@ func cmdSendRequest(p *program.Program) {
 
 	client := newClient(p, address)
 
-	status, err := client.SendRequest(role, params, stdin, nil, os.Stdout,
-		os.Stderr)
+	res, err := client.SendRequest(role, params, stdin, nil)
 	if err != nil {
 		p.Fatal("cannot send request: %v", err)
 	}
 
-	os.Exit(int(status))
+	// TODO print header with -i/--include
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	for {
+		select {
+		case event := <-res.Events:
+			if event == nil {
+				return
+			}
+
+			if event.Error != nil {
+				p.Fatal("cannot read response: %v", event.Error)
+			}
+
+			os.Stdout.Write(event.Data)
+
+		case signo := <-sigChan:
+			fmt.Fprintln(os.Stderr)
+			p.Info("received signal %d (%v)", signo, signo)
+		}
+	}
 }
 
 func parseRole(s string) (fastcgi.Role, error) {
