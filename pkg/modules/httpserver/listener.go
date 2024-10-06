@@ -130,6 +130,8 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	}()
 
+	ctx.Listener = l
+
 	// Identify the numeric IP address of the client
 	clientAddr, _, err := netutils.ParseNumericAddress(req.RemoteAddr)
 	if err != nil {

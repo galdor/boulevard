@@ -3,6 +3,7 @@ package fastcgi
 import (
 	"bytes"
 	"fmt"
+	"strings"
 )
 
 // Reference: RFC 3875 6.3. Response Header Fields.
@@ -15,6 +16,16 @@ type Header struct {
 type Field struct {
 	Name  string
 	Value string
+}
+
+func (h *Header) Field(name string) string {
+	for _, field := range h.Fields {
+		if strings.EqualFold(name, field.Name) {
+			return field.Value
+		}
+	}
+
+	return ""
 }
 
 func (h *Header) Parse(data []byte) (bool, []byte, error) {

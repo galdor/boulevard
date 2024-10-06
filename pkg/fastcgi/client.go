@@ -83,11 +83,6 @@ type RequestResult struct {
 	Error  error
 }
 
-type Response struct {
-	Header Header
-	Events <-chan *ResponseEvent
-}
-
 type ResponseEvent struct {
 	Data  []byte
 	Error error

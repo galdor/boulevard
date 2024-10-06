@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
+	"strconv"
 
 	"go.n16f.net/acme"
 	"go.n16f.net/ejson"
@@ -30,6 +31,7 @@ type TCPListener struct {
 	Cfg TCPListenerCfg
 	Log *log.Logger
 
+	Port     int
 	Listener net.Listener
 
 	ctx    context.Context
@@ -43,11 +45,22 @@ func NewTCPListener(cfg TCPListenerCfg) (*TCPListener, error) {
 		}
 	}
 
+	_, port, err := net.SplitHostPort(cfg.Address)
+	if err != nil {
+		return nil, fmt.Errorf("invalid address: %w", err)
+	}
+	portNumber, err := strconv.ParseInt(port, 10, 64)
+	if err != nil || portNumber < 1 || portNumber > 65535 {
+		return nil, fmt.Errorf("invalid port %q", port)
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 
 	l := TCPListener{
 		Cfg: cfg,
 		Log: cfg.Log,
+
+		Port: int(portNumber),
 
 		ctx:    ctx,
 		cancel: cancel,

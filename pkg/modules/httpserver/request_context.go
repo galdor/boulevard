@@ -15,6 +15,7 @@ type RequestContext struct {
 	Request        *http.Request
 	ResponseWriter http.ResponseWriter
 
+	Listener      *Listener
 	ClientAddress net.IP
 	Host          string
 	Subpath       string // always relative

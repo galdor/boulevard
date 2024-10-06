@@ -26,6 +26,8 @@ type ModuleData struct {
 
 	ModuleStatus   func(string) *ModuleStatus
 	ModuleStatuses func() []*ModuleStatus
+
+	BoulevardBuildId string
 }
 
 type Module interface {

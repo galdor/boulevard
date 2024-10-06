@@ -136,6 +136,8 @@ func (s *Service) startModule(modCfg *ModuleCfg) error {
 
 		ModuleStatus:   s.moduleStatus,
 		ModuleStatuses: s.moduleStatuses,
+
+		BoulevardBuildId: s.Cfg.BuildId,
 	}
 
 	mod := Module{
