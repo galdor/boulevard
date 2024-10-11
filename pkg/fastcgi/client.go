@@ -20,6 +20,7 @@ var (
 	ErrClientShutdown            = errors.New("client shutdown in progress")
 	ErrServerOverloaded          = errors.New("server overloaded")
 	ErrTooManyConcurrentRequests = errors.New("too many concurrent requests")
+	ErrRequestAborted            = errors.New("request aborted")
 )
 
 type AppError struct {
@@ -153,11 +154,22 @@ func (c *Client) SendRequest(role Role, params NameValuePairs, stdin, data io.Re
 	}
 
 	response := Response{
-		Header: res.Header,
-		Events: res.Events,
+		RequestId: reqId,
+		Header:    res.Header,
+		Events:    res.Events,
 	}
 
 	return &response, nil
+}
+
+func (c *Client) AbortRequest(reqId uint16) error {
+	err := c.writeRecord(RecordTypeAbortRequest, reqId, nil)
+	if err != nil {
+		return fmt.Errorf("cannot write %q record: %w",
+			RecordTypeAbortRequest, err)
+	}
+
+	return nil
 }
 
 func (c *Client) writeRequest(role Role, params NameValuePairs, stdin, data io.Reader, reqId uint16) error {

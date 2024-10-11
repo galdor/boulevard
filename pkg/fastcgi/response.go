@@ -11,8 +11,9 @@ var nonHTTPHeaderFields = map[string]struct{}{
 }
 
 type Response struct {
-	Header Header
-	Events <-chan *ResponseEvent
+	RequestId uint16
+	Header    Header
+	Events    <-chan *ResponseEvent
 }
 
 func (r *Response) Status() (int, string) {

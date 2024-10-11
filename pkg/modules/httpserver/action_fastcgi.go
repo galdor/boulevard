@@ -1,17 +1,27 @@
 package httpserver
 
 import (
-	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"os"
 	"path"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/boulevard/pkg/fastcgi"
 	"go.n16f.net/ejson"
+)
+
+const (
+	DefaultRequestBodyMemoryBufferSize = 128 * 1024
+	DefaultMaxRequestBodySize          = 4 * 1024 * 1024
+
+	DefaultResponseBodyMemoryBufferSize = 128 * 1024
+	DefaultMaxResponseBodySize          = 4 * 1024 * 1024
 )
 
 type FastCGIActionCfg struct {
@@ -19,10 +29,36 @@ type FastCGIActionCfg struct {
 	Parameters   map[string]string `json:"parameters,omitempty"`
 	Path         string            `json:"path,omitempty"`
 	ScriptRegexp string            `json:"string_regexp,omitempty"`
+
+	TemporaryDirectoryPath string `json:"temporary_directory_path,omitempty"`
+
+	RequestBodyMemoryBufferSize *int64 `json:"request_body_memory_buffer_size,omitempty"`
+	MaxRequestBodySize          *int64 `json:"max_request_body_size,omitempty"`
+
+	ResponseBodyMemoryBufferSize *int64 `json:"response_body_memory_buffer_size,omitempty"`
+	MaxResponseBodySize          *int64 `json:"max_response_body_size,omitempty"`
 }
 
 func (cfg *FastCGIActionCfg) ValidateJSON(v *ejson.Validator) {
 	v.CheckNetworkAddress("address", cfg.Address)
+
+	if cfg.RequestBodyMemoryBufferSize != nil {
+		v.CheckInt64Min("request_body_memory_buffer_size",
+			*cfg.RequestBodyMemoryBufferSize, 0)
+	}
+
+	if cfg.MaxRequestBodySize != nil {
+		v.CheckInt64Min("max_request_body_size", *cfg.MaxRequestBodySize, 0)
+	}
+
+	if cfg.ResponseBodyMemoryBufferSize != nil {
+		v.CheckInt64Min("response_body_memory_buffer_size",
+			*cfg.ResponseBodyMemoryBufferSize, 0)
+	}
+
+	if cfg.MaxResponseBodySize != nil {
+		v.CheckInt64Min("max_response_body_size", *cfg.MaxResponseBodySize, 0)
+	}
 }
 
 type FastCGIAction struct {
@@ -32,6 +68,14 @@ type FastCGIAction struct {
 	client *fastcgi.Client
 
 	scriptRE *regexp.Regexp
+
+	tmpDirPath string
+
+	reqBodyMemBufSize int64
+	maxReqBodySize    int64
+
+	resBodyMemBufSize int64
+	maxResBodySize    int64
 }
 
 func NewFastCGIAction(h *Handler, cfg FastCGIActionCfg) (*FastCGIAction, error) {
@@ -57,6 +101,36 @@ func NewFastCGIAction(h *Handler, cfg FastCGIActionCfg) (*FastCGIAction, error) 
 		a.scriptRE = re
 	}
 
+	a.tmpDirPath = cfg.TemporaryDirectoryPath
+	if a.tmpDirPath == "" {
+		dirPath, err := os.MkdirTemp("", "boulevard-fastcgi-*")
+		if err != nil {
+			return nil, fmt.Errorf("cannot create temporary directory: %w", err)
+		}
+
+		a.tmpDirPath = dirPath
+	}
+
+	a.reqBodyMemBufSize = DefaultRequestBodyMemoryBufferSize
+	if size := cfg.RequestBodyMemoryBufferSize; size != nil {
+		a.reqBodyMemBufSize = *size
+	}
+
+	a.maxReqBodySize = DefaultMaxRequestBodySize
+	if size := cfg.MaxRequestBodySize; size != nil {
+		a.maxReqBodySize = *size
+	}
+
+	a.resBodyMemBufSize = DefaultResponseBodyMemoryBufferSize
+	if size := cfg.ResponseBodyMemoryBufferSize; size != nil {
+		a.resBodyMemBufSize = *size
+	}
+
+	a.maxResBodySize = DefaultMaxResponseBodySize
+	if size := cfg.MaxResponseBodySize; size != nil {
+		a.maxResBodySize = *size
+	}
+
 	return &a, nil
 }
 
@@ -78,6 +152,11 @@ func (a *FastCGIAction) Start() error {
 
 func (a *FastCGIAction) Stop() {
 	a.client.Close()
+
+	if err := os.RemoveAll(a.tmpDirPath); err != nil {
+		a.Handler.Module.Log.Error("cannot delete directory %q: %v",
+			a.tmpDirPath, err)
+	}
 }
 
 func (a *FastCGIAction) HandleRequest(ctx *RequestContext) {
@@ -85,15 +164,28 @@ func (a *FastCGIAction) HandleRequest(ctx *RequestContext) {
 	// nice if the client used chunked transfer encoding. But if we do not
 	// buffer the request body, we have no way to compute its length, meaning we
 	// cannot set the mandatory CONTENT_LENGTH FastCGI parameter.
-	reqBody, err := ioutil.ReadAll(ctx.Request.Body)
+	reqBodyBuf := a.newRequestBodySpillBuffer()
+	defer func() {
+		if err := reqBodyBuf.Close(); err != nil {
+			a.Handler.Module.Log.Error("cannot close spill buffer: %v", err)
+		}
+	}()
+
+	reqBodySize, err := io.Copy(reqBodyBuf, ctx.Request.Body)
 	if err != nil {
-		a.Handler.Module.Log.Error("cannot read request body: %v", err)
+		a.Handler.Module.Log.Error("cannot copy request body: %v", err)
 		ctx.ReplyError(500)
 		return
 	}
 
-	params := a.requestParameters(ctx, reqBody)
-	stdin := bytes.NewReader(reqBody)
+	params := a.requestParameters(ctx, reqBodySize)
+	stdin, err := reqBodyBuf.Reader()
+	if err != nil {
+		a.Handler.Module.Log.Error("cannot read spill buffer: %v", err)
+		ctx.ReplyError(500)
+		return
+	}
+	defer stdin.Close()
 
 	res, err := a.client.SendRequest(fastcgi.RoleResponder, params, stdin, nil)
 	if err != nil {
@@ -117,35 +209,84 @@ func (a *FastCGIAction) HandleRequest(ctx *RequestContext) {
 	// Content-Length header field. We could use chunked transfer encoding if
 	// the client supports HTTP 1.1, but we would still have to implement
 	// buffering for HTTP 1.0 clients.
-	var resBody bytes.Buffer
+	resBodyBuf := a.newResponseBodySpillBuffer()
+	defer func() {
+		if err := resBodyBuf.Close(); err != nil {
+			a.Handler.Module.Log.Error("cannot close spill buffer: %v", err)
+		}
+	}()
 
+	var reqAborted bool
 	for event := range res.Events {
 		if event == nil {
 			break
 		}
 
 		if event.Error != nil {
-			a.Handler.Module.Log.Error("cannot read FastCGI response: %v",
-				event.Error)
+			if !reqAborted {
+				a.Handler.Module.Log.Error("cannot read FastCGI response: %v",
+					event.Error)
+			}
+
 			ctx.ReplyError(502)
 			return
 		}
 
-		resBody.Write(event.Data)
+		if !reqAborted {
+			if _, err := resBodyBuf.Write(event.Data); err != nil {
+				a.Handler.Module.Log.Error("cannot write spill buffer: %v", err)
+
+				if err := a.client.AbortRequest(res.RequestId); err != nil {
+					a.Handler.Module.Log.Error("cannot abort FastCGI "+
+						"request: %v", err)
+				}
+
+				reqAborted = true
+			}
+		}
 	}
+
+	if reqAborted {
+		ctx.ReplyError(500)
+		return
+	}
+
+	resBodyReader, err := resBodyBuf.Reader()
+	if err != nil {
+		a.Handler.Module.Log.Error("cannot read spill buffer: %v", err)
+		ctx.ReplyError(500)
+		return
+	}
+	defer resBodyReader.Close()
 
 	header := ctx.ResponseWriter.Header()
 	res.CopyHeaderToHTTPHeader(header)
 
-	header.Set("Content-Length", strconv.Itoa(resBody.Len()))
+	header.Set("Content-Length", strconv.FormatInt(resBodyBuf.Size(), 10))
 
 	// It would be nice to be able to use the reason string, but the
 	// http.ResponseWriter interface does not support it.
 	statusCode, _ := res.Status()
-	ctx.Reply(statusCode, &resBody)
+	ctx.Reply(statusCode, resBodyReader)
 }
 
-func (a *FastCGIAction) requestParameters(ctx *RequestContext, reqBody []byte) fastcgi.NameValuePairs {
+func (a *FastCGIAction) newRequestBodySpillBuffer() *boulevard.SpillBuffer {
+	fileName := hex.EncodeToString(boulevard.RandomBytes(16))
+	filePath := path.Join(a.tmpDirPath, fileName)
+
+	return boulevard.NewSpillBuffer(filePath, a.reqBodyMemBufSize,
+		a.maxReqBodySize)
+}
+
+func (a *FastCGIAction) newResponseBodySpillBuffer() *boulevard.SpillBuffer {
+	fileName := hex.EncodeToString(boulevard.RandomBytes(16))
+	filePath := path.Join(a.tmpDirPath, fileName)
+
+	return boulevard.NewSpillBuffer(filePath, a.resBodyMemBufSize,
+		a.maxResBodySize)
+}
+
+func (a *FastCGIAction) requestParameters(ctx *RequestContext, reqBodySize int64) fastcgi.NameValuePairs {
 	req := ctx.Request
 	header := req.Header
 
@@ -177,7 +318,7 @@ func (a *FastCGIAction) requestParameters(ctx *RequestContext, reqBody []byte) f
 
 	params := map[string]string{
 		// RFC 3875 4.1. Request Meta-Variables
-		"CONTENT_LENGTH":    strconv.Itoa(len(reqBody)),
+		"CONTENT_LENGTH":    strconv.FormatInt(reqBodySize, 10),
 		"CONTENT_TYPE":      header.Get("Content-Type"),
 		"GATEWAY_INTERFACE": "CGI/1.1",
 		"PATH_INFO":         pathInfo,
