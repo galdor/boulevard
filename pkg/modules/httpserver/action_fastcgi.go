@@ -28,7 +28,7 @@ type FastCGIActionCfg struct {
 	Address      string            `json:"address"`
 	Parameters   map[string]string `json:"parameters,omitempty"`
 	Path         string            `json:"path,omitempty"`
-	ScriptRegexp string            `json:"string_regexp,omitempty"`
+	ScriptRegexp string            `json:"script_regexp,omitempty"`
 
 	TemporaryDirectoryPath string `json:"temporary_directory_path,omitempty"`
 

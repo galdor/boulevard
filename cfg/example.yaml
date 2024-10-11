@@ -60,7 +60,7 @@ http_server:
       fastcgi:
         address: "localhost:9000"
         path: "/app"
-        script_regexp: "^\\.+\\.php"
+        script_regexp: "^.+?\\.php"
 
 ---
 module: "irc-server"
