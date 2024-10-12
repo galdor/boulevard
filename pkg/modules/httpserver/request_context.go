@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -12,6 +13,7 @@ import (
 
 type RequestContext struct {
 	Log            *log.Logger
+	Ctx            context.Context
 	Request        *http.Request
 	ResponseWriter http.ResponseWriter
 

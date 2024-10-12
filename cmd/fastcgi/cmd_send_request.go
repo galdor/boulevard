@@ -1,18 +1,20 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 
 	"go.n16f.net/boulevard/pkg/fastcgi"
 	"go.n16f.net/program"
 )
 
 func cmdSendRequest(p *program.Program) {
+	ctx := context.Background()
+
 	address := p.ArgumentValue("address")
 
 	paramStrings := p.TrailingArgumentValues("parameter")
@@ -32,42 +34,24 @@ func cmdSendRequest(p *program.Program) {
 		stdin = os.Stdin
 	}
 
+	var stdout bytes.Buffer
+
 	client := newClient(p, address)
 
-	res, err := client.SendRequest(role, params, stdin, nil)
+	header, err := client.SendRequest(ctx, role, params, stdin, nil, &stdout)
 	if err != nil {
 		p.Fatal("cannot send request: %v", err)
 	}
 
 	if p.IsOptionSet("header") {
-		for _, field := range res.Header.Fields {
+		for _, field := range header.Fields {
 			fmt.Printf("%s: %s\n", field.Name, field.Value)
 		}
 
 		fmt.Println()
 	}
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-
-	for {
-		select {
-		case event := <-res.Events:
-			if event == nil {
-				return
-			}
-
-			if event.Error != nil {
-				p.Fatal("cannot read response: %v", event.Error)
-			}
-
-			os.Stdout.Write(event.Data)
-
-		case signo := <-sigChan:
-			fmt.Fprintln(os.Stderr)
-			p.Info("received signal %d (%v)", signo, signo)
-		}
-	}
+	io.Copy(os.Stdout, &stdout)
 }
 
 func parseRole(s string) (fastcgi.Role, error) {

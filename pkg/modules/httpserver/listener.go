@@ -112,6 +112,7 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	ctx := RequestContext{
+		Ctx: l.ctx,
 		Log: l.Module.Log,
 
 		Request:        req,

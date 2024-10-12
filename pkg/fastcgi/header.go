@@ -3,14 +3,20 @@ package fastcgi
 import (
 	"bytes"
 	"fmt"
+	"net/http"
+	"strconv"
 	"strings"
 )
 
 // Reference: RFC 3875 6.3. Response Header Fields.
 
+var nonHTTPHeaderFields = map[string]struct{}{
+	"status": struct{}{},
+}
+
 type Header struct {
 	Fields []Field
-	Data   []byte
+	data   []byte
 }
 
 type Field struct {
@@ -28,21 +34,50 @@ func (h *Header) Field(name string) string {
 	return ""
 }
 
-func (h *Header) Parse(data []byte) (bool, []byte, error) {
-	h.Data = append(h.Data, data...)
+func (h *Header) Status() (int, string) {
+	s := h.Field("Status")
+	if s == "" {
+		// RFC 3875 6.3.3. Status: "Status code 200 'OK' indicates success, and
+		// is the default value assumed for a document response."
+		return 200, "OK"
+	}
 
-	for len(h.Data) > 0 {
-		if data2, found := skipEOL(h.Data); found {
-			h.Data = nil
+	codeString, reason, _ := strings.Cut(s, " ")
+
+	i64, err := strconv.ParseInt(codeString, 10, 64)
+	if err != nil || i64 < 1 || i64 > 999 {
+		return 200, "OK"
+	}
+
+	return int(i64), reason
+}
+
+func (h *Header) CopyToHTTPHeader(hh http.Header) {
+	for _, field := range h.Fields {
+		name := strings.ToLower(field.Name)
+		if _, found := nonHTTPHeaderFields[name]; found {
+			continue
+		}
+
+		hh.Add(field.Name, field.Value)
+	}
+}
+
+func (h *Header) Parse(data []byte) (bool, []byte, error) {
+	h.data = append(h.data, data...)
+
+	for len(h.data) > 0 {
+		if data2, found := skipEOL(h.data); found {
+			h.data = nil
 			return true, data2, nil
 		}
 
-		eol := bytes.IndexByte(h.Data, '\n')
+		eol := bytes.IndexByte(h.data, '\n')
 		if eol == -1 {
 			return false, nil, nil
 		}
 
-		fieldData := h.Data[:eol]
+		fieldData := h.data[:eol]
 		if len(fieldData) > 0 && fieldData[len(fieldData)-1] == '\r' {
 			fieldData = fieldData[:len(fieldData)-1]
 		}
@@ -55,7 +90,7 @@ func (h *Header) Parse(data []byte) (bool, []byte, error) {
 
 		h.Fields = append(h.Fields, field)
 
-		h.Data = h.Data[eol+1:]
+		h.data = h.data[eol+1:]
 	}
 
 	return false, nil, nil

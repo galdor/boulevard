@@ -13,6 +13,7 @@ import (
 
 	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/boulevard/pkg/fastcgi"
+	"go.n16f.net/boulevard/pkg/netutils"
 	"go.n16f.net/ejson"
 )
 
@@ -187,28 +188,12 @@ func (a *FastCGIAction) HandleRequest(ctx *RequestContext) {
 	}
 	defer stdin.Close()
 
-	res, err := a.client.SendRequest(fastcgi.RoleResponder, params, stdin, nil)
-	if err != nil {
-		a.Handler.Module.Log.Error("cannot send FastCGI request: %v", err)
-
-		status := 500
-
-		if errors.Is(err, fastcgi.ErrClientShutdown) {
-			status = 503
-		} else if errors.Is(err, fastcgi.ErrServerOverloaded) {
-			status = 503
-		} else if errors.Is(err, fastcgi.ErrTooManyConcurrentRequests) {
-			status = 503
-		}
-
-		ctx.ReplyError(status)
-		return
-	}
-
 	// We have to buffer the response body since we need to send a
 	// Content-Length header field. We could use chunked transfer encoding if
-	// the client supports HTTP 1.1, but we would still have to implement
-	// buffering for HTTP 1.0 clients.
+	// the client supports HTTP 1.1 but that would force FastCGI applications to
+	// send the content length as a response header field (something they do
+	// not), and we would still have to implement buffering for HTTP 1.0
+	// clients.
 	resBodyBuf := a.newResponseBodySpillBuffer()
 	defer func() {
 		if err := resBodyBuf.Close(); err != nil {
@@ -216,38 +201,19 @@ func (a *FastCGIAction) HandleRequest(ctx *RequestContext) {
 		}
 	}()
 
-	var reqAborted bool
-	for event := range res.Events {
-		if event == nil {
-			break
+	resHeader, err := a.client.SendRequest(ctx.Ctx, fastcgi.RoleResponder,
+		params, stdin, nil, resBodyBuf)
+	if err != nil {
+		if !netutils.IsConnectionClosedError(err) {
+			a.Handler.Module.Log.Error("cannot send FastCGI request: %v", err)
 		}
 
-		if event.Error != nil {
-			if !reqAborted {
-				a.Handler.Module.Log.Error("cannot read FastCGI response: %v",
-					event.Error)
-			}
-
-			ctx.ReplyError(502)
-			return
+		status := 500
+		if errors.Is(err, fastcgi.ErrServerOverloaded) {
+			status = 503
 		}
 
-		if !reqAborted {
-			if _, err := resBodyBuf.Write(event.Data); err != nil {
-				a.Handler.Module.Log.Error("cannot write spill buffer: %v", err)
-
-				if err := a.client.AbortRequest(res.RequestId); err != nil {
-					a.Handler.Module.Log.Error("cannot abort FastCGI "+
-						"request: %v", err)
-				}
-
-				reqAborted = true
-			}
-		}
-	}
-
-	if reqAborted {
-		ctx.ReplyError(500)
+		ctx.ReplyError(status)
 		return
 	}
 
@@ -260,13 +226,13 @@ func (a *FastCGIAction) HandleRequest(ctx *RequestContext) {
 	defer resBodyReader.Close()
 
 	header := ctx.ResponseWriter.Header()
-	res.CopyHeaderToHTTPHeader(header)
+	resHeader.CopyToHTTPHeader(header)
 
 	header.Set("Content-Length", strconv.FormatInt(resBodyBuf.Size(), 10))
 
 	// It would be nice to be able to use the reason string, but the
 	// http.ResponseWriter interface does not support it.
-	statusCode, _ := res.Status()
+	statusCode, _ := resHeader.Status()
 	ctx.Reply(statusCode, resBodyReader)
 }
 

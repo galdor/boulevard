@@ -1,6 +1,7 @@
 package fastcgi
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -20,7 +21,9 @@ func TestClientValues(t *testing.T) {
 	c := newTestClient(t)
 	defer c.Close()
 
-	values := c.Values()
+	ctx := context.Background()
+	values, err := c.FetchValues(ctx)
+	require.NoError(err)
 
 	require.Len(values, 1) // FPM only sets FCGI_MPXS_CONNS
 	require.Equal("FCGI_MPXS_CONNS", values[0].Name)
