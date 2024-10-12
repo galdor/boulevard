@@ -15,6 +15,8 @@ import (
 
 var (
 	ErrServerOverloaded = errors.New("server overloaded")
+	ErrRequestCancelled = errors.New("request cancelled")
+	ErrRequestTimeout   = errors.New("request timeout")
 )
 
 type Connection struct {
@@ -105,16 +107,44 @@ func (c *Connection) processValues(body *GetValuesResultBody) error {
 }
 
 func (c *Connection) SendRequest(ctx context.Context, role Role, params NameValuePairs, stdin, data io.Reader, stdout io.Writer) (*Header, error) {
-	if err := c.writeRequest(role, params, stdin, data, 1); err != nil {
-		return nil, fmt.Errorf("cannot write request: %w", err)
-	}
+	var header *Header
 
-	header, err := c.readResponse(stdout)
-	if err != nil {
-		return nil, fmt.Errorf("cannot read response: %w", err)
-	}
+	errChan := make(chan error)
+	defer close(errChan)
 
-	return header, nil
+	go func() {
+		if err := c.writeRequest(role, params, stdin, data, 1); err != nil {
+			errChan <- fmt.Errorf("cannot write request: %w", err)
+			return
+		}
+
+		var err error
+		header, err = c.readResponse(stdout)
+		if err != nil {
+			errChan <- fmt.Errorf("cannot read response: %w", err)
+			return
+		}
+
+		errChan <- nil
+	}()
+
+	select {
+	case err := <-errChan:
+		return header, err
+
+	case <-ctx.Done():
+		c.Close()
+		<-errChan
+
+		err := ctx.Err()
+		if err == context.Canceled {
+			err = ErrRequestCancelled
+		} else if err == context.DeadlineExceeded {
+			err = ErrRequestTimeout
+		}
+
+		return nil, err
+	}
 }
 
 func (c *Connection) readResponse(stdout io.Writer) (*Header, error) {

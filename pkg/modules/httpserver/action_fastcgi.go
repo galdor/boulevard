@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/boulevard/pkg/fastcgi"
@@ -23,6 +25,8 @@ const (
 
 	DefaultResponseBodyMemoryBufferSize = 128 * 1024
 	DefaultMaxResponseBodySize          = 4 * 1024 * 1024
+
+	DefaultRequestTimeout = 10.0 // seconds
 )
 
 type FastCGIActionCfg struct {
@@ -38,6 +42,8 @@ type FastCGIActionCfg struct {
 
 	ResponseBodyMemoryBufferSize *int64 `json:"response_body_memory_buffer_size,omitempty"`
 	MaxResponseBodySize          *int64 `json:"max_response_body_size,omitempty"`
+
+	RequestTimeout *float64 `json:"request_timeout,omitempty"` // seconds
 }
 
 func (cfg *FastCGIActionCfg) ValidateJSON(v *ejson.Validator) {
@@ -60,6 +66,10 @@ func (cfg *FastCGIActionCfg) ValidateJSON(v *ejson.Validator) {
 	if cfg.MaxResponseBodySize != nil {
 		v.CheckInt64Min("max_response_body_size", *cfg.MaxResponseBodySize, 0)
 	}
+
+	if timeout := cfg.RequestTimeout; timeout != nil {
+		v.CheckFloatMin("request_timeout", *cfg.RequestTimeout, 0.0)
+	}
 }
 
 type FastCGIAction struct {
@@ -77,6 +87,8 @@ type FastCGIAction struct {
 
 	resBodyMemBufSize int64
 	maxResBodySize    int64
+
+	requestTimeout time.Duration
 }
 
 func NewFastCGIAction(h *Handler, cfg FastCGIActionCfg) (*FastCGIAction, error) {
@@ -131,6 +143,12 @@ func NewFastCGIAction(h *Handler, cfg FastCGIActionCfg) (*FastCGIAction, error) 
 	if size := cfg.MaxResponseBodySize; size != nil {
 		a.maxResBodySize = *size
 	}
+
+	requestTimeout := DefaultRequestTimeout
+	if timeout := cfg.RequestTimeout; timeout != nil {
+		requestTimeout = *timeout
+	}
+	a.requestTimeout = time.Duration(requestTimeout * float64(time.Second))
 
 	return &a, nil
 }
@@ -201,7 +219,11 @@ func (a *FastCGIAction) HandleRequest(ctx *RequestContext) {
 		}
 	}()
 
-	resHeader, err := a.client.SendRequest(ctx.Ctx, fastcgi.RoleResponder,
+	timeoutCtx, cancelTimeoutCtx := context.WithTimeout(ctx.Ctx,
+		a.requestTimeout)
+	defer cancelTimeoutCtx()
+
+	resHeader, err := a.client.SendRequest(timeoutCtx, fastcgi.RoleResponder,
 		params, stdin, nil, resBodyBuf)
 	if err != nil {
 		if !netutils.IsConnectionClosedError(err) {
@@ -211,6 +233,8 @@ func (a *FastCGIAction) HandleRequest(ctx *RequestContext) {
 		status := 500
 		if errors.Is(err, fastcgi.ErrServerOverloaded) {
 			status = 503
+		} else if errors.Is(err, fastcgi.ErrRequestTimeout) {
+			status = 504
 		}
 
 		ctx.ReplyError(status)

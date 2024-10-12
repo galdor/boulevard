@@ -90,7 +90,6 @@ func (c *Client) SendRequest(ctx context.Context, role Role, params NameValuePai
 
 	header, err := conn.SendRequest(ctx, role, params, stdin, data, stdout)
 	if err != nil {
-		c.Log.Error("cannot send request: %v", err)
 		conn.Close()
 		return nil, err
 	}
