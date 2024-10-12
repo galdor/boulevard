@@ -111,9 +111,11 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		subpath = subpath[1:]
 	}
 
+	logger := l.Module.Log.Child("", nil)
+
 	ctx := RequestContext{
 		Ctx: l.ctx,
-		Log: l.Module.Log,
+		Log: logger,
 
 		Request:        req,
 		ResponseWriter: w,
@@ -140,7 +142,10 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		ctx.ReplyError(500)
 		return
 	}
+
 	ctx.ClientAddress = clientAddr
+
+	logger.Data["address"] = clientAddr
 
 	// Identify the host (hostname or IP address) provided by the client either
 	// in the Host header field for HTTP 1.x (defaulting to the host part of the

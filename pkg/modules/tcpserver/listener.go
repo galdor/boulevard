@@ -104,7 +104,7 @@ func (l *Listener) listen() {
 }
 
 func (l *Listener) handleConnection(conn net.Conn) {
-	addr, port, err := netutils.ConnectionRemoteAddress(conn)
+	addr, _, err := netutils.ConnectionRemoteAddress(conn)
 	if err != nil {
 		l.Module.Log.Error("cannot identify connection remote address: %v", err)
 		return
@@ -120,7 +120,7 @@ func (l *Listener) handleConnection(conn net.Conn) {
 	}
 
 	logData := log.Data{
-		"connection": fmt.Sprintf("%s:%d", addr, port),
+		"address": addr.String(),
 	}
 
 	logger := l.Module.Log.Child("", logData)

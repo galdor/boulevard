@@ -18,6 +18,7 @@ import (
 	"go.n16f.net/boulevard/pkg/fastcgi"
 	"go.n16f.net/boulevard/pkg/netutils"
 	"go.n16f.net/ejson"
+	"go.n16f.net/log"
 )
 
 const (
@@ -76,6 +77,7 @@ func (cfg *FastCGIActionCfg) ValidateJSON(v *ejson.Validator) {
 type FastCGIAction struct {
 	Handler *Handler
 	Cfg     FastCGIActionCfg
+	Log     *log.Logger
 
 	client *fastcgi.Client
 
@@ -96,6 +98,7 @@ func NewFastCGIAction(h *Handler, cfg FastCGIActionCfg) (*FastCGIAction, error) 
 	a := FastCGIAction{
 		Handler: h,
 		Cfg:     cfg,
+		Log:     h.Module.Log,
 	}
 
 	if s := cfg.ScriptRegexp; s != "" {
@@ -156,7 +159,7 @@ func NewFastCGIAction(h *Handler, cfg FastCGIActionCfg) (*FastCGIAction, error) 
 
 func (a *FastCGIAction) Start() error {
 	clientCfg := fastcgi.ClientCfg{
-		Log:     a.Handler.Module.Log,
+		Log:     a.Log,
 		Address: a.Cfg.Address,
 	}
 
@@ -174,8 +177,7 @@ func (a *FastCGIAction) Stop() {
 	a.client.Close()
 
 	if err := os.RemoveAll(a.tmpDirPath); err != nil {
-		a.Handler.Module.Log.Error("cannot delete directory %q: %v",
-			a.tmpDirPath, err)
+		a.Log.Error("cannot delete directory %q: %v", a.tmpDirPath, err)
 	}
 }
 
@@ -187,13 +189,13 @@ func (a *FastCGIAction) HandleRequest(ctx *RequestContext) {
 	reqBodyBuf := a.newRequestBodySpillBuffer()
 	defer func() {
 		if err := reqBodyBuf.Close(); err != nil {
-			a.Handler.Module.Log.Error("cannot close spill buffer: %v", err)
+			ctx.Log.Error("cannot close spill buffer: %v", err)
 		}
 	}()
 
 	reqBodySize, err := io.Copy(reqBodyBuf, ctx.Request.Body)
 	if err != nil {
-		a.Handler.Module.Log.Error("cannot copy request body: %v", err)
+		ctx.Log.Error("cannot copy request body: %v", err)
 		ctx.ReplyError(500)
 		return
 	}
@@ -201,7 +203,7 @@ func (a *FastCGIAction) HandleRequest(ctx *RequestContext) {
 	params := a.requestParameters(ctx, reqBodySize)
 	stdin, err := reqBodyBuf.Reader()
 	if err != nil {
-		a.Handler.Module.Log.Error("cannot read spill buffer: %v", err)
+		ctx.Log.Error("cannot read spill buffer: %v", err)
 		ctx.ReplyError(500)
 		return
 	}
@@ -216,7 +218,7 @@ func (a *FastCGIAction) HandleRequest(ctx *RequestContext) {
 	resBodyBuf := a.newResponseBodySpillBuffer()
 	defer func() {
 		if err := resBodyBuf.Close(); err != nil {
-			a.Handler.Module.Log.Error("cannot close spill buffer: %v", err)
+			ctx.Log.Error("cannot close spill buffer: %v", err)
 		}
 	}()
 
@@ -230,7 +232,7 @@ func (a *FastCGIAction) HandleRequest(ctx *RequestContext) {
 		params, stdin, nil, resBodyBuf, &stderr)
 	if err != nil {
 		if !netutils.IsConnectionClosedError(err) {
-			a.Handler.Module.Log.Error("cannot send FastCGI request: %v", err)
+			ctx.Log.Error("cannot send FastCGI request: %v", err)
 		}
 
 		status := 500
@@ -245,12 +247,12 @@ func (a *FastCGIAction) HandleRequest(ctx *RequestContext) {
 	}
 
 	if stderr.Len() > 0 {
-		a.Handler.Module.Log.Error("FastCGI error: %s", stderr.String())
+		ctx.Log.Error("FastCGI error: %s", stderr.String())
 	}
 
 	resBodyReader, err := resBodyBuf.Reader()
 	if err != nil {
-		a.Handler.Module.Log.Error("cannot read spill buffer: %v", err)
+		ctx.Log.Error("cannot read spill buffer: %v", err)
 		ctx.ReplyError(500)
 		return
 	}

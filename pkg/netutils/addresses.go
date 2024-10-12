@@ -39,3 +39,11 @@ func ParseNumericAddress(s string) (net.IP, int, error) {
 
 	return ipAddress, int(portNumber), nil
 }
+
+func FormatNumericAddress(addr net.IP, portNumber int) string {
+	if len(addr) == net.IPv6len {
+		return fmt.Sprintf("[%v]:%d", addr, portNumber)
+	} else {
+		return fmt.Sprintf("%v:%d", addr, portNumber)
+	}
+}
