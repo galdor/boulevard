@@ -61,7 +61,7 @@ http_server:
         path: "/fpm/"
       fastcgi:
         address: "localhost:9000"
-        path: "/app"
+        path: "/app/test"
         script_regexp: "^.+?\\.php"
 
 ---

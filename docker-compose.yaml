@@ -23,7 +23,7 @@ services:
     ports:
       - "9000:9000"
     volumes:
-      - "./docker-compose/fpm:/app:ro"
+      - "./docker-compose/fpm:/app/test:ro"
   nginx:
     container_name: "boulevard-nginx"
     image: "nginx:1.27"
