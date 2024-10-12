@@ -11,6 +11,8 @@ acme:
     - "bob@example.com"
   pebble: true
 
+pprof_address: ":6060"
+
 ---
 module: "web-server"
 http_server:

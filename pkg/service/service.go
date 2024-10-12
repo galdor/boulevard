@@ -2,6 +2,8 @@ package service
 
 import (
 	"fmt"
+	"net/http"
+	_ "net/http/pprof"
 	"sync"
 
 	"go.n16f.net/acme"
@@ -63,6 +65,8 @@ func (s *Service) Start() error {
 		return err
 	}
 
+	s.startPProf()
+
 	if err := s.startModules(); err != nil {
 		return err
 	}
@@ -79,4 +83,17 @@ func (s *Service) Stop() {
 
 	s.stopModules()
 	s.stopACMEClient()
+}
+
+func (s *Service) startPProf() {
+	address := s.Cfg.PProfAddress
+	if address == "" {
+		return
+	}
+
+	go func() {
+		if err := http.ListenAndServe(address, nil); err != nil {
+			s.Log.Error("cannot start pprof: %v", err)
+		}
+	}()
 }

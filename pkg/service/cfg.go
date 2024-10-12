@@ -16,8 +16,9 @@ import (
 type ServiceCfg struct {
 	BuildId string `json:"-"` // [1]
 
-	Logger *log.LoggerCfg `json:"logger"`
-	ACME   *ACMECfg       `json:"acme"`
+	Logger       *log.LoggerCfg `json:"logger,omitempty"`
+	ACME         *ACMECfg       `json:"acme,omitempty"`
+	PProfAddress string         `json:"pprof_address,omitempty"`
 
 	ModuleInfo []*boulevard.ModuleInfo `json:"-"` // [1]
 	Modules    []*ModuleCfg            `json:"-"` // [2]
@@ -28,6 +29,10 @@ type ServiceCfg struct {
 
 func (cfg *ServiceCfg) ValidateJSON(v *ejson.Validator) {
 	v.CheckOptionalObject("logger", cfg.Logger)
+
+	if cfg.PProfAddress != "" {
+		v.CheckNetworkAddress("pprof_address", cfg.PProfAddress)
+	}
 }
 
 func (cfg *ServiceCfg) Load(filePath string) error {
