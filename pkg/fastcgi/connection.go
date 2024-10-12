@@ -106,7 +106,7 @@ func (c *Connection) processValues(body *GetValuesResultBody) error {
 	return nil
 }
 
-func (c *Connection) SendRequest(ctx context.Context, role Role, params NameValuePairs, stdin, data io.Reader, stdout io.Writer) (*Header, error) {
+func (c *Connection) SendRequest(ctx context.Context, role Role, params NameValuePairs, stdin, data io.Reader, stdout io.Writer, stderr *bytes.Buffer) (*Header, error) {
 	var header *Header
 
 	errChan := make(chan error)
@@ -119,7 +119,7 @@ func (c *Connection) SendRequest(ctx context.Context, role Role, params NameValu
 		}
 
 		var err error
-		header, err = c.readResponse(stdout)
+		header, err = c.readResponse(stdout, stderr)
 		if err != nil {
 			errChan <- fmt.Errorf("cannot read response: %w", err)
 			return
@@ -147,10 +147,9 @@ func (c *Connection) SendRequest(ctx context.Context, role Role, params NameValu
 	}
 }
 
-func (c *Connection) readResponse(stdout io.Writer) (*Header, error) {
+func (c *Connection) readResponse(stdout io.Writer, stderr *bytes.Buffer) (*Header, error) {
 	var header Header
 	var headerRead bool
-	var stderr bytes.Buffer
 
 loop:
 	for {

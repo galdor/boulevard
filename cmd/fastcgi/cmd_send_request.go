@@ -35,12 +35,18 @@ func cmdSendRequest(p *program.Program) {
 	}
 
 	var stdout bytes.Buffer
+	var stderr bytes.Buffer
 
 	client := newClient(p, address)
 
-	header, err := client.SendRequest(ctx, role, params, stdin, nil, &stdout)
+	header, err := client.SendRequest(ctx, role, params, stdin, nil, &stdout,
+		&stderr)
 	if err != nil {
 		p.Fatal("cannot send request: %v", err)
+	}
+
+	if stderr.Len() > 0 {
+		p.Error("FastCGI error: %s", stderr.String())
 	}
 
 	if p.IsOptionSet("header") {

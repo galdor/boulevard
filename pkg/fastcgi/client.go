@@ -1,6 +1,7 @@
 package fastcgi
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -81,14 +82,15 @@ func (c *Client) FetchValues(ctx context.Context) (NameValuePairs, error) {
 	return conn.Values(), nil
 }
 
-func (c *Client) SendRequest(ctx context.Context, role Role, params NameValuePairs, stdin, data io.Reader, stdout io.Writer) (*Header, error) {
+func (c *Client) SendRequest(ctx context.Context, role Role, params NameValuePairs, stdin, data io.Reader, stdout io.Writer, stderr *bytes.Buffer) (*Header, error) {
 	conn, err := c.acquireConnection(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer c.releaseConnection(conn)
 
-	header, err := conn.SendRequest(ctx, role, params, stdin, data, stdout)
+	header, err := conn.SendRequest(ctx, role, params, stdin, data, stdout,
+		stderr)
 	if err != nil {
 		conn.Close()
 		return nil, err

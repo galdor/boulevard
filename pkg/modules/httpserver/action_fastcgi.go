@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -219,12 +220,14 @@ func (a *FastCGIAction) HandleRequest(ctx *RequestContext) {
 		}
 	}()
 
+	var stderr bytes.Buffer
+
 	timeoutCtx, cancelTimeoutCtx := context.WithTimeout(ctx.Ctx,
 		a.requestTimeout)
 	defer cancelTimeoutCtx()
 
 	resHeader, err := a.client.SendRequest(timeoutCtx, fastcgi.RoleResponder,
-		params, stdin, nil, resBodyBuf)
+		params, stdin, nil, resBodyBuf, &stderr)
 	if err != nil {
 		if !netutils.IsConnectionClosedError(err) {
 			a.Handler.Module.Log.Error("cannot send FastCGI request: %v", err)
@@ -239,6 +242,10 @@ func (a *FastCGIAction) HandleRequest(ctx *RequestContext) {
 
 		ctx.ReplyError(status)
 		return
+	}
+
+	if stderr.Len() > 0 {
+		a.Handler.Module.Log.Error("FastCGI error: %s", stderr.String())
 	}
 
 	resBodyReader, err := resBodyBuf.Reader()
