@@ -9,7 +9,7 @@ import (
 	"go.n16f.net/boulevard/pkg/httputils"
 )
 
-func TestServiceBasicAuth(t *testing.T) {
+func TestHTTPBasicAuth(t *testing.T) {
 	require := require.New(t)
 
 	c := testHTTPClient(t)
@@ -73,7 +73,7 @@ func TestServiceBasicAuth(t *testing.T) {
 	require.Equal(200, res.StatusCode)
 }
 
-func TestServiceBearerAuth(t *testing.T) {
+func TestHTTPBearerAuth(t *testing.T) {
 	require := require.New(t)
 
 	c := testHTTPClient(t)

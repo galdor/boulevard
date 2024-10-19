@@ -60,6 +60,33 @@ http_server:
           token_file_path: "test/bearer-tokens.txt"
       reply:
         status: 200
+    # Nested handlers tests
+    - match:
+        path: "/nested/"
+      reply:
+        body: "default"
+      handlers:
+        - match:
+            path: "/nested/foo"
+          reply:
+            body: "foo"
+        - match:
+            path: "/nested/bar/"
+          authentication:
+            bearer:
+              tokens:
+                - "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
+          reply:
+            body: "bar"
+          handlers:
+            - match:
+                path: "/nested/bar/x"
+              reply:
+                body: "x"
+            - match:
+                path: "/nested/bar/y"
+              reply:
+                body: "y"
     # Reverse proxy tests
     - match:
         path: "/nginx/"

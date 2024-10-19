@@ -16,6 +16,8 @@ type HandlerCfg struct {
 	ReverseProxy *ReverseProxyActionCfg `json:"reverse_proxy,omitempty"`
 	Status       *StatusActionCfg       `json:"status,omitempty"`
 	FastCGI      *FastCGIActionCfg      `json:"fastcgi,omitempty"`
+
+	Handlers []*HandlerCfg `json:"handlers,omitempty"`
 }
 
 func (cfg *HandlerCfg) ValidateJSON(v *ejson.Validator) {
@@ -40,7 +42,10 @@ func (cfg *HandlerCfg) ValidateJSON(v *ejson.Validator) {
 	}
 
 	if nbActions == 0 {
-		v.AddError(nil, "missing_action", "handler must contain an action")
+		if len(cfg.Handlers) == 0 {
+			v.AddError(nil, "missing_action",
+				"handler with no subhandlers must contain an action")
+		}
 	} else if nbActions > 1 {
 		v.AddError(nil, "multiple_actions",
 			"handler must contain a single action")
@@ -51,6 +56,8 @@ func (cfg *HandlerCfg) ValidateJSON(v *ejson.Validator) {
 	v.CheckOptionalObject("reverse_proxy", cfg.ReverseProxy)
 	v.CheckOptionalObject("status", cfg.Status)
 	v.CheckOptionalObject("fastcgi", cfg.FastCGI)
+
+	v.CheckObjectArray("handlers", cfg.Handlers)
 }
 
 type MatchCfg struct {
@@ -94,13 +101,15 @@ func (cfg *MatchCfg) UnmarshalJSON(data []byte) error {
 
 type Handler struct {
 	Module *Module
-	Cfg    HandlerCfg
+	Cfg    *HandlerCfg
 
 	Auth   Auth
 	Action Action
+
+	Handlers []*Handler
 }
 
-func NewHandler(mod *Module, cfg HandlerCfg) (*Handler, error) {
+func NewHandler(mod *Module, cfg *HandlerCfg) (*Handler, error) {
 	h := Handler{
 		Module: mod,
 		Cfg:    cfg,
@@ -130,11 +139,23 @@ func NewHandler(mod *Module, cfg HandlerCfg) (*Handler, error) {
 	case cfg.FastCGI != nil:
 		action, err = NewFastCGIAction(&h, *cfg.FastCGI)
 	default:
-		return nil, fmt.Errorf("missing action configuration")
+		if len(cfg.Handlers) == 0 {
+			return nil, fmt.Errorf("missing action configuration")
+		}
 	}
 
 	if err != nil {
 		return nil, fmt.Errorf("cannot create action: %w", err)
+	}
+
+	h.Handlers = make([]*Handler, len(cfg.Handlers))
+	for i, cfg2 := range cfg.Handlers {
+		h2, err := NewHandler(mod, cfg2)
+		if err != nil {
+			return nil, fmt.Errorf("cannot create subhandler: %w", err)
+		}
+
+		h.Handlers[i] = h2
 	}
 
 	h.Action = action
@@ -143,14 +164,34 @@ func NewHandler(mod *Module, cfg HandlerCfg) (*Handler, error) {
 }
 
 func (h *Handler) Start() error {
-	return h.Action.Start()
+	if h.Action != nil {
+		return h.Action.Start()
+	}
+
+	for _, h2 := range h.Handlers {
+		if err := h2.Start(); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (h *Handler) Stop() {
-	h.Action.Stop()
+	for _, h2 := range h.Handlers {
+		h2.Stop()
+	}
+
+	if h.Action != nil {
+		h.Action.Stop()
+	}
 }
 
 func (h *Handler) matchRequest(ctx *RequestContext) bool {
+	// Careful here, we only update the request context if we have a full match.
+	// This is important because we try to match handlers recursively and fall
+	// back to the last parent handler which matched.
+
 	matchSpec := h.Cfg.Match
 	if matchSpec.Method != "" && matchSpec.Method != ctx.Request.Method {
 		return false

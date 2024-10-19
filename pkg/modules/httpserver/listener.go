@@ -176,5 +176,10 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Handle the request
+	if h.Action == nil {
+		ctx.ReplyError(501)
+		return
+	}
+
 	h.Action.HandleRequest(&ctx)
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestServiceReverseProxy(t *testing.T) {
+func TestHTTPReverseProxy(t *testing.T) {
 	require := require.New(t)
 
 	c := testHTTPClient(t)

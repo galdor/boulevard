@@ -29,6 +29,17 @@ http_server:
           Server: "Boulevard"
         body: "Hello world!\n"
     - match:
+        path: "/nested/"
+      handlers:
+        - match:
+            method: "POST"
+          reply:
+            body: "POST!\n"
+        - match:
+            path: "/nested/foo"
+          reply:
+            body: "Foo!\n"
+    - match:
         path: "/status"
       status: {}
     - match:

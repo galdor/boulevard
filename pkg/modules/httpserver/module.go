@@ -53,7 +53,7 @@ func (mod *Module) Start(modCfg boulevard.ModuleCfg, modData *boulevard.ModuleDa
 
 	mod.handlers = make([]*Handler, len(mod.Cfg.Handlers))
 	for i, cfg := range mod.Cfg.Handlers {
-		handler, err := NewHandler(mod, *cfg)
+		handler, err := NewHandler(mod, cfg)
 		if err != nil {
 			return fmt.Errorf("cannot create handler: %w", err)
 		}
@@ -105,11 +105,21 @@ func (mod *Module) Stop() {
 }
 
 func (mod *Module) findHandler(ctx *RequestContext) *Handler {
-	for _, h := range mod.handlers {
-		if h.matchRequest(ctx) {
-			return h
+	var find func([]*Handler, *Handler) *Handler
+
+	find = func(handlers []*Handler, lastMatch *Handler) *Handler {
+		for _, h := range handlers {
+			if h.matchRequest(ctx) {
+				if h2 := find(h.Handlers, h); h2 != nil {
+					return h2
+				}
+
+				return h
+			}
 		}
+
+		return lastMatch
 	}
 
-	return nil
+	return find(mod.handlers, nil)
 }
