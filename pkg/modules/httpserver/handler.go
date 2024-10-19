@@ -183,11 +183,17 @@ func NewHandler(mod *Module, cfg *HandlerCfg) (*Handler, error) {
 
 func (h *Handler) Start() error {
 	if h.Action != nil {
-		return h.Action.Start()
+		if err := h.Action.Start(); err != nil {
+			return err
+		}
 	}
 
-	for _, h2 := range h.Handlers {
+	for i, h2 := range h.Handlers {
 		if err := h2.Start(); err != nil {
+			for j := range i {
+				h.Handlers[j].Stop()
+			}
+
 			return err
 		}
 	}
