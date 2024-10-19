@@ -290,19 +290,18 @@ func (a *FastCGIAction) requestParameters(ctx *RequestContext, reqBodySize int64
 	header := req.Header
 
 	var pathInfo string
-	var scriptName string
+	var scriptName string // must not start with '/'
 
-	absSubpath := "/" + ctx.Subpath
 	if a.scriptRE == nil {
-		scriptName = absSubpath
+		scriptName = ctx.Subpath
 		pathInfo = "/"
 	} else {
-		if match := a.scriptRE.FindString(absSubpath); match == "" {
-			scriptName = absSubpath
+		if match := a.scriptRE.FindString("/" + ctx.Subpath); match == "" {
+			scriptName = ctx.Subpath
 			pathInfo = "/"
 		} else {
-			scriptName = match
-			pathInfo = strings.TrimPrefix(absSubpath, match)
+			scriptName = strings.TrimPrefix(match, "/")
+			pathInfo = path.Join("/", strings.TrimPrefix(ctx.Subpath, match))
 		}
 	}
 
