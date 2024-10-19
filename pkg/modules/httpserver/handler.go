@@ -3,6 +3,7 @@ package httpserver
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 
 	"go.n16f.net/ejson"
 )
@@ -61,17 +62,25 @@ func (cfg *HandlerCfg) ValidateJSON(v *ejson.Validator) {
 }
 
 type MatchCfg struct {
-	Method      string       `json:"method,omitempty"`
-	Path        string       `json:"path,omitempty"`
-	PathPattern *PathPattern `json:"-"`
+	Method string `json:"method,omitempty"`
+
+	Path        string `json:"path,omitempty"`
+	pathPattern *PathPattern
+
+	PathRegexp string `json:"path_regexp,omitempty"`
+	pathRE     *regexp.Regexp
 }
 
 func (cfg *MatchCfg) MarshalJSON() ([]byte, error) {
 	type MatchCfg2 MatchCfg
 	cfg2 := MatchCfg2(*cfg)
 
-	if cfg2.PathPattern != nil {
-		cfg2.Path = cfg2.PathPattern.String()
+	if cfg2.pathPattern != nil {
+		cfg2.Path = cfg2.pathPattern.String()
+	}
+
+	if cfg2.pathRE != nil {
+		cfg2.PathRegexp = cfg2.pathRE.String()
 	}
 
 	return json.Marshal(cfg2)
@@ -92,7 +101,16 @@ func (cfg *MatchCfg) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("cannot parse path pattern: %w", err)
 		}
 
-		cfg2.PathPattern = &pp
+		cfg2.pathPattern = &pp
+	}
+
+	if cfg2.PathRegexp != "" {
+		re, err := regexp.Compile(cfg2.PathRegexp)
+		if err != nil {
+			return fmt.Errorf("cannot compile regexp: %w", err)
+		}
+
+		cfg2.pathRE = re
 	}
 
 	*cfg = MatchCfg(cfg2)
@@ -197,13 +215,19 @@ func (h *Handler) matchRequest(ctx *RequestContext) bool {
 		return false
 	}
 
-	if pattern := matchSpec.PathPattern; pattern != nil {
+	if pattern := matchSpec.pathPattern; pattern != nil {
 		match, subpath := pattern.Match(ctx.Request.URL.Path)
 		if !match {
 			return false
 		}
 
 		ctx.Subpath = subpath
+	}
+
+	if re := matchSpec.pathRE; re != nil {
+		if !re.MatchString(ctx.Request.URL.Path) {
+			return false
+		}
 	}
 
 	if h.Auth != nil {
