@@ -32,10 +32,11 @@ const (
 )
 
 type FastCGIActionCfg struct {
-	Address      string            `json:"address"`
-	Parameters   map[string]string `json:"parameters,omitempty"`
-	Path         string            `json:"path,omitempty"`
-	ScriptRegexp string            `json:"script_regexp,omitempty"`
+	Address       string            `json:"address"`
+	Parameters    map[string]string `json:"parameters,omitempty"`
+	Path          string            `json:"path,omitempty"`
+	DefaultScript string            `json:"default_script,omitempty"`
+	ScriptRegexp  string            `json:"script_regexp,omitempty"`
 
 	TemporaryDirectoryPath string `json:"temporary_directory_path,omitempty"`
 
@@ -292,16 +293,21 @@ func (a *FastCGIAction) requestParameters(ctx *RequestContext, reqBodySize int64
 	var pathInfo string
 	var scriptName string // must not start with '/'
 
+	subpath := ctx.Subpath // relative
+	if subpath == "" {
+		subpath = a.Cfg.DefaultScript
+	}
+
 	if a.scriptRE == nil {
-		scriptName = ctx.Subpath
+		scriptName = subpath
 		pathInfo = "/"
 	} else {
-		if match := a.scriptRE.FindString("/" + ctx.Subpath); match == "" {
-			scriptName = ctx.Subpath
+		if match := a.scriptRE.FindString("/" + subpath); match == "" {
+			scriptName = subpath
 			pathInfo = "/"
 		} else {
 			scriptName = strings.TrimPrefix(match, "/")
-			pathInfo = path.Join("/", strings.TrimPrefix(ctx.Subpath, match))
+			pathInfo = path.Join("/", strings.TrimPrefix(subpath, match))
 		}
 	}
 
