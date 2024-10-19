@@ -1,0 +1,27 @@
+\input texinfo
+@setfilename manual.info
+@settitle Boulevard User Manual
+
+@copying
+Copyright Nicolas Martyanoff
+@end copying
+
+@titlepage
+@end titlepage
+
+@contents
+
+@node Top
+@top Boulevard User Manual
+
+@menu
+@detailmenu
+@end detailmenu
+@end menu
+
+@include introduction.texi
+@include configuration.texi
+@include operations.texi
+@include project.texi
+
+@bye
