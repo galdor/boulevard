@@ -9,8 +9,9 @@ import (
 )
 
 type HandlerCfg struct {
-	Match MatchCfg `json:"match"`
-	Auth  *AuthCfg `json:"authentication,omitempty"`
+	Match        MatchCfg         `json:"match"`
+	Auth         *AuthCfg         `json:"authentication,omitempty"`
+	AccessLogger *AccessLoggerCfg `json:"access_logs,omitempty"`
 
 	Reply        *ReplyActionCfg        `json:"reply,omitempty"`
 	Serve        *ServeActionCfg        `json:"serve,omitempty"`
@@ -24,6 +25,7 @@ type HandlerCfg struct {
 func (cfg *HandlerCfg) ValidateJSON(v *ejson.Validator) {
 	v.CheckObject("match", &cfg.Match)
 	v.CheckOptionalObject("authentication", cfg.Auth)
+	v.CheckOptionalObject("access_logs", cfg.AccessLogger)
 
 	nbActions := 0
 	if cfg.Serve != nil {
@@ -121,8 +123,9 @@ type Handler struct {
 	Module *Module
 	Cfg    *HandlerCfg
 
-	Auth   Auth
-	Action Action
+	AccessLogger *AccessLogger
+	Auth         Auth
+	Action       Action
 
 	Handlers []*Handler
 }
@@ -133,9 +136,22 @@ func NewHandler(mod *Module, cfg *HandlerCfg) (*Handler, error) {
 		Cfg:    cfg,
 	}
 
+	if logCfg := cfg.AccessLogger; logCfg != nil {
+		log, err := mod.NewAccessLogger(logCfg)
+		if err != nil {
+			return nil, fmt.Errorf("cannot create access logger: %w", err)
+		}
+
+		h.AccessLogger = log
+	}
+
 	if authCfg := cfg.Auth; authCfg != nil {
 		auth, err := NewAuth(authCfg)
 		if err != nil {
+			if h.AccessLogger != nil {
+				h.AccessLogger.Close()
+			}
+
 			return nil, fmt.Errorf("cannot initialize authentication: %w", err)
 		}
 
@@ -209,6 +225,10 @@ func (h *Handler) Stop() {
 	if h.Action != nil {
 		h.Action.Stop()
 	}
+
+	if h.AccessLogger != nil {
+		h.AccessLogger.Close()
+	}
 }
 
 func (h *Handler) matchRequest(ctx *RequestContext) bool {
@@ -238,6 +258,10 @@ func (h *Handler) matchRequest(ctx *RequestContext) bool {
 
 	if h.Auth != nil {
 		ctx.Auth = h.Auth
+	}
+
+	if h.AccessLogger != nil {
+		ctx.AccessLogger = h.AccessLogger
 	}
 
 	return true

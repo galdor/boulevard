@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"go.n16f.net/boulevard/pkg/netutils"
 	"go.n16f.net/log"
@@ -106,6 +109,8 @@ func (l *Listener) connState(conn net.Conn, state http.ConnState) {
 }
 
 func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	start := time.Now()
+
 	subpath := req.URL.Path
 	if len(subpath) > 0 && subpath[0] == '/' {
 		subpath = subpath[1:]
@@ -121,7 +126,14 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		ResponseWriter: w,
 
 		Subpath: subpath,
+
+		Vars: make(map[string]string),
 	}
+
+	ctx.Vars["http.request.method"] = strings.ToUpper(req.Method)
+	ctx.Vars["http.request.path"] = req.URL.Path
+
+	ctx.Vars["http.response.status"] = "-"
 
 	defer func() {
 		if v := recover(); v != nil {
@@ -135,6 +147,8 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	ctx.Listener = l
 
+	ctx.AccessLogger = l.Module.accessLogger
+
 	// Identify the numeric IP address of the client
 	clientAddr, _, err := netutils.ParseNumericAddress(req.RemoteAddr)
 	if err != nil {
@@ -147,6 +161,8 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	logger.Data["address"] = clientAddr
 
+	ctx.Vars["http.client_address"] = clientAddr.String()
+
 	// Identify the host (hostname or IP address) provided by the client either
 	// in the Host header field for HTTP 1.x (defaulting to the host part of the
 	// request URI if the Host field is not set in HTTP 1.0) or in the
@@ -158,7 +174,10 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		ctx.ReplyError(500)
 		return
 	}
+
 	ctx.Host = host
+
+	ctx.Vars["http.request.host"] = host
 
 	// Find the first handler matching the request
 	h := l.Module.findHandler(&ctx)
@@ -170,7 +189,7 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// Authenticate the request if necessary
 	if ctx.Auth != nil {
 		if err := ctx.Auth.AuthenticateRequest(&ctx); err != nil {
-			ctx.Log.Error("authentication error: %v", err)
+			ctx.Log.Error("cannot authenticate request: %v", err)
 			return
 		}
 	}
@@ -182,4 +201,16 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	h.Action.HandleRequest(&ctx)
+
+	// Log the request
+	if ctx.AccessLogger != nil {
+		responseTime := time.Since(start)
+		responseTimeString := strconv.FormatFloat(responseTime.Seconds(),
+			'f', -1, 32)
+		ctx.Vars["http.response_time"] = responseTimeString
+
+		if err := ctx.AccessLogger.Log(&ctx); err != nil {
+			l.Module.Log.Error("cannot log request: %w", err)
+		}
+	}
 }

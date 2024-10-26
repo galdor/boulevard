@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"go.n16f.net/log"
@@ -22,10 +23,15 @@ type RequestContext struct {
 	Host          string
 	Subpath       string // always relative
 
-	Auth Auth
+	AccessLogger *AccessLogger
+	Auth         Auth
+
+	Vars map[string]string
 }
 
 func (ctx *RequestContext) Reply(status int, data io.Reader) {
+	ctx.Vars["http.response.status"] = strconv.Itoa(status)
+
 	ctx.ResponseWriter.WriteHeader(status)
 
 	if data != nil {

@@ -18,8 +18,9 @@ func ModuleInfo() *boulevard.ModuleInfo {
 }
 
 type ModuleCfg struct {
-	Listeners []*netutils.TCPListenerCfg `json:"listeners"`
-	Handlers  []*HandlerCfg              `json:"handlers,omitempty"`
+	Listeners    []*netutils.TCPListenerCfg `json:"listeners"`
+	Handlers     []*HandlerCfg              `json:"handlers,omitempty"`
+	AccessLogger *AccessLoggerCfg           `json:"access_logs,omitempty"`
 }
 
 func (cfg *ModuleCfg) ValidateJSON(v *ejson.Validator) {
@@ -27,6 +28,8 @@ func (cfg *ModuleCfg) ValidateJSON(v *ejson.Validator) {
 	v.CheckObjectArray("listeners", cfg.Listeners)
 
 	v.CheckObjectArray("handlers", cfg.Handlers)
+
+	v.CheckOptionalObject("access_logs", cfg.AccessLogger)
 }
 
 func NewModuleCfg() boulevard.ModuleCfg {
@@ -38,8 +41,11 @@ type Module struct {
 	Log  *log.Logger
 	Data *boulevard.ModuleData
 
-	listeners []*Listener
-	handlers  []*Handler
+	Vars map[string]string
+
+	listeners    []*Listener
+	handlers     []*Handler
+	accessLogger *AccessLogger
 }
 
 func NewModule() boulevard.Module {
@@ -50,6 +56,9 @@ func (mod *Module) Start(modCfg boulevard.ModuleCfg, modData *boulevard.ModuleDa
 	mod.Cfg = modCfg.(*ModuleCfg)
 	mod.Log = modData.Logger
 	mod.Data = modData
+
+	mod.Vars = make(map[string]string)
+	mod.Vars["module.name"] = modData.Name
 
 	mod.handlers = make([]*Handler, len(mod.Cfg.Handlers))
 	for i, cfg := range mod.Cfg.Handlers {
@@ -91,6 +100,15 @@ func (mod *Module) Start(modCfg boulevard.ModuleCfg, modData *boulevard.ModuleDa
 		mod.listeners[i] = listener
 	}
 
+	if logCfg := mod.Cfg.AccessLogger; logCfg != nil {
+		log, err := mod.NewAccessLogger(logCfg)
+		if err != nil {
+			return fmt.Errorf("cannot create access logger: %w", err)
+		}
+
+		mod.accessLogger = log
+	}
+
 	return nil
 }
 
@@ -101,6 +119,10 @@ func (mod *Module) Stop() {
 
 	for _, handler := range mod.handlers {
 		handler.Stop()
+	}
+
+	if mod.accessLogger != nil {
+		mod.accessLogger.Close()
 	}
 }
 
