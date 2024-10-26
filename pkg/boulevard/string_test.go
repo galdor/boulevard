@@ -61,11 +61,6 @@ func TestStringParse(t *testing.T) {
 			},
 		},
 		{
-			" ",
-			"${unknown-1} {unknown-2}",
-			map[string]string{},
-		},
-		{
 			"foo \\{bar} \\$\\{baz}",
 			"foo \\{bar} \\$\\{baz}",
 			map[string]string{},

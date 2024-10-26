@@ -11,11 +11,10 @@ import (
 
 // Dynamic string values are represented as lists of parts where each part
 // starts with a character indicating the type of the part. For example
-// "/foo/{http.request.method}/${MY_ENV_VAR}" is represented as ["S/foo/",
-// "Vhttp.request.method", "S/", "EMY_ENV_VAR"]. It might seem strange, but it
-// means we can generate the final string value without any runtime type
-// dispatch. It is not clear if it is the best way to do it, but it certainly is
-// not the worse.
+// "/foo/{http.request.method}/" is represented as ["S/foo/",
+// "Vhttp.request.method", "S/"]. It might seem strange, but it means we can
+// generate the final string value without any runtime type dispatch. It is not
+// clear if it is the best way to do it, but it certainly is not the worse.
 
 type String struct {
 	value   string
@@ -57,8 +56,14 @@ func (s *String) Parse(value string) error {
 					string(data))
 			}
 
-			parts = append(parts, "E"+string(data[2:end+2]))
-			lenHint += 16
+			name := string(data[2 : end+2])
+			value, found := os.LookupEnv(name)
+			if !found {
+				return fmt.Errorf("unknown environment variable %q", name)
+			}
+
+			parts = append(parts, "S"+value)
+			lenHint += len(value)
 
 			data = data[end+3:]
 
@@ -121,8 +126,6 @@ func (s String) Expand(vars map[string]string) string {
 			partString = value
 		case 'V':
 			partString = vars[value]
-		case 'E':
-			partString = os.Getenv(value)
 		default:
 			program.Panic("unknown string part type %q", part[0])
 		}
