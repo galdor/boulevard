@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"go.n16f.net/ejson"
 	"go.n16f.net/program"
 )
 
@@ -109,6 +110,15 @@ func (s *String) UnmarshalJSON(data []byte) error {
 	}
 
 	return s.Parse(value)
+}
+
+func CheckString(v *ejson.Validator, token any, bs *String, s string) bool {
+	if err := bs.Parse(s); err != nil {
+		v.AddError(token, "invalid_string", "invalid string: %v", err)
+		return false
+	}
+
+	return true
 }
 
 func (s String) Expand(vars map[string]string) string {
