@@ -10,16 +10,16 @@ import (
 )
 
 type AccessLoggerCfg struct {
-	RawPath string           `json:"path"`
-	Path    boulevard.String `json:"-"`
+	RawPath string                 `json:"path"`
+	Path    boulevard.FormatString `json:"-"`
 
-	RawFormat string           `json:"format"`
-	Format    boulevard.String `json:"-"`
+	RawFormat string                 `json:"format"`
+	Format    boulevard.FormatString `json:"-"`
 }
 
 func (cfg *AccessLoggerCfg) ValidateJSON(v *ejson.Validator) {
-	boulevard.CheckString(v, "path", &cfg.Path, cfg.RawPath)
-	boulevard.CheckString(v, "format", &cfg.Format, cfg.RawFormat)
+	boulevard.CheckFormatString(v, "path", &cfg.Path, cfg.RawPath)
+	boulevard.CheckFormatString(v, "format", &cfg.Format, cfg.RawFormat)
 }
 
 type AccessLogger struct {

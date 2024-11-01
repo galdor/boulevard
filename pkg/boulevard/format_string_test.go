@@ -68,7 +68,7 @@ func TestStringParse(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		var s String
+		var s FormatString
 		if err := s.Parse(test.s); err != nil {
 			t.Errorf("cannot parse string %q: %v", test.s, err)
 			continue

@@ -17,13 +17,13 @@ import (
 // generate the final string value without any runtime type dispatch. It is not
 // clear if it is the best way to do it, but it certainly is not the worse.
 
-type String struct {
+type FormatString struct {
 	value   string
 	parts   []string
 	lenHint int
 }
 
-func (s *String) Parse(value string) error {
+func (s *FormatString) Parse(value string) error {
 	var parts []string
 	var lenHint int
 
@@ -99,11 +99,11 @@ func (s *String) Parse(value string) error {
 	return nil
 }
 
-func (s *String) MarshalJSON() ([]byte, error) {
+func (s *FormatString) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s.value)
 }
 
-func (s *String) UnmarshalJSON(data []byte) error {
+func (s *FormatString) UnmarshalJSON(data []byte) error {
 	var value string
 	if err := json.Unmarshal(data, &value); err != nil {
 		return err
@@ -112,16 +112,17 @@ func (s *String) UnmarshalJSON(data []byte) error {
 	return s.Parse(value)
 }
 
-func CheckString(v *ejson.Validator, token any, bs *String, s string) bool {
+func CheckFormatString(v *ejson.Validator, token any, bs *FormatString, s string) bool {
 	if err := bs.Parse(s); err != nil {
-		v.AddError(token, "invalid_string", "invalid string: %v", err)
+		v.AddError(token, "invalid_format_string",
+			"invalid format string: %v", err)
 		return false
 	}
 
 	return true
 }
 
-func (s String) Expand(vars map[string]string) string {
+func (s FormatString) Expand(vars map[string]string) string {
 	var buf bytes.Buffer
 
 	buf.Grow(s.lenHint)
