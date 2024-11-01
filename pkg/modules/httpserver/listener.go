@@ -210,7 +210,7 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		ctx.Vars["http.response_time"] = responseTimeString
 
 		if err := ctx.AccessLogger.Log(&ctx); err != nil {
-			l.Module.Log.Error("cannot log request: %w", err)
+			l.Module.Log.Error("cannot log request: %v", err)
 		}
 	}
 }
