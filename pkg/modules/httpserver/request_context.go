@@ -43,7 +43,7 @@ func (ctx *RequestContext) Reply(status int, data io.Reader) {
 
 func (ctx *RequestContext) ReplyError(status int) {
 	header := ctx.ResponseWriter.Header()
-	header.Set("Content-Type", "text/plain")
+	header.Set("Content-Type", MediaTypeText.String())
 
 	msg := fmt.Sprintf("%d %s\n", status, http.StatusText(status))
 	ctx.Reply(status, strings.NewReader(msg))

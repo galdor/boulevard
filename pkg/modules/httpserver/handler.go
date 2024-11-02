@@ -14,6 +14,7 @@ type HandlerCfg struct {
 	AccessLogger *AccessLoggerCfg `json:"access_logs,omitempty"`
 
 	Reply        *ReplyActionCfg        `json:"reply,omitempty"`
+	Redirect     *RedirectActionCfg     `json:"redirect,omitempty"`
 	Serve        *ServeActionCfg        `json:"serve,omitempty"`
 	ReverseProxy *ReverseProxyActionCfg `json:"reverse_proxy,omitempty"`
 	Status       *StatusActionCfg       `json:"status,omitempty"`
@@ -28,10 +29,13 @@ func (cfg *HandlerCfg) ValidateJSON(v *ejson.Validator) {
 	v.CheckOptionalObject("access_logs", cfg.AccessLogger)
 
 	nbActions := 0
-	if cfg.Serve != nil {
+	if cfg.Reply != nil {
 		nbActions++
 	}
-	if cfg.Reply != nil {
+	if cfg.Redirect != nil {
+		nbActions++
+	}
+	if cfg.Serve != nil {
 		nbActions++
 	}
 	if cfg.ReverseProxy != nil {
@@ -54,8 +58,9 @@ func (cfg *HandlerCfg) ValidateJSON(v *ejson.Validator) {
 			"handler must contain a single action")
 	}
 
-	v.CheckOptionalObject("serve", cfg.Serve)
 	v.CheckOptionalObject("reply", cfg.Reply)
+	v.CheckOptionalObject("redirect", cfg.Redirect)
+	v.CheckOptionalObject("serve", cfg.Serve)
 	v.CheckOptionalObject("reverse_proxy", cfg.ReverseProxy)
 	v.CheckOptionalObject("status", cfg.Status)
 	v.CheckOptionalObject("fastcgi", cfg.FastCGI)
@@ -164,6 +169,8 @@ func NewHandler(mod *Module, cfg *HandlerCfg) (*Handler, error) {
 	switch {
 	case cfg.Reply != nil:
 		action, err = NewReplyAction(&h, *cfg.Reply)
+	case cfg.Redirect != nil:
+		action, err = NewRedirectAction(&h, *cfg.Redirect)
 	case cfg.Serve != nil:
 		action, err = NewServeAction(&h, *cfg.Serve)
 	case cfg.ReverseProxy != nil:

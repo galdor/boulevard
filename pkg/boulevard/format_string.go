@@ -112,13 +112,30 @@ func (s *FormatString) UnmarshalJSON(data []byte) error {
 	return s.Parse(value)
 }
 
-func CheckFormatString(v *ejson.Validator, token any, bs *FormatString, s string) bool {
-	if err := bs.Parse(s); err != nil {
+func CheckFormatString(v *ejson.Validator, token any, fs *FormatString, s string) bool {
+	if err := fs.Parse(s); err != nil {
 		v.AddError(token, "invalid_format_string",
 			"invalid format string: %v", err)
 		return false
 	}
 
+	return true
+}
+
+func CheckOptionalFormatString(v *ejson.Validator, token any, fs **FormatString, s string) bool {
+	if s == "" {
+		*fs = nil
+		return true
+	}
+
+	var fs2 FormatString
+	if err := fs2.Parse(s); err != nil {
+		v.AddError(token, "invalid_format_string",
+			"invalid format string: %v", err)
+		return false
+	}
+
+	*fs = &fs2
 	return true
 }
 

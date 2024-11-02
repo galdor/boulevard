@@ -2,7 +2,6 @@ package httpserver
 
 import (
 	"bytes"
-	"embed"
 	"encoding/json"
 	"fmt"
 	htmltemplate "html/template"
@@ -14,9 +13,6 @@ import (
 	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/ejson"
 )
-
-//go:embed templates/**/*
-var htmlTemplateFS embed.FS
 
 var statusMediaTypes = []*MediaType{
 	MediaTypeText,

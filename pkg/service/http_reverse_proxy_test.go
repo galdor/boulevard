@@ -27,7 +27,7 @@ func TestHTTPReverseProxy(t *testing.T) {
 	require.Equal("3", resBody)
 
 	// Redirection
-	res = c.SendRequest("GET", "/nginx/redirect", nil, nil, nil)
+	res = c.SendRequest("GET", "/nginx/redirect/foo", nil, nil, nil)
 	require.Equal(302, res.StatusCode)
-	require.True(strings.HasSuffix(res.Header.Get("Location"), "/hello"))
+	require.True(strings.HasSuffix(res.Header.Get("Location"), "/hello/foo"))
 }

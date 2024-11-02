@@ -10,9 +10,22 @@ import (
 )
 
 var (
-	MediaTypeText = &MediaType{Type: "text", Subtype: "plain"}
-	MediaTypeHTML = &MediaType{Type: "text", Subtype: "html"}
-	MediaTypeJSON = &MediaType{Type: "application", Subtype: "json"}
+	MediaTypeText = &MediaType{
+		Type:       "text",
+		Subtype:    "plain",
+		Parameters: []MediaTypeParameter{{"charset", "utf-8"}},
+	}
+
+	MediaTypeHTML = &MediaType{
+		Type:       "text",
+		Subtype:    "html",
+		Parameters: []MediaTypeParameter{{"charset", "utf-8"}},
+	}
+
+	MediaTypeJSON = &MediaType{
+		Type:    "application",
+		Subtype: "json",
+	}
 )
 
 type MediaType struct {

@@ -32,9 +32,9 @@ http_server:
           Server: "Boulevard"
         body: "Hello world!\n"
     - match:
-        path_regexp: "/hello/([^/]+)"
-      reply:
-        body: "Hello {$1}!\n"
+        path: "/redirect/"
+      redirect:
+        uri: "/{http.match.subpath}"
     - match:
         path: "/nested/"
       handlers:

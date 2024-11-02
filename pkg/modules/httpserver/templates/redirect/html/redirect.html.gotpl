@@ -1,0 +1,10 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>{{.Status}} {{.Reason}}</title>
+  </head>
+  <body>
+    <a href="{{.URI}}">{{.Status}} {{.Reason}} {{.URI}}</a>
+  </body>
+</html>

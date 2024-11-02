@@ -133,8 +133,6 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	ctx.Vars["http.request.method"] = strings.ToUpper(req.Method)
 	ctx.Vars["http.request.path"] = req.URL.Path
 
-	ctx.Vars["http.response.status"] = "-"
-
 	defer func() {
 		if v := recover(); v != nil {
 			msg := program.RecoverValueString(v)
