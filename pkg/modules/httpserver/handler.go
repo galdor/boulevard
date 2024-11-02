@@ -241,13 +241,13 @@ func (h *Handler) matchRequest(ctx *RequestContext) bool {
 		return false
 	}
 
+	var subpath string
 	if pattern := matchSpec.pathPattern; pattern != nil {
-		match, subpath := pattern.Match(ctx.Request.URL.Path)
+		var match bool
+		match, subpath = pattern.Match(ctx.Request.URL.Path)
 		if !match {
 			return false
 		}
-
-		ctx.Subpath = subpath
 	}
 
 	if re := matchSpec.pathRE; re != nil {
@@ -255,6 +255,11 @@ func (h *Handler) matchRequest(ctx *RequestContext) bool {
 			return false
 		}
 	}
+
+	// We now have a full match, we can update the request context
+
+	ctx.Subpath = subpath
+	ctx.Vars["http.match.subpath"] = subpath
 
 	if h.Auth != nil {
 		ctx.Auth = h.Auth
