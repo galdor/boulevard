@@ -1,16 +1,18 @@
 package httpserver
 
 import (
+	"io"
 	"strings"
 
+	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/ejson"
 )
 
 type ReplyActionCfg struct {
-	Status int    `json:"status,omitempty"`
-	Reason string `json:"reason,omitempty"`
-	Header Header `json:"header,omitempty"`
-	Body   string `json:"body,omitempty"`
+	Status int                     `json:"status,omitempty"`
+	Reason string                  `json:"reason,omitempty"`
+	Header Header                  `json:"header,omitempty"`
+	Body   *boulevard.FormatString `json:"body,omitempty"`
 }
 
 func (cfg *ReplyActionCfg) ValidateJSON(v *ejson.Validator) {
@@ -19,6 +21,7 @@ func (cfg *ReplyActionCfg) ValidateJSON(v *ejson.Validator) {
 	}
 
 	v.CheckObjectMap("header", cfg.Header)
+	v.CheckOptionalObject("body", cfg.Body)
 }
 
 type ReplyAction struct {
@@ -49,5 +52,12 @@ func (a *ReplyAction) HandleRequest(ctx *RequestContext) {
 	}
 
 	a.Cfg.Header.Apply(ctx.ResponseWriter.Header(), ctx.Vars)
-	ctx.Reply(status, strings.NewReader(a.Cfg.Body))
+
+	var body io.Reader
+	if a.Cfg.Body != nil {
+		bodyString := a.Cfg.Body.Expand(ctx.Vars)
+		body = strings.NewReader(bodyString)
+	}
+
+	ctx.Reply(status, body)
 }
