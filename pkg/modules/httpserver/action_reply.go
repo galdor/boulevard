@@ -17,6 +17,8 @@ func (cfg *ReplyActionCfg) ValidateJSON(v *ejson.Validator) {
 	if cfg.Status != 0 {
 		v.CheckIntMinMax("status", cfg.Status, 200, 599)
 	}
+
+	v.CheckObjectMap("header", cfg.Header)
 }
 
 type ReplyAction struct {
@@ -46,6 +48,6 @@ func (a *ReplyAction) HandleRequest(ctx *RequestContext) {
 		status = a.Cfg.Status
 	}
 
-	a.Cfg.Header.Apply(ctx.ResponseWriter.Header())
+	a.Cfg.Header.Apply(ctx.ResponseWriter.Header(), ctx.Vars)
 	ctx.Reply(status, strings.NewReader(a.Cfg.Body))
 }

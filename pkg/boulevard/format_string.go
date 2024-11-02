@@ -109,34 +109,15 @@ func (s *FormatString) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	return s.Parse(value)
+	*s = FormatString{value: value}
+	return nil
 }
 
-func CheckFormatString(v *ejson.Validator, token any, fs *FormatString, s string) bool {
-	if err := fs.Parse(s); err != nil {
-		v.AddError(token, "invalid_format_string",
+func (s *FormatString) ValidateJSON(v *ejson.Validator) {
+	if err := s.Parse(s.value); err != nil {
+		v.AddError(nil, "invalid_format_string",
 			"invalid format string: %v", err)
-		return false
 	}
-
-	return true
-}
-
-func CheckOptionalFormatString(v *ejson.Validator, token any, fs **FormatString, s string) bool {
-	if s == "" {
-		*fs = nil
-		return true
-	}
-
-	var fs2 FormatString
-	if err := fs2.Parse(s); err != nil {
-		v.AddError(token, "invalid_format_string",
-			"invalid format string: %v", err)
-		return false
-	}
-
-	*fs = &fs2
-	return true
 }
 
 func (s FormatString) Expand(vars map[string]string) string {

@@ -21,6 +21,8 @@ type ReverseProxyActionCfg struct {
 
 func (cfg *ReverseProxyActionCfg) ValidateJSON(v *ejson.Validator) {
 	httputils.CheckHTTPURI(v, "uri", cfg.URI)
+	v.CheckObjectMap("request_header", cfg.RequestHeader)
+	v.CheckObjectMap("response_header", cfg.ResponseHeader)
 }
 
 type ReverseProxyAction struct {
@@ -116,7 +118,7 @@ func (a *ReverseProxyAction) initRequestHeader(ctx *RequestContext, header http.
 	a.deleteRequestUserAgentField(ctx, header)
 	a.setRequestHeaderForwardedFields(ctx, header)
 
-	a.Cfg.RequestHeader.Apply(header)
+	a.Cfg.RequestHeader.Apply(header, ctx.Vars)
 }
 
 func (a *ReverseProxyAction) deleteRequestHeaderHopByHopFields(ctx *RequestContext, header http.Header) {
@@ -185,5 +187,5 @@ func (a *ReverseProxyAction) initResponseHeader(ctx *RequestContext, res *http.R
 		}
 	}
 
-	a.Cfg.ResponseHeader.Apply(header)
+	a.Cfg.ResponseHeader.Apply(header, ctx.Vars)
 }

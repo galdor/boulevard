@@ -14,24 +14,19 @@ import (
 )
 
 type RedirectActionCfg struct {
-	Status  int                     `json:"status,omitempty"`
-	RawURI  string                  `json:"uri"`
-	URI     boulevard.FormatString  `json:"-"`
-	Header  Header                  `json:"header,omitempty"`
-	RawBody string                  `json:"body,omitempty"`
-	Body    *boulevard.FormatString `json:"-"`
+	Status int                     `json:"status,omitempty"`
+	URI    *boulevard.FormatString `json:"uri"`
+	Header Header                  `json:"header,omitempty"`
+	Body   *boulevard.FormatString `json:"body,omitempty"`
 }
 
 func (cfg *RedirectActionCfg) ValidateJSON(v *ejson.Validator) {
 	if cfg.Status != 0 {
 		v.CheckIntMinMax("status", cfg.Status, 200, 599)
 	}
-
-	boulevard.CheckFormatString(v, "uri", &cfg.URI, cfg.RawURI)
-
-	if cfg.RawBody != "" {
-		boulevard.CheckOptionalFormatString(v, "body", &cfg.Body, cfg.RawBody)
-	}
+	v.CheckObject("uri", cfg.URI)
+	v.CheckObjectMap("header", cfg.Header)
+	v.CheckOptionalObject("body", cfg.Body)
 }
 
 type RedirectAction struct {
@@ -82,7 +77,7 @@ func (a *RedirectAction) HandleRequest(ctx *RequestContext) {
 
 	header := ctx.ResponseWriter.Header()
 	header.Set("Location", uri.String())
-	a.Cfg.Header.Apply(header)
+	a.Cfg.Header.Apply(header, ctx.Vars)
 
 	var body io.Reader
 	if ctx.Request.Method == "GET" {
