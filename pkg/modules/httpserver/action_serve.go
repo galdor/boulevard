@@ -7,15 +7,16 @@ import (
 	"os"
 	"path"
 
+	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/ejson"
 )
 
 type ServeActionCfg struct {
-	Path string `json:"path"`
+	Path *boulevard.FormatString `json:"path"`
 }
 
 func (cfg *ServeActionCfg) ValidateJSON(v *ejson.Validator) {
-	v.CheckStringNotEmpty("path", cfg.Path)
+	v.CheckObject("path", cfg.Path)
 }
 
 type ServeAction struct {
@@ -40,7 +41,9 @@ func (a *ServeAction) Stop() {
 }
 
 func (a *ServeAction) HandleRequest(ctx *RequestContext) {
-	filePath := path.Join(a.Cfg.Path, ctx.Subpath)
+	basePath := a.Cfg.Path.Expand(ctx.Vars)
+
+	filePath := path.Join(basePath, ctx.Subpath)
 
 	info, err := os.Stat(filePath)
 	if err != nil {
