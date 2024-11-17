@@ -23,6 +23,9 @@ type Listener struct {
 
 	nbConnections atomic.Int64
 
+	tcpConnections     map[*TCPConnection]struct{}
+	tcpConnectionMutex sync.Mutex
+
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
@@ -42,6 +45,8 @@ func NewListener(mod *Module, cfg netutils.TCPListenerCfg) (*Listener, error) {
 	l := Listener{
 		Module:      mod,
 		TCPListener: tcpListener,
+
+		tcpConnections: make(map[*TCPConnection]struct{}),
 
 		ctx:    ctx,
 		cancel: cancel,
@@ -74,6 +79,14 @@ func (l *Listener) Stop() {
 	l.wg.Wait()
 
 	l.TCPListener.Stop()
+
+	l.tcpConnectionMutex.Lock()
+	for conn := range l.tcpConnections {
+		conn.Close()
+	}
+	l.tcpConnectionMutex.Unlock()
+
+	l.nbConnections.Store(0)
 }
 
 func (l *Listener) CountConnections() int64 {
@@ -111,24 +124,15 @@ func (l *Listener) connState(conn net.Conn, state http.ConnState) {
 func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	start := time.Now()
 
+	ctx := NewRequestContext(req, w)
+	ctx.Ctx = l.ctx
+	ctx.Log = l.Module.Log.Child("", nil)
+
 	subpath := req.URL.Path
 	if len(subpath) > 0 && subpath[0] == '/' {
 		subpath = subpath[1:]
 	}
-
-	logger := l.Module.Log.Child("", nil)
-
-	ctx := RequestContext{
-		Ctx: l.ctx,
-		Log: logger,
-
-		Request:        req,
-		ResponseWriter: w,
-
-		Subpath: subpath,
-
-		Vars: make(map[string]string),
-	}
+	ctx.Subpath = subpath
 
 	ctx.Vars["http.request.method"] = strings.ToUpper(req.Method)
 	ctx.Vars["http.request.path"] = req.URL.Path
@@ -157,7 +161,7 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	ctx.ClientAddress = clientAddr
 
-	logger.Data["address"] = clientAddr
+	ctx.Log.Data["address"] = clientAddr
 
 	ctx.Vars["http.client_address"] = clientAddr.String()
 
@@ -178,7 +182,7 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	ctx.Vars["http.request.host"] = host
 
 	// Find the first handler matching the request
-	h := l.Module.findHandler(&ctx)
+	h := l.Module.findHandler(ctx)
 	if h == nil {
 		ctx.ReplyError(404)
 		return
@@ -186,7 +190,7 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// Authenticate the request if necessary
 	if ctx.Auth != nil {
-		if err := ctx.Auth.AuthenticateRequest(&ctx); err != nil {
+		if err := ctx.Auth.AuthenticateRequest(ctx); err != nil {
 			ctx.Log.Error("cannot authenticate request: %v", err)
 			return
 		}
@@ -198,7 +202,7 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	h.Action.HandleRequest(&ctx)
+	h.Action.HandleRequest(ctx)
 
 	// Log the request
 	if ctx.AccessLogger != nil {
@@ -207,8 +211,20 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			'f', -1, 32)
 		ctx.Vars["http.response_time"] = responseTimeString
 
-		if err := ctx.AccessLogger.Log(&ctx); err != nil {
+		if err := ctx.AccessLogger.Log(ctx); err != nil {
 			l.Module.Log.Error("cannot log request: %v", err)
 		}
 	}
+}
+
+func (l *Listener) registerTCPConnection(c *TCPConnection) {
+	l.tcpConnectionMutex.Lock()
+	l.tcpConnections[c] = struct{}{}
+	l.tcpConnectionMutex.Unlock()
+}
+
+func (l *Listener) unregisterTCPConnection(c *TCPConnection) {
+	l.tcpConnectionMutex.Lock()
+	delete(l.tcpConnections, c)
+	l.tcpConnectionMutex.Unlock()
 }

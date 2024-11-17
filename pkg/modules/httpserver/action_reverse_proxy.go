@@ -2,11 +2,13 @@ package httpserver
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
+	"slices"
+	"strings"
 	"time"
 
 	"go.n16f.net/boulevard/pkg/httputils"
@@ -29,8 +31,8 @@ type ReverseProxyAction struct {
 	Handler *Handler
 	Cfg     ReverseProxyActionCfg
 
-	transport *http.Transport
-	uri       *url.URL
+	uri    *url.URL
+	client *httputils.Client
 }
 
 func NewReverseProxyAction(h *Handler, cfg ReverseProxyActionCfg) (*ReverseProxyAction, error) {
@@ -47,26 +49,30 @@ func NewReverseProxyAction(h *Handler, cfg ReverseProxyActionCfg) (*ReverseProxy
 	uri.Path = ""
 	uri.Fragment = ""
 
-	dialer := net.Dialer{
-		Timeout: 30 * time.Second,
+	tlsCfg := tls.Config{}
+
+	clientCfg := httputils.ClientCfg{
+		Scheme: uri.Scheme,
+		Host:   uri.Host,
+
+		TLS: &tlsCfg,
+
+		MaxConnections:               10,
+		ConnectionTimeout:            10 * time.Second,
+		ConnectionAcquisitionTimeout: 10 * time.Second,
 	}
 
-	transport := http.Transport{
-		DialContext: dialer.DialContext,
-
-		MaxIdleConns:        250,
-		MaxIdleConnsPerHost: 10,
-		IdleConnTimeout:     10 * time.Second,
-
-		ExpectContinueTimeout: time.Second,
+	client, err := httputils.NewClient(clientCfg)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create client: %w", err)
 	}
 
 	a := ReverseProxyAction{
 		Handler: h,
 		Cfg:     cfg,
 
-		transport: &transport,
-		uri:       uri,
+		uri:    uri,
+		client: client,
 	}
 
 	return &a, nil
@@ -77,25 +83,54 @@ func (a *ReverseProxyAction) Start() error {
 }
 
 func (a *ReverseProxyAction) Stop() {
-	a.transport.CloseIdleConnections()
+	a.client.Stop()
 }
 
 func (a *ReverseProxyAction) HandleRequest(ctx *RequestContext) {
 	req := a.rewriteRequest(ctx)
+	a.maybeSetConnectionUpgrade(ctx, req)
 
-	res, err := a.transport.RoundTrip(req)
+	var responseSent bool
+
+	err := a.client.WithRoundTrip(req,
+		func(conn *httputils.ClientConn, res *http.Response) (bool, error) {
+			a.initResponseHeader(ctx, res)
+			ctx.ResponseWriter.WriteHeader(res.StatusCode)
+			responseSent = true
+
+			if a.isConnectionUpgraded(ctx, res) {
+				// If we did not ask for a connection upgrade but we are
+				// receiving a 101 response acknowledging an upgrade, something
+				// is wrong.
+				if len(ctx.UpgradeProtocols) == 0 {
+					return false, fmt.Errorf("unexpected upgrade response")
+				}
+
+				// Hijack the connection between the client and us
+				if err := a.hijackConnection(ctx, conn); err != nil {
+					return false, fmt.Errorf("cannot hijack connection: %v",
+						err)
+				}
+
+				// Return true to indicate that we are hijacking the connection
+				// between us and the upstream server.
+				return true, nil
+			}
+
+			if _, err := io.Copy(ctx.ResponseWriter, res.Body); err != nil {
+				return false, fmt.Errorf("cannot copy response body: %v", err)
+			}
+
+			return false, nil
+		})
 	if err != nil {
-		ctx.Log.Error("cannot relay request: %v", err)
-		ctx.ReplyError(500)
-		return
-	}
-	defer res.Body.Close()
+		if responseSent {
+			ctx.Log.Error("%v", err)
+		} else {
+			ctx.Log.Error("cannot send request: %v", err)
+			ctx.ReplyError(500)
+		}
 
-	a.initResponseHeader(ctx, res)
-	ctx.ResponseWriter.WriteHeader(res.StatusCode)
-
-	if _, err := io.Copy(ctx.ResponseWriter, res.Body); err != nil {
-		ctx.Log.Error("cannot copy response body: %v", err)
 		return
 	}
 }
@@ -128,8 +163,7 @@ func (a *ReverseProxyAction) deleteRequestHeaderHopByHopFields(ctx *RequestConte
 	// from the message with the same name as the connection-option, and then
 	// remove the Connection header field itself (or replace it with the
 	// intermediary's own control options for the forwarded message)."
-	connectionFields := httputils.SplitTokenList(header.Get("Connection"))
-	for _, name := range connectionFields {
+	for _, name := range ctx.ConnectionOptions {
 		header.Del(name)
 	}
 
@@ -178,6 +212,33 @@ func (a *ReverseProxyAction) setRequestHeaderForwardedFields(ctx *RequestContext
 	header.Set("X-Forwarded-Proto", forwardedProto)
 }
 
+func (a *ReverseProxyAction) maybeSetConnectionUpgrade(ctx *RequestContext, req *http.Request) {
+	// Relay connection upgrade fields to the upstream server
+	if len(ctx.UpgradeProtocols) == 0 {
+		return
+	}
+
+	header := req.Header
+	header.Set("Connection", "upgrade")
+	header.Set("Upgrade", strings.Join(ctx.UpgradeProtocols, ", "))
+}
+
+func (a *ReverseProxyAction) isConnectionUpgraded(ctx *RequestContext, res *http.Response) bool {
+	if res.StatusCode != 101 {
+		return false
+	}
+
+	header := ctx.Request.Header
+
+	connectionField := header.Get("Connection")
+	connectionOptions := httputils.SplitTokenList(connectionField, true)
+	if !slices.Contains(connectionOptions, "upgrade") {
+		return false
+	}
+
+	return true
+}
+
 func (a *ReverseProxyAction) initResponseHeader(ctx *RequestContext, res *http.Response) {
 	header := ctx.ResponseWriter.Header()
 
@@ -188,4 +249,45 @@ func (a *ReverseProxyAction) initResponseHeader(ctx *RequestContext, res *http.R
 	}
 
 	a.Cfg.ResponseHeader.Apply(header, ctx.Vars)
+}
+
+func (a *ReverseProxyAction) hijackConnection(ctx *RequestContext, upstreamConn *httputils.ClientConn) error {
+	listener := ctx.Listener
+
+	hijacker, ok := ctx.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return fmt.Errorf("response writer is not hijackable")
+	}
+
+	conn, remainingClientData, err := hijacker.Hijack()
+	if err != nil {
+		return err
+	}
+
+	if n := remainingClientData.Writer.Buffered(); n > 0 {
+		_, err := io.CopyN(upstreamConn.Conn, remainingClientData, int64(n))
+		if err != nil {
+			conn.Close()
+			listener.nbConnections.Add(-1)
+			return fmt.Errorf("cannot copy data to upstream connection: %w",
+				err)
+		}
+	}
+
+	tcpConn := TCPConnection{
+		Module:   listener.Module,
+		Listener: listener,
+		Log:      ctx.Log.Child("", nil),
+
+		conn:         conn,
+		upstreamConn: upstreamConn.Conn,
+	}
+
+	listener.registerTCPConnection(&tcpConn)
+
+	listener.wg.Add(2)
+	go tcpConn.read()
+	go tcpConn.write()
+
+	return nil
 }

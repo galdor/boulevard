@@ -10,6 +10,8 @@ acme:
     - "bob@example.com"
   pebble: true
 
+pprof_address: ":6060"
+
 ---
 module: "frontend-server"
 http_server:
@@ -92,3 +94,7 @@ http_server:
         path: "/nginx/"
       reverse_proxy:
         uri: "http://localhost:9002"
+    - match:
+        path: "/websocket"
+      reverse_proxy:
+        uri: "http://localhost:9003"

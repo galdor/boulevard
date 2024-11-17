@@ -1,4 +1,4 @@
-package tcpserver
+package httpserver
 
 import (
 	"errors"
@@ -13,7 +13,12 @@ import (
 	"go.n16f.net/log"
 )
 
-type Connection struct {
+const (
+	TCPConnectionReadBufferSize  = 1024
+	TCPConnectionWriteBufferSize = 1024
+)
+
+type TCPConnection struct {
 	Module   *Module
 	Listener *Listener
 	Log      *log.Logger
@@ -23,7 +28,7 @@ type Connection struct {
 	mutex        sync.Mutex
 }
 
-func (c *Connection) Close() {
+func (c *TCPConnection) Close() {
 	c.Log.Debug(1, "closing connection")
 
 	c.mutex.Lock()
@@ -40,7 +45,7 @@ func (c *Connection) Close() {
 	}
 }
 
-func (c *Connection) abort(err error) {
+func (c *TCPConnection) abort(err error) {
 	if isSilentIOError(err) {
 		c.Log.Debug(1, "%v", err)
 	} else {
@@ -48,13 +53,13 @@ func (c *Connection) abort(err error) {
 	}
 
 	c.Close()
-	c.Listener.unregisterConnection(c)
+	c.Listener.unregisterTCPConnection(c)
 }
 
-func (c *Connection) read() {
+func (c *TCPConnection) read() {
 	defer c.Listener.wg.Done()
 
-	buf := make([]byte, c.Module.Cfg.ReadBufferSize)
+	buf := make([]byte, TCPConnectionReadBufferSize)
 
 	for {
 		n, err := c.conn.Read(buf)
@@ -72,10 +77,10 @@ func (c *Connection) read() {
 	}
 }
 
-func (c *Connection) write() {
+func (c *TCPConnection) write() {
 	defer c.Listener.wg.Done()
 
-	buf := make([]byte, c.Module.Cfg.WriteBufferSize)
+	buf := make([]byte, TCPConnectionWriteBufferSize)
 
 	for {
 		n, err := c.upstreamConn.Read(buf)

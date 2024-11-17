@@ -33,7 +33,7 @@ func TestSplitTokenList(t *testing.T) {
 	for _, test := range tests {
 		label := fmt.Sprintf("%q", test.s)
 
-		tokens := SplitTokenList(test.s)
+		tokens := SplitTokenList(test.s, false)
 		assert.Equal(test.tokens, tokens, label)
 	}
 }

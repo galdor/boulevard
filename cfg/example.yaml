@@ -72,7 +72,7 @@ http_server:
     - match:
         path: "/nginx/"
       reverse_proxy:
-        uri: "http://localhost:9001"
+        uri: "http://localhost:9002"
         response_header:
           Server: "Boulevard"
     - match:

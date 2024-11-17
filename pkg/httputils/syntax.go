@@ -2,7 +2,7 @@ package httputils
 
 import "strings"
 
-func SplitTokenList(s string) []string {
+func SplitTokenList(s string, normalize bool) []string {
 	// See RFC 9110 5.6.1. Lists
 	//
 	// If we were implementing a proper parser, we would make sure that tokens
@@ -18,6 +18,10 @@ func SplitTokenList(s string) []string {
 	parts := strings.Split(s, ",")
 	for _, part := range parts {
 		if token := strings.Trim(part, " \t"); token != "" {
+			if normalize {
+				token = strings.ToLower(token)
+			}
+
 			tokens = append(tokens, token)
 		}
 	}

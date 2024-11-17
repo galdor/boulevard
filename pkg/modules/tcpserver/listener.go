@@ -14,8 +14,8 @@ type Listener struct {
 	Module      *Module
 	TCPListener *netutils.TCPListener
 
-	connections      map[*Connection]struct{}
-	connectionsMutex sync.Mutex
+	connections     map[*Connection]struct{}
+	connectionMutex sync.Mutex
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -62,20 +62,19 @@ func (l *Listener) Stop() {
 
 	l.cancel()
 
-	l.connectionsMutex.Lock()
-	for connection := range l.connections {
-		connection.Close() // interrupt Read and Write
-		delete(l.connections, connection)
+	l.connectionMutex.Lock()
+	for conn := range l.connections {
+		conn.Close()
 	}
-	l.connectionsMutex.Unlock()
+	l.connectionMutex.Unlock()
 
 	l.wg.Wait()
 }
 
 func (l *Listener) CountConnections() int64 {
-	l.connectionsMutex.Lock()
+	l.connectionMutex.Lock()
 	n := len(l.connections)
-	l.connectionsMutex.Unlock()
+	l.connectionMutex.Unlock()
 
 	return int64(n)
 }
@@ -111,7 +110,7 @@ func (l *Listener) handleConnection(conn net.Conn) {
 	}
 
 	cfg := l.Module.Cfg.ReverseProxy
-	proxyConn, err := net.Dial("tcp", cfg.Address)
+	upstreamConn, err := net.Dial("tcp", cfg.Address)
 	if err != nil {
 		err = netutils.UnwrapOpError(err, "accept")
 		l.Module.Log.Error("cannot connect to %q: %v", cfg.Address, err)
@@ -130,8 +129,8 @@ func (l *Listener) handleConnection(conn net.Conn) {
 		Listener: l,
 		Log:      logger,
 
-		conn:      conn,
-		proxyConn: proxyConn,
+		conn:         conn,
+		upstreamConn: upstreamConn,
 	}
 
 	c.Listener.registerConnection(&c)
@@ -142,13 +141,13 @@ func (l *Listener) handleConnection(conn net.Conn) {
 }
 
 func (l *Listener) registerConnection(c *Connection) {
-	l.connectionsMutex.Lock()
+	l.connectionMutex.Lock()
 	l.connections[c] = struct{}{}
-	l.connectionsMutex.Unlock()
+	l.connectionMutex.Unlock()
 }
 
 func (l *Listener) unregisterConnection(c *Connection) {
-	l.connectionsMutex.Lock()
+	l.connectionMutex.Lock()
 	delete(l.connections, c)
-	l.connectionsMutex.Unlock()
+	l.connectionMutex.Unlock()
 }
