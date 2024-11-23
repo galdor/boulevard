@@ -14,7 +14,8 @@ import (
 )
 
 const (
-	AccessLoggerFormatCommon = "common"
+	AccessLoggerFormatCommon   = "common"
+	AccessLoggerFormatCombined = "combined"
 )
 
 type AccessLoggerCfg struct {
@@ -55,24 +56,24 @@ func (l *AccessLogger) Close() error {
 }
 
 func (l *AccessLogger) Log(ctx *RequestContext) error {
-	var data []byte
+	var buf bytes.Buffer
 
 	switch l.Cfg.Format.Value {
 	case AccessLoggerFormatCommon:
-		data = l.formatMsgCommon(ctx)
+		l.formatMsgCommon(ctx, &buf)
+	case AccessLoggerFormatCombined:
+		l.formatMsgCombined(ctx, &buf)
 	default:
-		data = []byte(l.Cfg.Format.Expand(ctx.Vars))
+		buf.WriteString(l.Cfg.Format.Expand(ctx.Vars))
 	}
 
-	data = append(data, '\n')
+	buf.WriteByte('\n')
 
-	_, err := l.w.Write(data)
+	_, err := l.w.Write(buf.Bytes())
 	return err
 }
 
-func (l *AccessLogger) formatMsgCommon(ctx *RequestContext) []byte {
-	var buf bytes.Buffer
-
+func (l *AccessLogger) formatMsgCommon(ctx *RequestContext, buf *bytes.Buffer) {
 	buf.WriteString(ctx.ClientAddress.String())
 
 	buf.WriteByte(' ')
@@ -104,6 +105,24 @@ func (l *AccessLogger) formatMsgCommon(ctx *RequestContext) []byte {
 
 	buf.WriteByte(' ')
 	buf.WriteString(strconv.Itoa(ctx.ResponseWriter.BodySize))
+}
 
-	return buf.Bytes()
+func (l *AccessLogger) formatMsgCombined(ctx *RequestContext, buf *bytes.Buffer) {
+	l.formatMsgCommon(ctx, buf)
+
+	header := ctx.Request.Header
+
+	buf.WriteByte(' ')
+	if referer := header.Get("Referer"); referer == "" {
+		buf.WriteByte('-')
+	} else {
+		fmt.Fprintf(buf, "%q", referer)
+	}
+
+	buf.WriteByte(' ')
+	if userAgent := header.Get("User-Agent"); userAgent == "" {
+		buf.WriteByte('-')
+	} else {
+		fmt.Fprintf(buf, "%q", userAgent)
+	}
 }
