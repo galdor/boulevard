@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"slices"
 	"strings"
-	"time"
 
 	"go.n16f.net/boulevard/pkg/httputils"
 	"go.n16f.net/ejson"
@@ -56,10 +55,6 @@ func NewReverseProxyAction(h *Handler, cfg ReverseProxyActionCfg) (*ReverseProxy
 		Host:   uri.Host,
 
 		TLS: &tlsCfg,
-
-		MaxConnections:               10,
-		ConnectionTimeout:            10 * time.Second,
-		ConnectionAcquisitionTimeout: 10 * time.Second,
 	}
 
 	client, err := httputils.NewClient(clientCfg)
