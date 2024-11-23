@@ -96,14 +96,14 @@ func (l *AccessLogger) formatMsgCommon(ctx *RequestContext) []byte {
 	buf.WriteByte('"')
 
 	buf.WriteByte(' ')
-	if ctx.ResponseStatus == 0 {
+	if ctx.ResponseWriter.Status == 0 {
 		buf.WriteByte('-')
 	} else {
-		buf.WriteString(strconv.Itoa(ctx.ResponseStatus))
+		buf.WriteString(strconv.Itoa(ctx.ResponseWriter.Status))
 	}
 
 	buf.WriteByte(' ')
-	buf.WriteString(strconv.Itoa(ctx.ResponseBodySize))
+	buf.WriteString(strconv.Itoa(ctx.ResponseWriter.BodySize))
 
 	return buf.Bytes()
 }

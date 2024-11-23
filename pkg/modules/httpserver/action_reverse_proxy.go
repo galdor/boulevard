@@ -256,12 +256,7 @@ func (a *ReverseProxyAction) initResponseHeader(ctx *RequestContext, res *http.R
 func (a *ReverseProxyAction) hijackConnection(ctx *RequestContext, upstreamConn *httputils.ClientConn) error {
 	listener := ctx.Listener
 
-	hijacker, ok := ctx.ResponseWriter.(http.Hijacker)
-	if !ok {
-		return fmt.Errorf("response writer is not hijackable")
-	}
-
-	conn, remainingClientData, err := hijacker.Hijack()
+	conn, remainingClientData, err := ctx.ResponseWriter.Hijack()
 	if err != nil {
 		return err
 	}

@@ -18,7 +18,7 @@ type RequestContext struct {
 	Log            *log.Logger
 	Ctx            context.Context
 	Request        *http.Request
-	ResponseWriter http.ResponseWriter
+	ResponseWriter *httputils.ResponseWriter
 	Listener       *Listener
 	AccessLogger   *AccessLogger
 	Auth           Auth
@@ -30,10 +30,6 @@ type RequestContext struct {
 	UpgradeProtocols  []string // [1]
 	Username          string   // basic authentication only
 
-	ResponseSent     bool
-	ResponseStatus   int
-	ResponseBodySize int
-
 	Vars map[string]string
 
 	// [1] Normalized to lower case.
@@ -42,7 +38,7 @@ type RequestContext struct {
 func NewRequestContext(req *http.Request, w http.ResponseWriter) *RequestContext {
 	ctx := RequestContext{
 		Request:        req,
-		ResponseWriter: w,
+		ResponseWriter: httputils.NewResponseWriter(w),
 
 		Vars: make(map[string]string),
 	}
@@ -97,7 +93,6 @@ func (ctx *RequestContext) IsHTTP10() bool {
 func (ctx *RequestContext) Reply(status int, data io.Reader) {
 	ctx.Vars["http.response.status"] = strconv.Itoa(status)
 
-	ctx.ResponseStatus = status
 	ctx.ResponseWriter.WriteHeader(status)
 
 	if data != nil {
@@ -105,8 +100,6 @@ func (ctx *RequestContext) Reply(status int, data io.Reader) {
 			ctx.Log.Error("cannot write response body: %v", err)
 		}
 	}
-
-	ctx.ResponseSent = true
 }
 
 func (ctx *RequestContext) ReplyError(status int) {

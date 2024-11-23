@@ -143,7 +143,7 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			trace := program.StackTrace(0, 20, true)
 
 			ctx.Log.Error("panic: %s\n%s", msg, trace)
-			if !ctx.ResponseSent {
+			if ctx.ResponseWriter.Status == 0 {
 				ctx.ReplyError(500)
 			}
 		}
