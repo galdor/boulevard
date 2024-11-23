@@ -10,21 +10,26 @@ import (
 	"go.n16f.net/program"
 )
 
-// Dynamic string values are represented as lists of parts where each part
-// starts with a character indicating the type of the part. For example
-// "/foo/{http.request.method}/" is represented as ["S/foo/",
-// "Vhttp.request.method", "S/"]. It might seem strange, but it means we can
-// generate the final string value without any runtime type dispatch. It is not
-// clear if it is the best way to do it, but it certainly is not the worse.
-
 type FormatString struct {
 	value   string
-	parts   []string
+	parts   []FormatStringPart
 	lenHint int
 }
 
+type FormatStringPartType string
+
+const (
+	FormatStringPartTypeConstant FormatStringPartType = "constant"
+	FormatStringPartTypeVariable FormatStringPartType = "variable"
+)
+
+type FormatStringPart struct {
+	Type  FormatStringPartType
+	Value string
+}
+
 func (s *FormatString) Parse(value string) error {
-	var parts []string
+	var parts []FormatStringPart
 	var lenHint int
 
 	data := []byte(value)
@@ -38,7 +43,12 @@ func (s *FormatString) Parse(value string) error {
 				return fmt.Errorf("invalid escape sequence %q", string(data))
 			}
 
-			parts = append(parts, "S"+string(data[:2]))
+			part := FormatStringPart{
+				Type:  FormatStringPartTypeConstant,
+				Value: string(data[:2]),
+			}
+			parts = append(parts, part)
+
 			lenHint += 2
 
 			data = data[2:]
@@ -63,7 +73,12 @@ func (s *FormatString) Parse(value string) error {
 				return fmt.Errorf("unknown environment variable %q", name)
 			}
 
-			parts = append(parts, "S"+value)
+			part := FormatStringPart{
+				Type:  FormatStringPartTypeConstant,
+				Value: value,
+			}
+			parts = append(parts, part)
+
 			lenHint += len(value)
 
 			data = data[end+3:]
@@ -74,7 +89,12 @@ func (s *FormatString) Parse(value string) error {
 				return fmt.Errorf("truncated variable block %q", string(data))
 			}
 
-			parts = append(parts, "V"+string(data[1:end+1]))
+			part := FormatStringPart{
+				Type:  FormatStringPartTypeVariable,
+				Value: string(data[1 : end+1]),
+			}
+			parts = append(parts, part)
+
 			lenHint += 16
 
 			data = data[end+2:]
@@ -85,7 +105,12 @@ func (s *FormatString) Parse(value string) error {
 				end = len(data)
 			}
 
-			parts = append(parts, "S"+string(data[:end]))
+			part := FormatStringPart{
+				Type:  FormatStringPartTypeConstant,
+				Value: string(data[:end]),
+			}
+			parts = append(parts, part)
+
 			lenHint += end
 
 			data = data[end:]
@@ -126,17 +151,15 @@ func (s FormatString) Expand(vars map[string]string) string {
 	buf.Grow(s.lenHint)
 
 	for _, part := range s.parts {
-		value := part[1:]
-
 		var partString string
 
-		switch part[0] {
-		case 'S':
-			partString = value
-		case 'V':
-			partString = vars[value]
+		switch part.Type {
+		case FormatStringPartTypeConstant:
+			partString = part.Value
+		case FormatStringPartTypeVariable:
+			partString = vars[part.Value]
 		default:
-			program.Panic("unknown string part type %q", part[0])
+			program.Panic("unknown string part type %q", part.Type)
 		}
 
 		buf.WriteString(partString)
