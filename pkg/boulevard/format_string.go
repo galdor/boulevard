@@ -94,9 +94,14 @@ func (s *FormatString) Parse(value string) error {
 				return fmt.Errorf("truncated variable block %q", string(data))
 			}
 
+			name := string(data[1 : end+1])
+			if err := validateFormatStringVariableName(name); err != nil {
+				return fmt.Errorf("invalid variable name %q: %w", name, err)
+			}
+
 			part := FormatStringPart{
 				Type:  FormatStringPartTypeVariable,
-				Value: string(data[1 : end+1]),
+				Value: name,
 			}
 			parts = append(parts, part)
 
@@ -171,6 +176,21 @@ func (s FormatString) Expand(vars map[string]string) string {
 	}
 
 	return buf.String()
+}
+
+func validateFormatStringVariableName(name string) error {
+	for _, c := range name {
+		switch {
+		case c >= 'a' && c <= 'z':
+		case c >= '0' && c <= '9':
+		case c == '_':
+		case c == '.':
+		default:
+			return fmt.Errorf("invalid character %q", c)
+		}
+	}
+
+	return nil
 }
 
 func validateEnvironmentVariableName(name string) error {
