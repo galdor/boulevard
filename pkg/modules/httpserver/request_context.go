@@ -19,6 +19,7 @@ type RequestContext struct {
 	Ctx            context.Context
 	Request        *http.Request
 	ResponseWriter http.ResponseWriter
+	ResponseSent   bool
 
 	Listener          *Listener
 	ClientAddress     net.IP
@@ -100,6 +101,8 @@ func (ctx *RequestContext) Reply(status int, data io.Reader) {
 			ctx.Log.Error("cannot write response body: %v", err)
 		}
 	}
+
+	ctx.ResponseSent = true
 }
 
 func (ctx *RequestContext) ReplyError(status int) {

@@ -111,7 +111,7 @@ func (a *ReverseProxyAction) HandleRequest(ctx *RequestContext) {
 	defer res.Body.Close()
 
 	a.initResponseHeader(ctx, res)
-	ctx.ResponseWriter.WriteHeader(res.StatusCode)
+	ctx.Reply(res.StatusCode, nil)
 
 	if a.isConnectionUpgraded(ctx, res) {
 		// If we did not ask for a connection upgrade but we are
