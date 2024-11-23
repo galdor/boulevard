@@ -68,6 +68,11 @@ func (s *FormatString) Parse(value string) error {
 			}
 
 			name := string(data[2 : end+2])
+			if err := validateEnvironmentVariableName(name); err != nil {
+				return fmt.Errorf("invalid environment variable name %q: %w",
+					name, err)
+			}
+
 			value, found := os.LookupEnv(name)
 			if !found {
 				return fmt.Errorf("unknown environment variable %q", name)
@@ -166,4 +171,18 @@ func (s FormatString) Expand(vars map[string]string) string {
 	}
 
 	return buf.String()
+}
+
+func validateEnvironmentVariableName(name string) error {
+	for _, c := range name {
+		switch {
+		case c >= 'A' && c <= 'Z':
+		case c >= '0' && c <= '9':
+		case c == '_':
+		default:
+			return fmt.Errorf("invalid character %q", c)
+		}
+	}
+
+	return nil
 }
