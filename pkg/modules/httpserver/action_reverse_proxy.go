@@ -90,48 +90,55 @@ func (a *ReverseProxyAction) HandleRequest(ctx *RequestContext) {
 	req := a.rewriteRequest(ctx)
 	a.maybeSetConnectionUpgrade(ctx, req)
 
-	var responseSent bool
+	var hijack bool
 
-	err := a.client.WithRoundTrip(req,
-		func(conn *httputils.ClientConn, res *http.Response) (bool, error) {
-			a.initResponseHeader(ctx, res)
-			ctx.ResponseWriter.WriteHeader(res.StatusCode)
-			responseSent = true
-
-			if a.isConnectionUpgraded(ctx, res) {
-				// If we did not ask for a connection upgrade but we are
-				// receiving a 101 response acknowledging an upgrade, something
-				// is wrong.
-				if len(ctx.UpgradeProtocols) == 0 {
-					return false, fmt.Errorf("unexpected upgrade response")
-				}
-
-				// Hijack the connection between the client and us
-				if err := a.hijackConnection(ctx, conn); err != nil {
-					return false, fmt.Errorf("cannot hijack connection: %v",
-						err)
-				}
-
-				// Return true to indicate that we are hijacking the connection
-				// between us and the upstream server.
-				return true, nil
-			}
-
-			if _, err := io.Copy(ctx.ResponseWriter, res.Body); err != nil {
-				return false, fmt.Errorf("cannot copy response body: %v", err)
-			}
-
-			return false, nil
-		})
+	conn, err := a.client.AcquireConn()
 	if err != nil {
-		if responseSent {
-			ctx.Log.Error("%v", err)
+		ctx.Log.Error("cannot acquire connection: %v", err)
+		ctx.ReplyError(500)
+		return
+	}
+	defer func() {
+		if hijack {
+			a.client.HijackConn(conn)
 		} else {
-			ctx.Log.Error("cannot send request: %v", err)
-			ctx.ReplyError(500)
+			a.client.ReleaseConn(conn)
+		}
+	}()
+
+	res, err := conn.SendRequest(req)
+	if err != nil {
+		ctx.Log.Error("cannot send request: %v", err)
+		ctx.ReplyError(500)
+		conn.Close()
+		return
+	}
+	defer res.Body.Close()
+
+	a.initResponseHeader(ctx, res)
+	ctx.ResponseWriter.WriteHeader(res.StatusCode)
+
+	if a.isConnectionUpgraded(ctx, res) {
+		// If we did not ask for a connection upgrade but we are
+		// receiving a 101 response acknowledging an upgrade, something
+		// is wrong.
+		if len(ctx.UpgradeProtocols) == 0 {
+			ctx.Log.Error("unexpected upgrade response")
+			return
 		}
 
-		return
+		// Hijack the connection between the client and us
+		if err := a.hijackConnection(ctx, conn); err != nil {
+			ctx.Log.Error("cannot hijack connection: %v", err)
+			return
+		}
+
+		hijack = true
+	} else {
+		if _, err := io.Copy(ctx.ResponseWriter, res.Body); err != nil {
+			ctx.Log.Error("cannot copy response body: %v", err)
+			return
+		}
 	}
 }
 

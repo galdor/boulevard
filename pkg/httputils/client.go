@@ -54,6 +54,19 @@ func (c *ClientConn) Close() {
 	}
 }
 
+func (c *ClientConn) SendRequest(req *http.Request) (*http.Response, error) {
+	if err := req.Write(c.Conn); err != nil {
+		return nil, fmt.Errorf("cannot write request: %w", err)
+	}
+
+	res, err := http.ReadResponse(c.reader, req)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read response: %w", err)
+	}
+
+	return res, nil
+}
+
 func NewClient(cfg ClientCfg) (*Client, error) {
 	c := Client{
 		Cfg: cfg,
@@ -87,79 +100,65 @@ func (c *Client) Stop() {
 	c.nbConns.Store(0)
 }
 
-func (c *Client) WithRoundTrip(req *http.Request, fn func(*ClientConn, *http.Response) (bool, error)) error {
-	return c.withConn(func(conn *ClientConn) (bool, error) {
-		if err := req.Write(conn.Conn); err != nil {
-			return false, fmt.Errorf("cannot write request: %w", err)
-		}
-
-		res, err := http.ReadResponse(conn.reader, req)
-		if err != nil {
-			return false, fmt.Errorf("cannot read response: %w", err)
-		}
-		defer res.Body.Close()
-
-		return fn(conn, res)
-	})
-}
-
-func (c *Client) withConn(fn func(*ClientConn) (bool, error)) error {
+func (c *Client) AcquireConn() (*ClientConn, error) {
 	var conn *ClientConn
 
 	c.idleConnMutex.Lock()
 	if len(c.idleConns) > 0 {
 		conn = c.idleConns[0]
 		c.idleConns = c.idleConns[1:]
+		c.idleConnMutex.Unlock()
+		return conn, nil
 	}
 	c.idleConnMutex.Unlock()
 
-	if conn == nil {
-		// Of course this is not perfectly accurate since multiple goroutines
-		// can connect concurrently, but the last thing we want is to lock the
-		// whole client during a connection.
+	// Of course this is not perfectly accurate since multiple goroutines
+	// can connect concurrently, but the last thing we want is to lock the
+	// whole client during a connection.
 
-		nbConns := int(c.nbConns.Load())
+	nbConns := int(c.nbConns.Load())
 
-		if nbConns < c.Cfg.MaxConnections {
-			var err error
-			conn, err = c.connect()
-			if err != nil {
-				return fmt.Errorf("cannot connect to %q: %w", c.Cfg.Host, err)
-			}
-
-			c.nbConns.Add(1)
-		} else {
-			select {
-			case conn = <-c.releasedConns:
-
-			case <-time.After(c.Cfg.ConnectionAcquisitionTimeout):
-				return ErrNoConnectionAvailable
-
-			case <-c.stopChan:
-				return ErrClientStopping
-			}
+	if nbConns < c.Cfg.MaxConnections {
+		var err error
+		conn, err = c.connect()
+		if err != nil {
+			return nil, fmt.Errorf("cannot connect to %q: %w", c.Cfg.Host, err)
 		}
 
+		c.nbConns.Add(1)
+
+		return conn, nil
 	}
 
-	hijack, err := fn(conn)
-	if err != nil {
-		conn.Close()
+	select {
+	case conn = <-c.releasedConns:
+		return conn, nil
+
+	case <-time.After(c.Cfg.ConnectionAcquisitionTimeout):
+		return nil, ErrNoConnectionAvailable
+
+	case <-c.stopChan:
+		return nil, ErrClientStopping
+	}
+}
+
+func (c *Client) HijackConn(conn *ClientConn) {
+	c.nbConns.Add(-1)
+}
+
+func (c *Client) ReleaseConn(conn *ClientConn) {
+	if conn.Conn == nil {
 		c.nbConns.Add(-1)
-		return err
+		return
 	}
 
-	if !hijack {
-		select {
-		case c.releasedConns <- conn:
-		default:
-			c.idleConnMutex.Lock()
-			c.idleConns = append(c.idleConns, conn)
-			c.idleConnMutex.Unlock()
-		}
+	select {
+	case c.releasedConns <- conn:
+	default:
+		c.idleConnMutex.Lock()
+		c.idleConns = append(c.idleConns, conn)
+		c.idleConnMutex.Unlock()
 	}
-
-	return nil
 }
 
 func (c *Client) connect() (*ClientConn, error) {
