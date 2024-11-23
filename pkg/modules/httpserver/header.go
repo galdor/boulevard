@@ -1,7 +1,6 @@
 package httpserver
 
 import (
-	"fmt"
 	"net/http"
 
 	"go.n16f.net/boulevard/pkg/boulevard"
@@ -11,7 +10,6 @@ import (
 type Header map[string]*boulevard.FormatString
 
 func (h *Header) ValidateJSON(v *ejson.Validator) {
-	fmt.Printf("XXX ValidateJSON header\n")
 }
 
 func (h Header) Apply(header http.Header, vars map[string]string) {
