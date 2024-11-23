@@ -19,17 +19,20 @@ type RequestContext struct {
 	Ctx            context.Context
 	Request        *http.Request
 	ResponseWriter http.ResponseWriter
-	ResponseSent   bool
+	Listener       *Listener
+	AccessLogger   *AccessLogger
+	Auth           Auth
 
-	Listener          *Listener
 	ClientAddress     net.IP
 	Host              string
 	Subpath           string   // always relative
 	ConnectionOptions []string // [1]
 	UpgradeProtocols  []string // [1]
+	Username          string   // basic authentication only
 
-	AccessLogger *AccessLogger
-	Auth         Auth
+	ResponseSent     bool
+	ResponseStatus   int
+	ResponseBodySize int
 
 	Vars map[string]string
 
@@ -94,6 +97,7 @@ func (ctx *RequestContext) IsHTTP10() bool {
 func (ctx *RequestContext) Reply(status int, data io.Reader) {
 	ctx.Vars["http.response.status"] = strconv.Itoa(status)
 
+	ctx.ResponseStatus = status
 	ctx.ResponseWriter.WriteHeader(status)
 
 	if data != nil {

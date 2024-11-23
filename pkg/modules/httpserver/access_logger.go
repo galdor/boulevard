@@ -1,12 +1,20 @@
 package httpserver
 
 import (
+	"bytes"
+	"cmp"
 	"fmt"
 	"io"
 	"os"
+	"strconv"
+	"time"
 
 	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/ejson"
+)
+
+const (
+	AccessLoggerFormatCommon = "common"
 )
 
 type AccessLoggerCfg struct {
@@ -47,10 +55,55 @@ func (l *AccessLogger) Close() error {
 }
 
 func (l *AccessLogger) Log(ctx *RequestContext) error {
-	msg := l.Cfg.Format.Expand(ctx.Vars)
+	var data []byte
 
-	data := append([]byte(msg), '\n')
+	switch l.Cfg.Format.Value {
+	case AccessLoggerFormatCommon:
+		data = l.formatMsgCommon(ctx)
+	default:
+		data = []byte(l.Cfg.Format.Expand(ctx.Vars))
+	}
+
+	data = append(data, '\n')
 
 	_, err := l.w.Write(data)
 	return err
+}
+
+func (l *AccessLogger) formatMsgCommon(ctx *RequestContext) []byte {
+	var buf bytes.Buffer
+
+	buf.WriteString(ctx.ClientAddress.String())
+
+	buf.WriteByte(' ')
+	buf.WriteString("-")
+
+	buf.WriteByte(' ')
+	buf.WriteString(cmp.Or(ctx.Username, "-"))
+
+	buf.WriteByte(' ')
+	buf.WriteByte('[')
+	buf.WriteString(time.Now().Format("02/Jan/2006:15:04:05 -0700"))
+	buf.WriteByte(']')
+
+	buf.WriteByte(' ')
+	buf.WriteByte('"')
+	buf.WriteString(ctx.Request.Method)
+	buf.WriteByte(' ')
+	buf.WriteString(ctx.Request.URL.Path)
+	buf.WriteByte(' ')
+	buf.WriteString(ctx.Request.Proto)
+	buf.WriteByte('"')
+
+	buf.WriteByte(' ')
+	if ctx.ResponseStatus == 0 {
+		buf.WriteByte('-')
+	} else {
+		buf.WriteString(strconv.Itoa(ctx.ResponseStatus))
+	}
+
+	buf.WriteByte(' ')
+	buf.WriteString(strconv.Itoa(ctx.ResponseBodySize))
+
+	return buf.Bytes()
 }

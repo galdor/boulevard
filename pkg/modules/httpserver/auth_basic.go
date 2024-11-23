@@ -67,6 +67,9 @@ func (a *BasicAuth) AuthenticateRequest(ctx *RequestContext) error {
 		return fmt.Errorf("invalid authorization: missing ':' separator")
 	}
 
+	ctx.Username = username
+	ctx.Vars["http.request.username"] = username
+
 	credentials := username + ":" + transformAuthSecret(password, a.Cfg)
 
 	if _, found := a.Credentials[credentials]; !found {

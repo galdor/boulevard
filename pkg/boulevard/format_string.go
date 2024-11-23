@@ -12,7 +12,7 @@ import (
 )
 
 type FormatString struct {
-	value   string
+	Value   string
 	parts   []FormatStringPart
 	lenHint int
 }
@@ -139,7 +139,7 @@ func (s *FormatString) Parse(value string) error {
 		}
 	}
 
-	s.value = value
+	s.Value = value
 	s.parts = parts
 	s.lenHint = lenHint
 
@@ -147,7 +147,7 @@ func (s *FormatString) Parse(value string) error {
 }
 
 func (s *FormatString) MarshalJSON() ([]byte, error) {
-	return json.Marshal(s.value)
+	return json.Marshal(s.Value)
 }
 
 func (s *FormatString) UnmarshalJSON(data []byte) error {
@@ -156,12 +156,12 @@ func (s *FormatString) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	*s = FormatString{value: value}
+	*s = FormatString{Value: value}
 	return nil
 }
 
 func (s *FormatString) ValidateJSON(v *ejson.Validator) {
-	if err := s.Parse(s.value); err != nil {
+	if err := s.Parse(s.Value); err != nil {
 		v.AddError(nil, "invalid_format_string",
 			"invalid format string: %v", err)
 	}
