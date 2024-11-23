@@ -2,6 +2,7 @@ package boulevard
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -24,8 +25,9 @@ const (
 )
 
 type FormatStringPart struct {
-	Type  FormatStringPartType
-	Value string
+	Type         FormatStringPartType
+	Value        string
+	DefaultValue string
 }
 
 func (s *FormatString) Parse(value string) error {
@@ -94,14 +96,24 @@ func (s *FormatString) Parse(value string) error {
 				return fmt.Errorf("truncated variable block %q", string(data))
 			}
 
-			name := string(data[1 : end+1])
+			var name string
+			var defaultValue string
+
+			if colon := bytes.IndexByte(data[1:end+1], ':'); colon >= 0 {
+				name = string(data[1 : colon+1])
+				defaultValue = string(data[colon+2 : end+1])
+			} else {
+				name = string(data[1 : end+1])
+			}
+
 			if err := validateFormatStringVariableName(name); err != nil {
 				return fmt.Errorf("invalid variable name %q: %w", name, err)
 			}
 
 			part := FormatStringPart{
-				Type:  FormatStringPartTypeVariable,
-				Value: name,
+				Type:         FormatStringPartTypeVariable,
+				Value:        name,
+				DefaultValue: defaultValue,
 			}
 			parts = append(parts, part)
 
@@ -167,7 +179,7 @@ func (s FormatString) Expand(vars map[string]string) string {
 		case FormatStringPartTypeConstant:
 			partString = part.Value
 		case FormatStringPartTypeVariable:
-			partString = vars[part.Value]
+			partString = cmp.Or(vars[part.Value], part.DefaultValue)
 		default:
 			program.Panic("unknown string part type %q", part.Type)
 		}

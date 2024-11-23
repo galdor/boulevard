@@ -30,6 +30,13 @@ func TestStringParse(t *testing.T) {
 			},
 		},
 		{
+			"foo y",
+			"{a:x} {b:y}",
+			map[string]string{
+				"a": "foo",
+			},
+		},
+		{
 			"afooc",
 			"a{b}c",
 			map[string]string{

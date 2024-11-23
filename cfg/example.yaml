@@ -23,7 +23,7 @@ http_server:
         domains: ["localhost", "www.localhost"]
   access_logs:
     path: "local/logs/{module.name}.log"
-    format: "{http.client_address} {http.request.method} {http.request.path} {http.response.status} {http.response_time}"
+    format: "{http.client_address} {http.request.method} {http.request.path} {http.response.status:-} {http.response_time}"
   handlers:
     - match:
         path: "/hello"
