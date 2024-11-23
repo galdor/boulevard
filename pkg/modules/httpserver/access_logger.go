@@ -74,7 +74,7 @@ func (l *AccessLogger) Log(ctx *RequestContext) error {
 }
 
 func (l *AccessLogger) formatMsgCommon(ctx *RequestContext, buf *bytes.Buffer) {
-	buf.WriteString(ctx.ClientAddress.String())
+	buf.WriteString(cmp.Or(ctx.ClientAddress.String(), "-"))
 
 	buf.WriteByte(' ')
 	buf.WriteString("-")

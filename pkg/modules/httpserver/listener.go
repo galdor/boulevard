@@ -151,7 +151,20 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	ctx.Listener = l
 
+	// Schedule access logging
 	ctx.AccessLogger = l.Module.accessLogger
+	defer func() {
+		if ctx.AccessLogger != nil {
+			responseTime := time.Since(start)
+			responseTimeString := strconv.FormatFloat(responseTime.Seconds(),
+				'f', -1, 32)
+			ctx.Vars["http.response_time"] = responseTimeString
+
+			if err := ctx.AccessLogger.Log(ctx); err != nil {
+				l.Module.Log.Error("cannot log request: %v", err)
+			}
+		}
+	}()
 
 	// Identify the numeric IP address of the client
 	clientAddr, _, err := netutils.ParseNumericAddress(req.RemoteAddr)
@@ -205,18 +218,6 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	h.Action.HandleRequest(ctx)
-
-	// Log the request
-	if ctx.AccessLogger != nil {
-		responseTime := time.Since(start)
-		responseTimeString := strconv.FormatFloat(responseTime.Seconds(),
-			'f', -1, 32)
-		ctx.Vars["http.response_time"] = responseTimeString
-
-		if err := ctx.AccessLogger.Log(ctx); err != nil {
-			l.Module.Log.Error("cannot log request: %v", err)
-		}
-	}
 }
 
 func (l *Listener) registerTCPConnection(c *TCPConnection) {
