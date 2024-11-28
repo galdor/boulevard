@@ -9,6 +9,7 @@ acme:
   datastore_path: "./local/acme"
   contact:
     - "bob@example.com"
+  http_upstream_uri: "http://localhost:8080"
   pebble: true
 
 pprof_address: ":6060"

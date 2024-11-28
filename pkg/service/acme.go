@@ -9,11 +9,12 @@ import (
 )
 
 type ACMECfg struct {
-	DatastorePath              string   `json:"datastore_path"`
-	Contact                    []string `json:"contact"`
-	DirectoryURI               string   `json:"directory_uri,omitempty"`
-	HTTPChallengeSolverAddress string   `json:"http_challenge_solver_address,omitempty"`
-	Pebble                     bool     `json:"pebble,omitempty"`
+	DatastorePath       string   `json:"datastore_path"`
+	Contact             []string `json:"contact"`
+	DirectoryURI        string   `json:"directory_uri,omitempty"`
+	HTTPListenerAddress string   `json:"http_listener_address,omitempty"`
+	HTTPUpstreamURI     string   `json:"http_upstream_uri,omitempty"`
+	Pebble              bool     `json:"pebble,omitempty"`
 }
 
 func (cfg *ACMECfg) ValidateJSON(v *ejson.Validator) {
@@ -25,8 +26,12 @@ func (cfg *ACMECfg) ValidateJSON(v *ejson.Validator) {
 		}
 	})
 
-	if cfg.HTTPChallengeSolverAddress != "" {
-		v.CheckNetworkAddress("address", cfg.HTTPChallengeSolverAddress)
+	if cfg.HTTPUpstreamURI != "" {
+		v.CheckNetworkAddress("http_upstream_address", cfg.HTTPUpstreamURI)
+	}
+
+	if cfg.HTTPUpstreamURI != "" {
+		v.CheckStringURI("http_upstream_uri", cfg.HTTPUpstreamURI)
 	}
 }
 
@@ -56,7 +61,8 @@ func (s *Service) initACMEClient() error {
 		ContactURIs: contactURIs,
 
 		HTTPChallengeSolver: &acme.HTTPChallengeSolverCfg{
-			Address: cfg.HTTPChallengeSolverAddress,
+			Address:     cfg.HTTPListenerAddress,
+			UpstreamURI: cfg.HTTPUpstreamURI,
 		},
 	}
 
