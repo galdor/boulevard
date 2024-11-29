@@ -28,13 +28,13 @@ func (cfg *ReverseProxyActionCfg) ValidateJSON(v *ejson.Validator) {
 
 type ReverseProxyAction struct {
 	Handler *Handler
-	Cfg     ReverseProxyActionCfg
+	Cfg     *ReverseProxyActionCfg
 
 	uri    *url.URL
 	client *httputils.Client
 }
 
-func NewReverseProxyAction(h *Handler, cfg ReverseProxyActionCfg) (*ReverseProxyAction, error) {
+func NewReverseProxyAction(h *Handler, cfg *ReverseProxyActionCfg) (*ReverseProxyAction, error) {
 	uri, err := url.Parse(cfg.URI)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse URI: %w", err)

@@ -77,7 +77,7 @@ func (cfg *FastCGIActionCfg) ValidateJSON(v *ejson.Validator) {
 
 type FastCGIAction struct {
 	Handler *Handler
-	Cfg     FastCGIActionCfg
+	Cfg     *FastCGIActionCfg
 	Log     *log.Logger
 
 	client *fastcgi.Client
@@ -95,7 +95,7 @@ type FastCGIAction struct {
 	requestTimeout time.Duration
 }
 
-func NewFastCGIAction(h *Handler, cfg FastCGIActionCfg) (*FastCGIAction, error) {
+func NewFastCGIAction(h *Handler, cfg *FastCGIActionCfg) (*FastCGIAction, error) {
 	a := FastCGIAction{
 		Handler: h,
 		Cfg:     cfg,

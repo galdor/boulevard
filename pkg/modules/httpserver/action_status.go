@@ -32,13 +32,13 @@ func (cfg *StatusActionCfg) ValidateJSON(v *ejson.Validator) {
 
 type StatusAction struct {
 	Handler *Handler
-	Cfg     StatusActionCfg
+	Cfg     *StatusActionCfg
 
 	textTemplates *texttemplate.Template
 	htmlTemplates *htmltemplate.Template
 }
 
-func NewStatusAction(h *Handler, cfg StatusActionCfg) (*StatusAction, error) {
+func NewStatusAction(h *Handler, cfg *StatusActionCfg) (*StatusAction, error) {
 	a := StatusAction{
 		Handler: h,
 		Cfg:     cfg,

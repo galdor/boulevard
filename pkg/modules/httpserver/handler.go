@@ -168,17 +168,17 @@ func NewHandler(mod *Module, cfg *HandlerCfg) (*Handler, error) {
 
 	switch {
 	case cfg.Reply != nil:
-		action, err = NewReplyAction(&h, *cfg.Reply)
+		action, err = NewReplyAction(&h, cfg.Reply)
 	case cfg.Redirect != nil:
-		action, err = NewRedirectAction(&h, *cfg.Redirect)
+		action, err = NewRedirectAction(&h, cfg.Redirect)
 	case cfg.Serve != nil:
-		action, err = NewServeAction(&h, *cfg.Serve)
+		action, err = NewServeAction(&h, cfg.Serve)
 	case cfg.ReverseProxy != nil:
-		action, err = NewReverseProxyAction(&h, *cfg.ReverseProxy)
+		action, err = NewReverseProxyAction(&h, cfg.ReverseProxy)
 	case cfg.Status != nil:
-		action, err = NewStatusAction(&h, *cfg.Status)
+		action, err = NewStatusAction(&h, cfg.Status)
 	case cfg.FastCGI != nil:
-		action, err = NewFastCGIAction(&h, *cfg.FastCGI)
+		action, err = NewFastCGIAction(&h, cfg.FastCGI)
 	default:
 		if len(cfg.Handlers) == 0 {
 			return nil, fmt.Errorf("missing action configuration")

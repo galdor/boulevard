@@ -31,12 +31,12 @@ func (cfg *RedirectActionCfg) ValidateJSON(v *ejson.Validator) {
 
 type RedirectAction struct {
 	Handler *Handler
-	Cfg     RedirectActionCfg
+	Cfg     *RedirectActionCfg
 
 	htmlTemplates *htmltemplate.Template
 }
 
-func NewRedirectAction(h *Handler, cfg RedirectActionCfg) (*RedirectAction, error) {
+func NewRedirectAction(h *Handler, cfg *RedirectActionCfg) (*RedirectAction, error) {
 	a := RedirectAction{
 		Handler: h,
 		Cfg:     cfg,

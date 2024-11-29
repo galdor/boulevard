@@ -26,10 +26,10 @@ func (cfg *ReplyActionCfg) ValidateJSON(v *ejson.Validator) {
 
 type ReplyAction struct {
 	Handler *Handler
-	Cfg     ReplyActionCfg
+	Cfg     *ReplyActionCfg
 }
 
-func NewReplyAction(h *Handler, cfg ReplyActionCfg) (*ReplyAction, error) {
+func NewReplyAction(h *Handler, cfg *ReplyActionCfg) (*ReplyAction, error) {
 	a := ReplyAction{
 		Handler: h,
 		Cfg:     cfg,
