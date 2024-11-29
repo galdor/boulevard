@@ -26,8 +26,8 @@ func (cfg *ACMECfg) ValidateJSON(v *ejson.Validator) {
 		}
 	})
 
-	if cfg.HTTPUpstreamURI != "" {
-		v.CheckNetworkAddress("http_upstream_address", cfg.HTTPUpstreamURI)
+	if cfg.HTTPListenerAddress != "" {
+		v.CheckNetworkAddress("http_listener_address", cfg.HTTPListenerAddress)
 	}
 
 	if cfg.HTTPUpstreamURI != "" {
