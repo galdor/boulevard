@@ -7,6 +7,7 @@ BIN_DIR = $(CURDIR)/bin
 
 GO_PKGS = \
   go.n16f.net/boulevard/cmd/boulevard \
+  go.n16f.net/boulevard/cmd/boulevard-cli \
   go.n16f.net/boulevard/cmd/fastcgi
 
 define go_make1
