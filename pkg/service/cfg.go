@@ -33,6 +33,8 @@ func (cfg *ServiceCfg) ValidateJSON(v *ejson.Validator) {
 	if cfg.PProfAddress != "" {
 		v.CheckNetworkAddress("pprof_address", cfg.PProfAddress)
 	}
+
+	v.CheckOptionalObject("acme", cfg.ACME)
 }
 
 func (cfg *ServiceCfg) Load(filePath string) error {
