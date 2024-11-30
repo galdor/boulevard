@@ -142,7 +142,7 @@ func NewHandler(mod *Module, cfg *HandlerCfg) (*Handler, error) {
 	}
 
 	if logCfg := cfg.AccessLogger; logCfg != nil {
-		log, err := mod.NewAccessLogger(logCfg)
+		log, err := NewAccessLogger(logCfg, mod.Vars)
 		if err != nil {
 			return nil, fmt.Errorf("cannot create access logger: %w", err)
 		}

@@ -18,6 +18,7 @@ type ServiceCfg struct {
 
 	Logger       *log.LoggerCfg `json:"logger,omitempty"`
 	ACME         *ACMECfg       `json:"acme,omitempty"`
+	ControlAPI   *ControlAPICfg `json:"control_api,omitempty"`
 	PProfAddress string         `json:"pprof_address,omitempty"`
 
 	ModuleInfo []*boulevard.ModuleInfo `json:"-"` // [1]
@@ -35,6 +36,7 @@ func (cfg *ServiceCfg) ValidateJSON(v *ejson.Validator) {
 	}
 
 	v.CheckOptionalObject("acme", cfg.ACME)
+	v.CheckOptionalObject("control_api", cfg.ControlAPI)
 }
 
 func (cfg *ServiceCfg) Load(filePath string) error {

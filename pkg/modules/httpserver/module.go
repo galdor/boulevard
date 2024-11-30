@@ -101,7 +101,7 @@ func (mod *Module) Start(modCfg boulevard.ModuleCfg, modData *boulevard.ModuleDa
 	}
 
 	if logCfg := mod.Cfg.AccessLogger; logCfg != nil {
-		log, err := mod.NewAccessLogger(logCfg)
+		log, err := NewAccessLogger(logCfg, mod.Vars)
 		if err != nil {
 			return fmt.Errorf("cannot create access logger: %w", err)
 		}

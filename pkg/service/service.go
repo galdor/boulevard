@@ -20,6 +20,7 @@ type Service struct {
 	modulesMutex sync.Mutex
 
 	acmeClient *acme.Client
+	controlAPI *ControlAPI
 
 	httpUserAgent string
 
@@ -55,6 +56,10 @@ func NewService(cfg ServiceCfg) (*Service, error) {
 		return nil, err
 	}
 
+	if err := s.initControlAPI(); err != nil {
+		return nil, err
+	}
+
 	return &s, nil
 }
 
@@ -71,6 +76,10 @@ func (s *Service) Start() error {
 		return err
 	}
 
+	if err := s.startControlAPI(); err != nil {
+		return err
+	}
+
 	s.Log.Debug(1, "running")
 	return nil
 }
@@ -81,6 +90,7 @@ func (s *Service) Stop() {
 	close(s.stopChan)
 	s.wg.Wait()
 
+	s.stopControlAPI()
 	s.stopModules()
 	s.stopACMEClient()
 }

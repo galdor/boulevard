@@ -34,12 +34,12 @@ type AccessLogger struct {
 	w io.WriteCloser
 }
 
-func (mod *Module) NewAccessLogger(cfg *AccessLoggerCfg) (*AccessLogger, error) {
+func NewAccessLogger(cfg *AccessLoggerCfg, vars map[string]string) (*AccessLogger, error) {
 	l := AccessLogger{
 		Cfg: cfg,
 	}
 
-	filePath := cfg.Path.Expand(mod.Vars)
+	filePath := cfg.Path.Expand(vars)
 
 	flags := os.O_WRONLY | os.O_CREATE | os.O_TRUNC
 	file, err := os.OpenFile(filePath, flags, 0644)

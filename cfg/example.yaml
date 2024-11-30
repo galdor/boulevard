@@ -12,6 +12,21 @@ acme:
   http_upstream_uri: "http://localhost:8080"
   pebble: true
 
+control_api:
+  address: ":4960"
+  tls:
+    domains: ["localhost", "www.localhost"]
+  authentication:
+    secrets:
+      hash: "SHA3-256"
+    basic:
+      credentials:
+        # admin:secret
+        - "admin:f5a5207a8729b1f709cb710311751eb2fc8acad5a1fb8ac991b736e69b6529a3"
+  access_logs:
+    path: "local/logs/control-api.log"
+    format: "common"
+
 pprof_address: ":6060"
 
 ---

@@ -5,15 +5,11 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"go.n16f.net/boulevard/pkg/netutils"
 	"go.n16f.net/log"
-	"go.n16f.net/program"
 )
 
 type Listener struct {
@@ -37,7 +33,7 @@ func NewListener(mod *Module, cfg netutils.TCPListenerCfg) (*Listener, error) {
 
 	tcpListener, err := netutils.NewTCPListener(cfg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot create TCP listener: %w", err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -57,7 +53,7 @@ func NewListener(mod *Module, cfg netutils.TCPListenerCfg) (*Listener, error) {
 
 func (l *Listener) Start() error {
 	if err := l.TCPListener.Start(); err != nil {
-		return err
+		return fmt.Errorf("cannot start TCP listener: %w", err)
 	}
 
 	l.Server = &http.Server{
@@ -122,88 +118,32 @@ func (l *Listener) connState(conn net.Conn, state http.ConnState) {
 }
 
 func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	start := time.Now()
-
-	ctx := NewRequestContext(req, w)
-	ctx.Ctx = l.ctx
+	ctx := NewRequestContext(l.ctx, req, w)
 	ctx.Log = l.Module.Log.Child("", nil)
-
-	subpath := req.URL.Path
-	if len(subpath) > 0 && subpath[0] == '/' {
-		subpath = subpath[1:]
-	}
-	ctx.Subpath = subpath
-
-	ctx.Vars["http.request.method"] = strings.ToUpper(req.Method)
-	ctx.Vars["http.request.path"] = req.URL.Path
-
-	defer func() {
-		if v := recover(); v != nil {
-			msg := program.RecoverValueString(v)
-			trace := program.StackTrace(0, 20, true)
-
-			ctx.Log.Error("panic: %s\n%s", msg, trace)
-			if ctx.ResponseWriter.Status == 0 {
-				ctx.ReplyError(500)
-			}
-		}
-	}()
-
 	ctx.Listener = l
-
-	// Schedule access logging
 	ctx.AccessLogger = l.Module.accessLogger
-	defer func() {
-		if ctx.AccessLogger != nil {
-			responseTime := time.Since(start)
-			responseTimeString := strconv.FormatFloat(responseTime.Seconds(),
-				'f', -1, 32)
-			ctx.Vars["http.response_time"] = responseTimeString
 
-			if err := ctx.AccessLogger.Log(ctx); err != nil {
-				l.Module.Log.Error("cannot log request: %v", err)
-			}
-		}
-	}()
+	defer ctx.Recover()
+	defer ctx.OnRequestHandled()
 
-	// Identify the numeric IP address of the client
-	clientAddr, _, err := netutils.ParseNumericAddress(req.RemoteAddr)
-	if err != nil {
-		ctx.Log.Error("cannot parse remote address %q: %v", req.RemoteAddr, err)
+	if err := ctx.IdentifyClient(); err != nil {
+		ctx.Log.Error("cannot identify client: %v", err)
 		ctx.ReplyError(500)
 		return
 	}
 
-	ctx.ClientAddress = clientAddr
-
-	ctx.Log.Data["address"] = clientAddr
-
-	ctx.Vars["http.client_address"] = clientAddr.String()
-
-	// Identify the host (hostname or IP address) provided by the client either
-	// in the Host header field for HTTP 1.x (defaulting to the host part of the
-	// request URI if the Host field is not set in HTTP 1.0) or in the
-	// ":authority" pseudo-header field for HTTP 2. We have to split the address
-	// because the net/http module uses the <host>:<port> representation.
-	host, _, err := net.SplitHostPort(req.Host)
-	if err != nil {
-		ctx.Log.Error("cannot parse host %q: %v", req.Host, err)
+	if err := ctx.IdentifyRequestHost(); err != nil {
+		ctx.Log.Error("cannot identify request host: %v", err)
 		ctx.ReplyError(500)
 		return
 	}
 
-	ctx.Host = host
-
-	ctx.Vars["http.request.host"] = host
-
-	// Find the first handler matching the request
 	h := l.Module.findHandler(ctx)
 	if h == nil {
 		ctx.ReplyError(404)
 		return
 	}
 
-	// Authenticate the request if necessary
 	if ctx.Auth != nil {
 		if err := ctx.Auth.AuthenticateRequest(ctx); err != nil {
 			ctx.Log.Error("cannot authenticate request: %v", err)
@@ -211,7 +151,6 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	// Handle the request
 	if h.Action == nil {
 		ctx.ReplyError(501)
 		return

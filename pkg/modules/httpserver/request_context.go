@@ -1,7 +1,9 @@
 package httpserver
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -9,9 +11,12 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"go.n16f.net/boulevard/pkg/httputils"
+	"go.n16f.net/boulevard/pkg/netutils"
 	"go.n16f.net/log"
+	"go.n16f.net/program"
 )
 
 type RequestContext struct {
@@ -30,23 +35,39 @@ type RequestContext struct {
 	UpgradeProtocols  []string // [1]
 	Username          string   // basic authentication only
 
+	StartTime    time.Time
+	ResponseTime time.Duration
+
 	Vars map[string]string
 
 	// [1] Normalized to lower case.
 }
 
-func NewRequestContext(req *http.Request, w http.ResponseWriter) *RequestContext {
+func NewRequestContext(cctx context.Context, req *http.Request, w http.ResponseWriter) *RequestContext {
 	ctx := RequestContext{
+		Ctx:            cctx,
 		Request:        req,
 		ResponseWriter: httputils.NewResponseWriter(w),
 
-		Vars: make(map[string]string),
+		StartTime: time.Now(),
+		Vars:      make(map[string]string),
 	}
 
+	ctx.initSubpath()
 	ctx.initConnectionOptions()
 	ctx.initUpgradeProtocols()
+	ctx.initVars()
 
 	return &ctx
+}
+
+func (ctx *RequestContext) initSubpath() {
+	subpath := ctx.Request.URL.Path
+	if len(subpath) > 0 && subpath[0] == '/' {
+		subpath = subpath[1:]
+	}
+
+	ctx.Subpath = subpath
 }
 
 func (ctx *RequestContext) initConnectionOptions() {
@@ -82,6 +103,72 @@ func (ctx *RequestContext) initUpgradeProtocols() {
 	ctx.UpgradeProtocols = httputils.SplitTokenList(upgradeField, false)
 }
 
+func (ctx *RequestContext) initVars() {
+	ctx.Vars["http.request.method"] = strings.ToUpper(ctx.Request.Method)
+	ctx.Vars["http.request.path"] = ctx.Request.URL.Path
+}
+
+func (ctx *RequestContext) Recover() {
+	if v := recover(); v != nil {
+		msg := program.RecoverValueString(v)
+		trace := program.StackTrace(1, 20, true)
+
+		ctx.Log.Error("panic: %s\n%s", msg, trace)
+		if ctx.ResponseWriter.Status == 0 {
+			ctx.ReplyError(500)
+		}
+	}
+}
+
+func (ctx *RequestContext) OnRequestHandled() {
+	ctx.ResponseTime = time.Since(ctx.StartTime)
+
+	responseTimeString := strconv.FormatFloat(ctx.ResponseTime.Seconds(),
+		'f', -1, 32)
+	ctx.Vars["http.response_time"] = responseTimeString
+
+	if ctx.AccessLogger != nil {
+		if err := ctx.AccessLogger.Log(ctx); err != nil {
+			ctx.Log.Error("cannot log request: %v", err)
+		}
+	}
+}
+
+func (ctx *RequestContext) IdentifyClient() error {
+	addr, _, err := netutils.ParseNumericAddress(ctx.Request.RemoteAddr)
+	if err != nil {
+		return fmt.Errorf("cannot parse remote address %q: %w",
+			ctx.Request.RemoteAddr, err)
+	}
+
+	ctx.ClientAddress = addr
+
+	ctx.Log.Data["address"] = addr
+
+	ctx.Vars["http.client_address"] = addr.String()
+
+	return nil
+}
+
+func (ctx *RequestContext) IdentifyRequestHost() error {
+	// Identify the host (hostname or IP address) provided by the client either
+	// in the Host header field for HTTP 1.x (defaulting to the host part of the
+	// request URI if the Host field is not set in HTTP 1.0) or in the
+	// ":authority" pseudo-header field for HTTP 2. We have to split the address
+	// because the net/http module uses the <host>:<port> representation.
+
+	host, _, err := net.SplitHostPort(ctx.Request.Host)
+	if err != nil {
+		return fmt.Errorf("cannot parse host %q: %w", ctx.Request.Host, err)
+	}
+
+	ctx.Host = host
+
+	ctx.Vars["http.request.host"] = host
+
+	return nil
+}
+
 func (ctx *RequestContext) IsHTTP1x() bool {
 	return ctx.Request.ProtoMajor == 1
 }
@@ -97,6 +184,34 @@ func (ctx *RequestContext) Reply(status int, data io.Reader) {
 
 	if data != nil {
 		if _, err := io.Copy(ctx.ResponseWriter, data); err != nil {
+			ctx.Log.Error("cannot write response body: %v", err)
+		}
+	}
+}
+
+func (ctx *RequestContext) ReplyJSON(status int, value any) {
+	var data []byte
+
+	if value != nil {
+		var err error
+		data, err = json.MarshalIndent(value, "", "  ")
+		if err != nil {
+			ctx.Log.Error("cannot encode response body: %v", err)
+			ctx.ReplyError(500)
+			return
+		}
+	}
+
+	header := ctx.ResponseWriter.Header()
+	header.Set("Content-Type", MediaTypeJSON.String())
+
+	ctx.ResponseWriter.WriteHeader(status)
+
+	if data != nil {
+		data = append(data, '\n')
+		dataReader := bytes.NewReader(data)
+
+		if _, err := io.Copy(ctx.ResponseWriter, dataReader); err != nil {
 			ctx.Log.Error("cannot write response body: %v", err)
 		}
 	}
