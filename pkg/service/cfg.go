@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 
 	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/ejson"
@@ -40,7 +40,7 @@ func (cfg *ServiceCfg) ValidateJSON(v *ejson.Validator) {
 }
 
 func (cfg *ServiceCfg) Load(filePath string) error {
-	data, err := ioutil.ReadFile(filePath)
+	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("cannot read %q: %w", filePath, err)
 	}

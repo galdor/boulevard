@@ -2,7 +2,7 @@ package service
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -66,7 +66,7 @@ func TestHTTPReverseProxyWebSocket(t *testing.T) {
 			return "", fmt.Errorf("cannot obtain WebSocket reader: %w", err)
 		}
 
-		data, err := ioutil.ReadAll(r)
+		data, err := io.ReadAll(r)
 		if err != nil {
 			return "", fmt.Errorf("cannot read WebSocket: %v", err)
 		}

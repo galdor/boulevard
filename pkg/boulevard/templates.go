@@ -3,8 +3,8 @@ package boulevard
 import (
 	"fmt"
 	htmltemplate "html/template"
+	"io"
 	"io/fs"
-	"io/ioutil"
 	"strings"
 	texttemplate "text/template"
 )
@@ -92,7 +92,7 @@ func walkFS(filesystem fs.FS, suffix string, fn func(string, []byte) error) erro
 				return fmt.Errorf("cannot open %q: %w", filePath, err)
 			}
 
-			data, err = ioutil.ReadAll(file)
+			data, err = io.ReadAll(file)
 			if err != nil {
 				file.Close()
 				return fmt.Errorf("cannot read %q: %w", filePath, err)

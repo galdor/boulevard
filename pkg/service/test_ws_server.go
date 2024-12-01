@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"strconv"
@@ -83,7 +82,7 @@ func (s *TestWSServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		data, err := ioutil.ReadAll(r)
+		data, err := io.ReadAll(r)
 		if checkErr(err, "cannot read WebSocket: %v", err) {
 			return
 		}
