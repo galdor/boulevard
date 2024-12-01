@@ -1,4 +1,4 @@
-package main
+package service
 
 import (
 	"bytes"
@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"time"
 
-	"go.n16f.net/boulevard/pkg/service"
 	"go.n16f.net/ejson"
 )
 
@@ -77,14 +76,14 @@ func (c *Client) Call(op string, reqBody, resBody any) (*http.Response, error) {
 	if status := res.StatusCode; status < 200 || status > 399 {
 		var baseError error
 
-		var apiError service.ControlAPIError
+		var apiError ControlAPIError
 		if err := json.Unmarshal(resBodyData, &apiError); err == nil {
 			baseError = &apiError
 		} else {
 			baseError = errors.New(string(resBodyData))
 		}
 
-		return nil, fmt.Errorf("request failed with status %d: %w",
+		return res, fmt.Errorf("request failed with status %d: %w",
 			res.StatusCode, baseError)
 	}
 

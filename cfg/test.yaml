@@ -11,6 +11,9 @@ acme:
   http_upstream_uri: "http://localhost:8080"
   pebble: true
 
+control_api:
+  path: "/tmp/boulevard.sock"
+
 pprof_address: ":6060"
 
 ---

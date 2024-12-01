@@ -1,13 +1,14 @@
 package main
 
 import (
+	"go.n16f.net/boulevard/pkg/service"
 	"go.n16f.net/program"
 )
 
 var (
 	buildId string
 
-	client *Client
+	client *service.Client
 )
 
 func main() {
@@ -24,7 +25,7 @@ func main() {
 
 	if p.CommandName() != "version" {
 		path := p.OptionValue("path")
-		client = NewClient(path)
+		client = service.NewClient(path)
 	}
 
 	p.Run()

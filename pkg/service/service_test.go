@@ -67,6 +67,8 @@ func initTestService() {
 	if err := service.Start(); err != nil {
 		program.Abort("cannot start service: %v", err)
 	}
+
+	testService = service
 }
 
 func testHTTPClient(t *testing.T) *httputils.TestClient {
