@@ -15,12 +15,19 @@ const testCfgPath = "cfg/test.yaml"
 var testService *Service
 
 func TestMain(m *testing.M) {
-	setTestDirectory()
-	createTestACMEDatastore()
+	var status int
 
-	initTestService()
+	func() {
+		setTestDirectory()
+		createTestACMEDatastore()
 
-	os.Exit(m.Run())
+		initTestService()
+		defer testService.Stop()
+
+		status = m.Run()
+	}()
+
+	os.Exit(status)
 }
 
 func setTestDirectory() {
