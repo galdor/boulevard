@@ -16,15 +16,15 @@ type PathPatternSegment struct {
 	Value string // empty if "*" wildcard
 }
 
-func (pp *PathPattern) String() string {
-	if len(pp.Segments) == 0 {
+func (p *PathPattern) String() string {
+	if len(p.Segments) == 0 {
 		return "/"
 	}
 
 	var buf bytes.Buffer
 
-	for i, s := range pp.Segments {
-		if i > 0 || !pp.Relative {
+	for i, s := range p.Segments {
+		if i > 0 || !p.Relative {
 			buf.WriteByte('/')
 		}
 
@@ -35,14 +35,14 @@ func (pp *PathPattern) String() string {
 		}
 	}
 
-	if pp.Prefix {
+	if p.Prefix {
 		buf.WriteByte('/')
 	}
 
 	return buf.String()
 }
 
-func (pp *PathPattern) Parse(s string) error {
+func (p *PathPattern) Parse(s string) error {
 	if s == "" {
 		return fmt.Errorf("empty pattern")
 	}
@@ -50,21 +50,21 @@ func (pp *PathPattern) Parse(s string) error {
 	var segmentStrings []string
 
 	if s[0] == '/' {
-		pp.Relative = false
+		p.Relative = false
 		segmentStrings = strings.Split(s[1:], "/")
 	} else {
-		pp.Relative = true
+		p.Relative = true
 		segmentStrings = strings.Split(s, "/")
 	}
 
-	pp.Segments = make([]PathPatternSegment, len(segmentStrings))
-	pp.Prefix = false
+	p.Segments = make([]PathPatternSegment, len(segmentStrings))
+	p.Prefix = false
 
 	for i, segmentString := range segmentStrings {
 		if segmentString == "" {
 			if i == len(segmentStrings)-1 {
-				pp.Prefix = true
-				pp.Segments = pp.Segments[:len(pp.Segments)-1]
+				p.Prefix = true
+				p.Segments = p.Segments[:len(p.Segments)-1]
 				break
 			}
 
@@ -84,13 +84,13 @@ func (pp *PathPattern) Parse(s string) error {
 			segment.Value = segmentString
 		}
 
-		pp.Segments[i] = segment
+		p.Segments[i] = segment
 	}
 
 	return nil
 }
 
-func (pp *PathPattern) Match(path string) (bool, string) {
+func (p *PathPattern) Match(path string) (bool, string) {
 	var pathSegments []string
 
 	path = strings.Trim(path, "/")
@@ -98,7 +98,7 @@ func (pp *PathPattern) Match(path string) (bool, string) {
 		pathSegments = strings.Split(path, "/")
 	}
 
-	for _, patternSegment := range pp.Segments {
+	for _, patternSegment := range p.Segments {
 		if len(pathSegments) == 0 {
 			return false, ""
 		}
@@ -111,7 +111,7 @@ func (pp *PathPattern) Match(path string) (bool, string) {
 		}
 	}
 
-	if len(pathSegments) > 0 && !pp.Prefix {
+	if len(pathSegments) > 0 && !p.Prefix {
 		return false, ""
 	}
 
