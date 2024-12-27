@@ -250,8 +250,13 @@ func (h *Handler) matchRequest(ctx *RequestContext) bool {
 
 	var subpath string
 	if pattern := matchSpec.pathPattern; pattern != nil {
+		refPath := ctx.Request.URL.Path
+		if pattern.Relative {
+			refPath = ctx.Subpath
+		}
+
 		var match bool
-		match, subpath = pattern.Match(ctx.Request.URL.Path)
+		match, subpath = pattern.Match(refPath)
 		if !match {
 			return false
 		}

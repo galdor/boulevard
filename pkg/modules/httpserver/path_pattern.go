@@ -8,6 +8,7 @@ import (
 
 type PathPattern struct {
 	Segments []PathPatternSegment
+	Relative bool
 	Prefix   bool
 }
 
@@ -16,14 +17,16 @@ type PathPatternSegment struct {
 }
 
 func (pp *PathPattern) String() string {
-	var buf bytes.Buffer
-
 	if len(pp.Segments) == 0 {
-		buf.WriteByte('/')
+		return "/"
 	}
 
-	for _, s := range pp.Segments {
-		buf.WriteByte('/')
+	var buf bytes.Buffer
+
+	for i, s := range pp.Segments {
+		if i > 0 || !pp.Relative {
+			buf.WriteByte('/')
+		}
 
 		if s.Value == "" {
 			buf.WriteByte('*')
@@ -32,7 +35,7 @@ func (pp *PathPattern) String() string {
 		}
 	}
 
-	if pp.Prefix && len(pp.Segments) > 0 {
+	if pp.Prefix {
 		buf.WriteByte('/')
 	}
 
@@ -44,26 +47,24 @@ func (pp *PathPattern) Parse(s string) error {
 		return fmt.Errorf("empty pattern")
 	}
 
-	if s[0] != '/' {
-		return fmt.Errorf("invalid initial character %q", s[0])
+	var segmentStrings []string
+
+	if s[0] == '/' {
+		pp.Relative = false
+		segmentStrings = strings.Split(s[1:], "/")
+	} else {
+		pp.Relative = true
+		segmentStrings = strings.Split(s, "/")
 	}
 
-	if len(s) == 1 {
-		pp.Segments = nil
-		pp.Prefix = true
-		return nil
-	}
-
-	segmentStrings := strings.Split(s[1:], "/")
-	segments := make([]PathPatternSegment, len(segmentStrings))
-
+	pp.Segments = make([]PathPatternSegment, len(segmentStrings))
 	pp.Prefix = false
 
 	for i, segmentString := range segmentStrings {
 		if segmentString == "" {
 			if i == len(segmentStrings)-1 {
 				pp.Prefix = true
-				segments = segments[:len(segments)-1]
+				pp.Segments = pp.Segments[:len(pp.Segments)-1]
 				break
 			}
 
@@ -83,10 +84,9 @@ func (pp *PathPattern) Parse(s string) error {
 			segment.Value = segmentString
 		}
 
-		segments[i] = segment
+		pp.Segments[i] = segment
 	}
 
-	pp.Segments = segments
 	return nil
 }
 

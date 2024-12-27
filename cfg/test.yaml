@@ -77,7 +77,7 @@ http_server:
           reply:
             body: "foo"
         - match:
-            path: "/nested/bar/"
+            path: "bar/"
           authentication:
             bearer:
               tokens:
@@ -86,7 +86,7 @@ http_server:
             body: "bar"
           handlers:
             - match:
-                path: "/nested/bar/x"
+                path: "x"
               reply:
                 body: "x"
             - match:

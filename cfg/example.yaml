@@ -50,7 +50,7 @@ http_server:
           reply:
             body: "POST!\n"
         - match:
-            path: "/nested/foo"
+            path: "foo/"
           reply:
             body: "Foo!\n"
     - match:
