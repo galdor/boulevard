@@ -154,17 +154,22 @@ func (ctx *RequestContext) IdentifyRequestHost() error {
 	// Identify the host (hostname or IP address) provided by the client either
 	// in the Host header field for HTTP 1.x (defaulting to the host part of the
 	// request URI if the Host field is not set in HTTP 1.0) or in the
-	// ":authority" pseudo-header field for HTTP 2. We have to split the address
-	// because the net/http module uses the <host>:<port> representation.
+	// ":authority" pseudo-header field for HTTP 2.
+	//
+	// Note that it can contain a port (see RFC 9110 7.2. Host and :authority).
+
+	if ctx.Request.Host == "" {
+		return fmt.Errorf("missing or empty host")
+	}
 
 	host, _, err := net.SplitHostPort(ctx.Request.Host)
 	if err != nil {
-		return fmt.Errorf("cannot parse host %q: %w", ctx.Request.Host, err)
+		host = ctx.Request.Host
 	}
 
 	ctx.Host = host
 
-	ctx.Vars["http.request.host"] = host
+	ctx.Vars["http.request.host"] = ctx.Host
 
 	return nil
 }
