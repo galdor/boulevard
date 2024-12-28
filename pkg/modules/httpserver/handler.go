@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"go.n16f.net/boulevard/pkg/netutils"
 	"go.n16f.net/ejson"
 )
 
@@ -71,6 +72,12 @@ func (cfg *HandlerCfg) ValidateJSON(v *ejson.Validator) {
 type MatchCfg struct {
 	Method string `json:"method,omitempty"`
 
+	Host        string `json:"host,omitempty"`
+	hostPattern *netutils.DomainNamePattern
+
+	HostRegexp string `json:"host_regexp,omitempty"`
+	hostRE     *regexp.Regexp
+
 	Path        string `json:"path,omitempty"`
 	pathPattern *PathPattern
 
@@ -81,6 +88,14 @@ type MatchCfg struct {
 func (cfg *MatchCfg) MarshalJSON() ([]byte, error) {
 	type MatchCfg2 MatchCfg
 	cfg2 := MatchCfg2(*cfg)
+
+	if cfg2.hostPattern != nil {
+		cfg2.Host = cfg2.hostPattern.String()
+	}
+
+	if cfg2.hostRE != nil {
+		cfg2.HostRegexp = cfg2.hostRE.String()
+	}
 
 	if cfg2.pathPattern != nil {
 		cfg2.Path = cfg2.pathPattern.String()
@@ -101,11 +116,33 @@ func (cfg *MatchCfg) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
+	if cfg2.Host != "" {
+		var pp netutils.DomainNamePattern
+
+		if err := pp.Parse(cfg2.Host); err != nil {
+			return fmt.Errorf("cannot parse host pattern %q: %w",
+				cfg2.Host, err)
+		}
+
+		cfg2.hostPattern = &pp
+	}
+
+	if cfg2.HostRegexp != "" {
+		re, err := regexp.Compile(cfg2.HostRegexp)
+		if err != nil {
+			return fmt.Errorf("cannot compile regexp %q: %w",
+				cfg2.HostRegexp, err)
+		}
+
+		cfg2.hostRE = re
+	}
+
 	if cfg2.Path != "" {
 		var pp PathPattern
 
 		if err := pp.Parse(cfg2.Path); err != nil {
-			return fmt.Errorf("cannot parse path pattern: %w", err)
+			return fmt.Errorf("cannot parse path pattern %q: %w",
+				cfg2.Path, err)
 		}
 
 		cfg2.pathPattern = &pp
@@ -114,7 +151,8 @@ func (cfg *MatchCfg) UnmarshalJSON(data []byte) error {
 	if cfg2.PathRegexp != "" {
 		re, err := regexp.Compile(cfg2.PathRegexp)
 		if err != nil {
-			return fmt.Errorf("cannot compile regexp: %w", err)
+			return fmt.Errorf("cannot compile regexp %q: %w",
+				cfg2.PathRegexp, err)
 		}
 
 		cfg2.pathRE = re
@@ -247,6 +285,22 @@ func (h *Handler) matchRequest(ctx *RequestContext) bool {
 	if matchSpec.Method != "" && matchSpec.Method != ctx.Request.Method {
 		return false
 	}
+
+	// Host
+
+	if pattern := matchSpec.hostPattern; pattern != nil {
+		if !pattern.Match(ctx.Host) {
+			return false
+		}
+	}
+
+	if re := matchSpec.hostRE; re != nil {
+		if !re.MatchString(ctx.Host) {
+			return false
+		}
+	}
+
+	// Path
 
 	var subpath string
 	if pattern := matchSpec.pathPattern; pattern != nil {
