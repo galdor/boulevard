@@ -8,19 +8,23 @@ import (
 	"strings"
 	"sync"
 
+	"go.n16f.net/bcl"
 	"go.n16f.net/boulevard/pkg/modules/httpserver"
-	"go.n16f.net/ejson"
 	"go.n16f.net/log"
 )
 
 type ControlAPICfg struct {
-	Path         string                      `json:"path"`
-	AccessLogger *httpserver.AccessLoggerCfg `json:"access_logs,omitempty"`
+	Path         string
+	AccessLogger *httpserver.AccessLoggerCfg
 }
 
-func (cfg *ControlAPICfg) ValidateJSON(v *ejson.Validator) {
-	v.CheckStringNotEmpty("path", cfg.Path)
-	v.CheckOptionalObject("access_logs", cfg.AccessLogger)
+func (cfg *ControlAPICfg) Init(block *bcl.Element) {
+	block.EntryValue("path", &cfg.Path)
+
+	if block := block.MaybeBlock("access_logs"); block != nil {
+		cfg.AccessLogger = new(httpserver.AccessLoggerCfg)
+		cfg.AccessLogger.Init(block)
+	}
 }
 
 type ControlAPI struct {

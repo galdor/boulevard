@@ -3,11 +3,10 @@ package boulevard
 import (
 	"bytes"
 	"cmp"
-	"encoding/json"
 	"fmt"
 	"os"
 
-	"go.n16f.net/ejson"
+	"go.n16f.net/bcl"
 	"go.n16f.net/program"
 )
 
@@ -146,25 +145,23 @@ func (s *FormatString) Parse(value string) error {
 	return nil
 }
 
-func (s *FormatString) MarshalJSON() ([]byte, error) {
-	return json.Marshal(s.Value)
-}
+func (s *FormatString) ReadBCLValue(v *bcl.Value) error {
+	var vs string
 
-func (s *FormatString) UnmarshalJSON(data []byte) error {
-	var value string
-	if err := json.Unmarshal(data, &value); err != nil {
-		return err
+	switch v.Type() {
+	case bcl.ValueTypeString:
+		vs = v.Content.(string)
+	case bcl.ValueTypeSymbol:
+		vs = string(v.Content.(bcl.Symbol))
+	default:
+		return v.ValueTypeError(bcl.ValueTypeString, bcl.ValueTypeSymbol)
 	}
 
-	*s = FormatString{Value: value}
+	if err := s.Parse(vs); err != nil {
+		return fmt.Errorf("invalid format string: %w", err)
+	}
+
 	return nil
-}
-
-func (s *FormatString) ValidateJSON(v *ejson.Validator) {
-	if err := s.Parse(s.Value); err != nil {
-		v.AddError(nil, "invalid_format_string",
-			"invalid format string: %v", err)
-	}
 }
 
 func (s FormatString) Expand(vars map[string]string) string {

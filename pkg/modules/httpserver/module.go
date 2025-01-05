@@ -3,9 +3,9 @@ package httpserver
 import (
 	"fmt"
 
+	"go.n16f.net/bcl"
 	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/boulevard/pkg/netutils"
-	"go.n16f.net/ejson"
 	"go.n16f.net/log"
 )
 
@@ -18,18 +18,31 @@ func ModuleInfo() *boulevard.ModuleInfo {
 }
 
 type ModuleCfg struct {
-	Listeners    []*netutils.TCPListenerCfg `json:"listeners"`
-	Handlers     []*HandlerCfg              `json:"handlers,omitempty"`
-	AccessLogger *AccessLoggerCfg           `json:"access_logs,omitempty"`
+	Listeners    []*netutils.TCPListenerCfg
+	Handlers     []*HandlerCfg
+	AccessLogger *AccessLoggerCfg
 }
 
-func (cfg *ModuleCfg) ValidateJSON(v *ejson.Validator) {
-	v.CheckArrayNotEmpty("listeners", cfg.Listeners)
-	v.CheckObjectArray("listeners", cfg.Listeners)
+func (cfg *ModuleCfg) Init(block *bcl.Element) {
+	// TODO Validate minimum number of blocks 1
+	for _, block := range block.Blocks("listener") {
+		var lcfg netutils.TCPListenerCfg
+		lcfg.Init(block)
 
-	v.CheckObjectArray("handlers", cfg.Handlers)
+		cfg.Listeners = append(cfg.Listeners, &lcfg)
+	}
 
-	v.CheckOptionalObject("access_logs", cfg.AccessLogger)
+	for _, block := range block.Blocks("handler") {
+		var hcfg HandlerCfg
+		hcfg.Init(block)
+
+		cfg.Handlers = append(cfg.Handlers, &hcfg)
+	}
+
+	if block := block.MaybeBlock("access_logs"); block != nil {
+		cfg.AccessLogger = new(AccessLoggerCfg)
+		cfg.AccessLogger.Init(block)
+	}
 }
 
 func NewModuleCfg() boulevard.ModuleCfg {

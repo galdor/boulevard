@@ -4,24 +4,46 @@ import (
 	"io"
 	"strings"
 
+	"go.n16f.net/bcl"
 	"go.n16f.net/boulevard/pkg/boulevard"
-	"go.n16f.net/ejson"
 )
 
 type ReplyActionCfg struct {
-	Status int                     `json:"status,omitempty"`
-	Reason string                  `json:"reason,omitempty"`
-	Header Header                  `json:"header,omitempty"`
-	Body   *boulevard.FormatString `json:"body,omitempty"`
+	Status int
+	Header Header
+	Body   *boulevard.FormatString
 }
 
-func (cfg *ReplyActionCfg) ValidateJSON(v *ejson.Validator) {
-	if cfg.Status != 0 {
-		v.CheckIntMinMax("status", cfg.Status, 200, 599)
-	}
+func (cfg *ReplyActionCfg) Init(elt *bcl.Element) {
+	cfg.Status = 200
 
-	v.CheckObjectMap("header", cfg.Header)
-	v.CheckOptionalObject("body", cfg.Body)
+	if elt.IsBlock() {
+		// TODO Validate integer 200..599
+		elt.MaybeEntryValue("status", &cfg.Status)
+
+		cfg.Header = make(Header)
+		for _, entry := range elt.Entries("header") {
+			var name string
+			var value boulevard.FormatString
+
+			if entry.Values(&name, &value) {
+				cfg.Header[name] = &value
+			}
+		}
+
+		elt.MaybeEntryValue("body", &cfg.Body)
+	} else {
+		if elt.CheckMinMaxValues(1, 2) {
+			switch elt.NbValues() {
+			case 1:
+				// TODO Validate integer 200..599
+				elt.Values(&cfg.Status)
+			case 2:
+				// TODO Validate integer 200..599
+				elt.Values(&cfg.Status, &cfg.Body)
+			}
+		}
+	}
 }
 
 type ReplyAction struct {

@@ -7,16 +7,20 @@ import (
 	"os"
 	"path"
 
+	"go.n16f.net/bcl"
 	"go.n16f.net/boulevard/pkg/boulevard"
-	"go.n16f.net/ejson"
 )
 
 type ServeActionCfg struct {
-	Path *boulevard.FormatString `json:"path"`
+	Path *boulevard.FormatString
 }
 
-func (cfg *ServeActionCfg) ValidateJSON(v *ejson.Validator) {
-	v.CheckObject("path", cfg.Path)
+func (cfg *ServeActionCfg) Init(elt *bcl.Element) {
+	if elt.IsBlock() {
+		elt.EntryValue("path", &cfg.Path)
+	} else {
+		elt.Values(&cfg.Path)
+	}
 }
 
 type ServeAction struct {

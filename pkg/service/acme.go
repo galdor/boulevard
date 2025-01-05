@@ -5,33 +5,33 @@ import (
 	"fmt"
 
 	"go.n16f.net/acme"
-	"go.n16f.net/ejson"
+	"go.n16f.net/bcl"
 )
 
 type ACMECfg struct {
-	DatastorePath       string   `json:"datastore_path"`
-	Contact             []string `json:"contact"`
-	DirectoryURI        string   `json:"directory_uri,omitempty"`
-	HTTPListenerAddress string   `json:"http_listener_address,omitempty"`
-	HTTPUpstreamURI     string   `json:"http_upstream_uri,omitempty"`
-	Pebble              bool     `json:"pebble,omitempty"`
+	DatastorePath       string
+	Contact             []string
+	DirectoryURI        string
+	HTTPListenerAddress string
+	HTTPUpstreamURI     string
+	Pebble              bool
 }
 
-func (cfg *ACMECfg) ValidateJSON(v *ejson.Validator) {
-	v.CheckStringNotEmpty("datastore_path", cfg.DatastorePath)
+func (cfg *ACMECfg) Init(block *bcl.Element) {
+	block.EntryValue("datastore_path", &cfg.DatastorePath)
 
-	v.WithChild("contact", func() {
-		for i, address := range cfg.Contact {
-			v.CheckStringNotEmpty(i, address)
-		}
-	})
-
-	if cfg.HTTPListenerAddress != "" {
-		v.CheckNetworkAddress("http_listener_address", cfg.HTTPListenerAddress)
+	// TODO Validate email addresses
+	if block.CheckEntryMinValues("contact", 1) {
+		block.EntryValues("contact", &cfg.Contact)
 	}
 
-	if cfg.HTTPUpstreamURI != "" {
-		v.CheckStringURI("http_upstream_uri", cfg.HTTPUpstreamURI)
+	block.MaybeEntryValue("pebble", &cfg.Pebble)
+
+	if block := block.Block("http_challenge_solver"); block != nil {
+		// TODO Validate address
+		block.MaybeEntryValue("address", &cfg.HTTPListenerAddress)
+		// TODO Validate URI
+		block.EntryValue("upstream_uri", &cfg.HTTPUpstreamURI)
 	}
 }
 

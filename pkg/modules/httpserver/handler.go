@@ -1,165 +1,103 @@
 package httpserver
 
 import (
-	"encoding/json"
 	"fmt"
-	"regexp"
 
+	"go.n16f.net/bcl"
 	"go.n16f.net/boulevard/pkg/netutils"
-	"go.n16f.net/ejson"
+	"go.n16f.net/boulevard/pkg/utils"
 )
 
 type HandlerCfg struct {
-	Match        MatchCfg         `json:"match"`
-	Auth         *AuthCfg         `json:"authentication,omitempty"`
-	AccessLogger *AccessLoggerCfg `json:"access_logs,omitempty"`
+	Match        MatchCfg
+	Auth         *AuthCfg
+	AccessLogger *AccessLoggerCfg
 
-	Reply        *ReplyActionCfg        `json:"reply,omitempty"`
-	Redirect     *RedirectActionCfg     `json:"redirect,omitempty"`
-	Serve        *ServeActionCfg        `json:"serve,omitempty"`
-	ReverseProxy *ReverseProxyActionCfg `json:"reverse_proxy,omitempty"`
-	Status       *StatusActionCfg       `json:"status,omitempty"`
-	FastCGI      *FastCGIActionCfg      `json:"fastcgi,omitempty"`
+	Reply        *ReplyActionCfg
+	Redirect     *RedirectActionCfg
+	Serve        *ServeActionCfg
+	ReverseProxy *ReverseProxyActionCfg
+	Status       *StatusActionCfg
+	FastCGI      *FastCGIActionCfg
 
-	Handlers []*HandlerCfg `json:"handlers,omitempty"`
+	Handlers []*HandlerCfg
 }
 
-func (cfg *HandlerCfg) ValidateJSON(v *ejson.Validator) {
-	v.CheckObject("match", &cfg.Match)
-	v.CheckOptionalObject("authentication", cfg.Auth)
-	v.CheckOptionalObject("access_logs", cfg.AccessLogger)
-
-	nbActions := 0
-	if cfg.Reply != nil {
-		nbActions++
-	}
-	if cfg.Redirect != nil {
-		nbActions++
-	}
-	if cfg.Serve != nil {
-		nbActions++
-	}
-	if cfg.ReverseProxy != nil {
-		nbActions++
-	}
-	if cfg.Status != nil {
-		nbActions++
-	}
-	if cfg.FastCGI != nil {
-		nbActions++
+func (cfg *HandlerCfg) Init(block *bcl.Element) {
+	if elt := block.Element("match"); elt != nil {
+		cfg.Match.Init(elt)
 	}
 
-	if nbActions == 0 {
-		if len(cfg.Handlers) == 0 {
-			v.AddError(nil, "missing_action",
-				"handler with no subhandlers must contain an action")
-		}
-	} else if nbActions > 1 {
-		v.AddError(nil, "multiple_actions",
-			"handler must contain a single action")
+	if block := block.MaybeBlock("authentication"); block != nil {
+		cfg.Auth = new(AuthCfg)
+		cfg.Auth.Init(block)
 	}
 
-	v.CheckOptionalObject("reply", cfg.Reply)
-	v.CheckOptionalObject("redirect", cfg.Redirect)
-	v.CheckOptionalObject("serve", cfg.Serve)
-	v.CheckOptionalObject("reverse_proxy", cfg.ReverseProxy)
-	v.CheckOptionalObject("status", cfg.Status)
-	v.CheckOptionalObject("fastcgi", cfg.FastCGI)
+	if block := block.MaybeBlock("access_logs"); block != nil {
+		cfg.AccessLogger = new(AccessLoggerCfg)
+		cfg.AccessLogger.Init(block)
+	}
 
-	v.CheckObjectArray("handlers", cfg.Handlers)
+	for _, block := range block.Blocks("handler") {
+		var hcfg HandlerCfg
+		hcfg.Init(block)
+
+		cfg.Handlers = append(cfg.Handlers, &hcfg)
+	}
+
+	block.CheckElementsOneOf("reply", "redirect", "serve", "reverse_proxy",
+		"status", "fastcgi")
+
+	if elt := block.MaybeElement("reply"); elt != nil {
+		cfg.Reply = new(ReplyActionCfg)
+		cfg.Reply.Init(elt)
+	}
+
+	if elt := block.MaybeElement("redirect"); elt != nil {
+		cfg.Redirect = new(RedirectActionCfg)
+		cfg.Redirect.Init(elt)
+	}
+
+	if elt := block.MaybeElement("serve"); elt != nil {
+		cfg.Serve = new(ServeActionCfg)
+		cfg.Serve.Init(elt)
+	}
+
+	if elt := block.MaybeElement("reverse_proxy"); elt != nil {
+		cfg.ReverseProxy = new(ReverseProxyActionCfg)
+		cfg.ReverseProxy.Init(elt)
+	}
+
+	if elt := block.MaybeElement("status"); elt != nil {
+		cfg.Status = new(StatusActionCfg)
+		cfg.Status.Init(elt)
+	}
+
+	if block := block.MaybeBlock("fastcgi"); block != nil {
+		cfg.FastCGI = new(FastCGIActionCfg)
+		cfg.FastCGI.Init(block)
+	}
 }
 
 type MatchCfg struct {
-	Method string `json:"method,omitempty"`
-
-	Host        string `json:"host,omitempty"`
-	hostPattern *netutils.DomainNamePattern
-
-	HostRegexp string `json:"host_regexp,omitempty"`
-	hostRE     *regexp.Regexp
-
-	Path        string `json:"path,omitempty"`
-	pathPattern *PathPattern
-
-	PathRegexp string `json:"path_regexp,omitempty"`
-	pathRE     *regexp.Regexp
+	Method     string
+	Host       *netutils.DomainNamePattern
+	HostRegexp *utils.Regexp
+	Path       *PathPattern
+	PathRegexp *utils.Regexp
 }
 
-func (cfg *MatchCfg) MarshalJSON() ([]byte, error) {
-	type MatchCfg2 MatchCfg
-	cfg2 := MatchCfg2(*cfg)
-
-	if cfg2.hostPattern != nil {
-		cfg2.Host = cfg2.hostPattern.String()
+func (cfg *MatchCfg) Init(elt *bcl.Element) {
+	if elt.IsBlock() {
+		// TODO Validate HTTP method
+		elt.MaybeEntryValue("method", &cfg.Method)
+		elt.MaybeEntryValue("host", &cfg.Host)
+		elt.MaybeEntryValue("host_regexp", &cfg.HostRegexp)
+		elt.MaybeEntryValue("path", &cfg.Path)
+		elt.MaybeEntryValue("path_regexp", &cfg.PathRegexp)
+	} else {
+		elt.Value(&cfg.Path)
 	}
-
-	if cfg2.hostRE != nil {
-		cfg2.HostRegexp = cfg2.hostRE.String()
-	}
-
-	if cfg2.pathPattern != nil {
-		cfg2.Path = cfg2.pathPattern.String()
-	}
-
-	if cfg2.pathRE != nil {
-		cfg2.PathRegexp = cfg2.pathRE.String()
-	}
-
-	return json.Marshal(cfg2)
-}
-
-func (cfg *MatchCfg) UnmarshalJSON(data []byte) error {
-	type MatchCfg2 MatchCfg
-	cfg2 := MatchCfg2(*cfg)
-
-	if err := json.Unmarshal(data, &cfg2); err != nil {
-		return err
-	}
-
-	if cfg2.Host != "" {
-		var pp netutils.DomainNamePattern
-
-		if err := pp.Parse(cfg2.Host); err != nil {
-			return fmt.Errorf("cannot parse host pattern %q: %w",
-				cfg2.Host, err)
-		}
-
-		cfg2.hostPattern = &pp
-	}
-
-	if cfg2.HostRegexp != "" {
-		re, err := regexp.Compile(cfg2.HostRegexp)
-		if err != nil {
-			return fmt.Errorf("cannot compile regexp %q: %w",
-				cfg2.HostRegexp, err)
-		}
-
-		cfg2.hostRE = re
-	}
-
-	if cfg2.Path != "" {
-		var pp PathPattern
-
-		if err := pp.Parse(cfg2.Path); err != nil {
-			return fmt.Errorf("cannot parse path pattern %q: %w",
-				cfg2.Path, err)
-		}
-
-		cfg2.pathPattern = &pp
-	}
-
-	if cfg2.PathRegexp != "" {
-		re, err := regexp.Compile(cfg2.PathRegexp)
-		if err != nil {
-			return fmt.Errorf("cannot compile regexp %q: %w",
-				cfg2.PathRegexp, err)
-		}
-
-		cfg2.pathRE = re
-	}
-
-	*cfg = MatchCfg(cfg2)
-	return nil
 }
 
 type Handler struct {
@@ -288,13 +226,13 @@ func (h *Handler) matchRequest(ctx *RequestContext) bool {
 
 	// Host
 
-	if pattern := matchSpec.hostPattern; pattern != nil {
+	if pattern := matchSpec.Host; pattern != nil {
 		if !pattern.Match(ctx.Host) {
 			return false
 		}
 	}
 
-	if re := matchSpec.hostRE; re != nil {
+	if re := matchSpec.HostRegexp; re != nil {
 		if !re.MatchString(ctx.Host) {
 			return false
 		}
@@ -303,7 +241,7 @@ func (h *Handler) matchRequest(ctx *RequestContext) bool {
 	// Path
 
 	var subpath string
-	if pattern := matchSpec.pathPattern; pattern != nil {
+	if pattern := matchSpec.Path; pattern != nil {
 		refPath := ctx.Request.URL.Path
 		if pattern.Relative {
 			refPath = ctx.Subpath
@@ -316,7 +254,7 @@ func (h *Handler) matchRequest(ctx *RequestContext) bool {
 		}
 	}
 
-	if re := matchSpec.pathRE; re != nil {
+	if re := matchSpec.PathRegexp; re != nil {
 		if !re.MatchString(ctx.Request.URL.Path) {
 			return false
 		}

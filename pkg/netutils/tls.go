@@ -4,23 +4,21 @@ import (
 	"crypto/tls"
 
 	"go.n16f.net/acme"
-	"go.n16f.net/ejson"
+	"go.n16f.net/bcl"
 )
 
 type TLSCfg struct {
-	CertificateName    string                     `json:"-"`
-	GetCertificateFunc acme.GetTLSCertificateFunc `json:"-"`
+	CertificateName    string
+	GetCertificateFunc acme.GetTLSCertificateFunc
 
-	Domains []string `json:"domains"`
+	Domains []string
 }
 
-func (cfg *TLSCfg) ValidateJSON(v *ejson.Validator) {
-	v.CheckArrayNotEmpty("domains", cfg.Domains)
-	v.WithChild("domains", func() {
-		for i, domain := range cfg.Domains {
-			v.CheckDomainName(i, domain)
-		}
-	})
+func (cfg *TLSCfg) Init(block *bcl.Element) {
+	// TODO Validate all domains
+	if block.CheckEntryMinValues("domains", 1) {
+		block.EntryValue("domains", &cfg.Domains)
+	}
 }
 
 func (cfg *TLSCfg) NetTLSConfig() *tls.Config {

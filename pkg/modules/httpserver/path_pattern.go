@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+
+	"go.n16f.net/bcl"
 )
 
 type PathPattern struct {
@@ -85,6 +87,26 @@ func (p *PathPattern) Parse(s string) error {
 		}
 
 		p.Segments[i] = segment
+	}
+
+	return nil
+}
+
+// bcl.ValueReader
+func (p *PathPattern) ReadBCLValue(v *bcl.Value) error {
+	var s string
+
+	switch v.Type() {
+	case bcl.ValueTypeString:
+		s = v.Content.(string)
+	case bcl.ValueTypeSymbol:
+		s = string(v.Content.(bcl.Symbol))
+	default:
+		return v.ValueTypeError(bcl.ValueTypeString, bcl.ValueTypeSymbol)
+	}
+
+	if err := p.Parse(s); err != nil {
+		return fmt.Errorf("invalid path pattern: %w", err)
 	}
 
 	return nil

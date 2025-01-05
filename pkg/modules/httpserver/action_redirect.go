@@ -9,24 +9,42 @@ import (
 	"net/url"
 	"strings"
 
+	"go.n16f.net/bcl"
 	"go.n16f.net/boulevard/pkg/boulevard"
-	"go.n16f.net/ejson"
 )
 
 type RedirectActionCfg struct {
-	Status int                     `json:"status,omitempty"`
-	URI    *boulevard.FormatString `json:"uri"`
-	Header Header                  `json:"header,omitempty"`
-	Body   *boulevard.FormatString `json:"body,omitempty"`
+	Status int
+	URI    *boulevard.FormatString
+	Header Header
+	Body   *boulevard.FormatString
 }
 
-func (cfg *RedirectActionCfg) ValidateJSON(v *ejson.Validator) {
-	if cfg.Status != 0 {
-		v.CheckIntMinMax("status", cfg.Status, 200, 599)
+func (cfg *RedirectActionCfg) Init(elt *bcl.Element) {
+	cfg.Status = 302
+
+	if elt.IsBlock() {
+		// TODO Validate integer 200..599
+		elt.MaybeEntryValue("status", &cfg.Status)
+		// TODO Validate URI string
+		elt.EntryValue("uri", &cfg.URI)
+
+		cfg.Header = make(Header)
+		for _, entry := range elt.Entries("header") {
+			var name string
+			var value boulevard.FormatString
+
+			if entry.Values(&name, &value) {
+				cfg.Header[name] = &value
+			}
+		}
+
+		elt.MaybeEntryValue("body", &cfg.Body)
+	} else {
+		// TODO Validate integer 200..599
+		// TODO Validate URI string
+		elt.Values(&cfg.Status, &cfg.URI)
 	}
-	v.CheckObject("uri", cfg.URI)
-	v.CheckObjectMap("header", cfg.Header)
-	v.CheckOptionalObject("body", cfg.Body)
 }
 
 type RedirectAction struct {

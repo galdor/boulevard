@@ -10,7 +10,7 @@ import (
 	"go.n16f.net/program"
 )
 
-const testCfgPath = "cfg/test.yaml"
+const testCfgPath = "cfg/test.bcl"
 
 var testService *Service
 
@@ -43,7 +43,7 @@ func setTestDirectory() {
 
 func createTestACMEDatastore() {
 	// The datastore directory has to be a fixed path so that we can reference
-	// it from cfg/test.yaml.
+	// it from cfg/test.bcl.
 	//
 	// Usually we would delete it first to make sure we start from a clean
 	// state, but the last thing we want is to have to regenerate TLS
@@ -58,13 +58,14 @@ func createTestACMEDatastore() {
 }
 
 func initTestService() {
-	var cfg ServiceCfg
+	cfg := ServiceCfg{
+		BuildId:    "test-" + time.Now().Format(time.RFC3339),
+		ModuleInfo: DefaultModules,
+	}
+
 	if err := cfg.Load(testCfgPath); err != nil {
 		program.Abort("cannot load configuration from %q: %v", testCfgPath, err)
 	}
-
-	cfg.BuildId = "test-" + time.Now().Format(time.RFC3339)
-	cfg.ModuleInfo = DefaultModules
 
 	service, err := NewService(cfg)
 	if err != nil {

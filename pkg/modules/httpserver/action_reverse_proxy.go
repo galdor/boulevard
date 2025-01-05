@@ -10,20 +10,45 @@ import (
 	"slices"
 	"strings"
 
+	"go.n16f.net/bcl"
+	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/boulevard/pkg/httputils"
-	"go.n16f.net/ejson"
 )
 
 type ReverseProxyActionCfg struct {
-	URI            string `json:"uri"`
-	RequestHeader  Header `json:"request_header,omitempty"`
-	ResponseHeader Header `json:"response_header,omitempty"`
+	URI            string
+	RequestHeader  Header
+	ResponseHeader Header
 }
 
-func (cfg *ReverseProxyActionCfg) ValidateJSON(v *ejson.Validator) {
-	httputils.CheckHTTPURI(v, "uri", cfg.URI)
-	v.CheckObjectMap("request_header", cfg.RequestHeader)
-	v.CheckObjectMap("response_header", cfg.ResponseHeader)
+func (cfg *ReverseProxyActionCfg) Init(elt *bcl.Element) {
+	if elt.IsBlock() {
+		// TODO Validate URI string
+		elt.EntryValue("uri", &cfg.URI)
+
+		cfg.RequestHeader = make(Header)
+		for _, entry := range elt.Entries("request_header") {
+			var name string
+			var value boulevard.FormatString
+
+			if entry.Values(&name, &value) {
+				cfg.RequestHeader[name] = &value
+			}
+		}
+
+		cfg.ResponseHeader = make(Header)
+		for _, entry := range elt.Entries("response_header") {
+			var name string
+			var value boulevard.FormatString
+
+			if entry.Values(&name, &value) {
+				cfg.ResponseHeader[name] = &value
+			}
+		}
+	} else {
+		// TODO Validate URI string
+		elt.Value(&cfg.URI)
+	}
 }
 
 type ReverseProxyAction struct {

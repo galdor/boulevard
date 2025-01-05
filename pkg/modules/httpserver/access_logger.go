@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"time"
 
+	"go.n16f.net/bcl"
 	"go.n16f.net/boulevard/pkg/boulevard"
-	"go.n16f.net/ejson"
 )
 
 const (
@@ -19,13 +19,13 @@ const (
 )
 
 type AccessLoggerCfg struct {
-	Path   *boulevard.FormatString `json:"path"`
-	Format *boulevard.FormatString `json:"format"`
+	Path   *boulevard.FormatString
+	Format *boulevard.FormatString
 }
 
-func (cfg *AccessLoggerCfg) ValidateJSON(v *ejson.Validator) {
-	v.CheckObject("path", cfg.Path)
-	v.CheckObject("format", cfg.Format)
+func (cfg *AccessLoggerCfg) Init(block *bcl.Element) {
+	block.EntryValue("path", &cfg.Path)
+	block.EntryValue("format", &cfg.Format)
 }
 
 type AccessLogger struct {

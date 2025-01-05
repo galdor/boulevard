@@ -40,6 +40,9 @@ func run(p *program.Program) {
 	// Configuration
 	var cfg service.ServiceCfg
 
+	cfg.BuildId = buildId
+	cfg.ModuleInfo = service.DefaultModules
+
 	if cfgPath != "" {
 		p.Info("loading configuration file %q", cfgPath)
 
@@ -47,9 +50,6 @@ func run(p *program.Program) {
 			p.Fatal("cannot load configuration from %q: %v", cfgPath, err)
 		}
 	}
-
-	cfg.BuildId = buildId
-	cfg.ModuleInfo = service.DefaultModules
 
 	if p.IsOptionSet("validate-cfg") {
 		p.Info("configuration validated successfully")

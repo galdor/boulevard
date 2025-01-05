@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"go.n16f.net/acme"
+	"go.n16f.net/bcl"
 	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/boulevard/pkg/netutils"
-	"go.n16f.net/ejson"
 	"go.n16f.net/log"
 )
 
@@ -24,39 +24,47 @@ func ModuleInfo() *boulevard.ModuleInfo {
 }
 
 type ModuleCfg struct {
-	Listeners []*netutils.TCPListenerCfg `json:"listeners"`
+	Listeners []*netutils.TCPListenerCfg
 
-	ReadBufferSize  int `json:"read_buffer_size,omitempty"`
-	WriteBufferSize int `json:"write_buffer_size,omitempty"`
+	ReadBufferSize  int
+	WriteBufferSize int
 
-	ReverseProxy ReverseProxyAction `json:"reverse_proxy"`
+	ReverseProxy ReverseProxyAction
 }
 
-func (cfg *ModuleCfg) ValidateJSON(v *ejson.Validator) {
-	v.CheckArrayNotEmpty("listeners", cfg.Listeners)
-	v.CheckObjectArray("listeners", cfg.Listeners)
+func (cfg *ModuleCfg) Init(block *bcl.Element) {
+	// TODO Validate minimum number of blocks 1
+	for _, block := range block.Blocks("listener") {
+		var lcfg netutils.TCPListenerCfg
+		lcfg.Init(block)
 
-	if cfg.ReadBufferSize == 0 {
-		cfg.ReadBufferSize = DefaultReadBufferSize
-	} else {
-		v.CheckIntMin("read_buffer_size", cfg.ReadBufferSize, 1)
+		cfg.Listeners = append(cfg.Listeners, &lcfg)
 	}
 
-	if cfg.WriteBufferSize == 0 {
-		cfg.WriteBufferSize = DefaultWriteBufferSize
-	} else {
-		v.CheckIntMin("write_buffer_size", cfg.WriteBufferSize, 1)
-	}
+	cfg.ReadBufferSize = DefaultReadBufferSize
+	// TODO Validate minimum size 1
+	block.MaybeEntryValue("read_buffer_size", &cfg.ReadBufferSize)
 
-	v.CheckObject("reverse_proxy", &cfg.ReverseProxy)
+	cfg.WriteBufferSize = DefaultWriteBufferSize
+	// TODO Validate minimum size 1
+	block.MaybeEntryValue("write_buffer_size", &cfg.WriteBufferSize)
+
+	if elt := block.Element("reverse_proxy"); elt != nil {
+		cfg.ReverseProxy.Init(elt)
+	}
 }
 
 type ReverseProxyAction struct {
-	Address string `json:"address"`
+	Address string
 }
 
-func (a *ReverseProxyAction) ValidateJSON(v *ejson.Validator) {
-	v.CheckStringNotEmpty("address", a.Address)
+func (cfg *ReverseProxyAction) Init(elt *bcl.Element) {
+	// TODO Validate address
+	if elt.IsBlock() {
+		elt.EntryValue("address", &cfg.Address)
+	} else {
+		elt.Value(&cfg.Address)
+	}
 }
 
 func NewModuleCfg() boulevard.ModuleCfg {

@@ -8,7 +8,6 @@ import (
 	"io"
 	"sync"
 
-	"go.n16f.net/ejson"
 	"go.n16f.net/log"
 )
 
@@ -17,18 +16,10 @@ var (
 )
 
 type ClientCfg struct {
-	Log *log.Logger `json:"-"`
+	Log *log.Logger
 
-	Address        string `json:"address"`
-	MaxConnections *int   `json:"max_connections,omitempty"`
-}
-
-func (cfg *ClientCfg) ValidateJSON(v *ejson.Validator) {
-	v.CheckNetworkAddress("address", cfg.Address)
-
-	if cfg.MaxConnections != nil {
-		v.CheckIntMin("max_connections", *cfg.MaxConnections, 0)
-	}
+	Address        string
+	MaxConnections *int
 }
 
 type Client struct {

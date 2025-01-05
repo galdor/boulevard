@@ -1,0 +1,153 @@
+logger {
+  terminal {
+    color true
+  }
+
+  debug_level 1
+}
+
+acme {
+  datastore_path "./local/acme"
+  contact "bob@example.com"
+
+  http_challenge_solver {
+    upstream_uri "http://localhost:8080"
+  }
+
+  pebble true
+}
+
+control_api {
+  path "/tmp/boulevard.sock"
+
+  access_logs {
+    path "local/logs/control-api.log"
+    format common
+  }
+}
+
+pprof {
+  address ":6060"
+}
+
+http_server "web" {
+  listener {
+    address ":8080"
+  }
+
+  listener {
+    address ":4430"
+
+    tls {
+      domains "localhost" "www.localhost"
+    }
+  }
+
+  access_logs {
+    path "local/logs/{module.name}.log"
+    format "{http.client_address} {http.request.method} {http.request.path} {http.response.status:-} {http.response_time}"
+  }
+
+  handler {
+    match "/hello"
+
+    reply {
+      status 200
+      body "Hello world!\n"
+      header "Server" "Boulevard"
+    }
+  }
+
+  handler {
+    match "/redirect/"
+    redirect 302 "/{http.match.subpath}"
+  }
+
+  handler {
+    match "/nested/"
+
+    handler {
+      match {
+        method "POST"
+      }
+
+      reply 200 "POST!\n"
+    }
+
+    handler {
+      match "/nested/foo/"
+      reply 200 "Foo!\n"
+    }
+  }
+
+  handler {
+    match "/status"
+    status
+  }
+
+  handler {
+    match "/boulevard/"
+    serve "."
+  }
+
+  handler {
+    match "/private/"
+
+    authentication {
+      secrets {
+        hash "SHA3-256"
+      }
+
+      basic {
+        # bob:secret
+        user "bob" "f5a5207a8729b1f709cb710311751eb2fc8acad5a1fb8ac991b736e69b6529a3"
+        # alice:secret2
+        user "alice" "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a"
+      }
+    }
+
+    reply 200 "access authorized\n"
+  }
+
+  handler {
+    match "/forbidden/"
+
+    reply 403 "access denied\n"
+  }
+
+  handler {
+    match "/nginx/"
+
+    reverse_proxy {
+      uri "http://localhost:9002"
+      response_header "Server" "Boulevard"
+    }
+  }
+
+  handler {
+    match "/fpm/"
+
+    fastcgi {
+      address "localhost:9000"
+      path "/app/test"
+      default_script "index.php"
+      script_regexp "^.+?\\.php"
+    }
+  }
+}
+
+tcp_server "irc" {
+  listener {
+    address ":6667"
+  }
+
+  listener {
+    address ":6697"
+
+    tls {
+      domains "localhost"
+    }
+  }
+
+  reverse_proxy "localhost:6698"
+}

@@ -8,23 +8,26 @@ import (
 	"strconv"
 
 	"go.n16f.net/acme"
-	"go.n16f.net/ejson"
+	"go.n16f.net/bcl"
 	"go.n16f.net/log"
 )
 
 type TCPListenerCfg struct {
-	Address string  `json:"address"`
-	TLS     *TLSCfg `json:"tls,omitempty"`
+	Log        *log.Logger
+	ACMEClient *acme.Client
 
-	Log        *log.Logger  `json:"-"` // [1]
-	ACMEClient *acme.Client `json:"-"` // [1]
-
-	// [1] Provided by the caller of NewListener.
+	Address string
+	TLS     *TLSCfg
 }
 
-func (cfg *TCPListenerCfg) ValidateJSON(v *ejson.Validator) {
-	v.CheckNetworkAddress("address", cfg.Address)
-	v.CheckOptionalObject("tls", cfg.TLS)
+func (cfg *TCPListenerCfg) Init(block *bcl.Element) {
+	// TODO Validate address
+	block.EntryValue("address", &cfg.Address)
+
+	if block := block.MaybeBlock("tls"); block != nil {
+		cfg.TLS = new(TLSCfg)
+		cfg.TLS.Init(block)
+	}
 }
 
 type TCPListener struct {

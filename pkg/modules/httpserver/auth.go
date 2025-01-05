@@ -11,9 +11,10 @@ import (
 	"hash"
 	"io"
 	"os"
+	"slices"
 	"strings"
 
-	"go.n16f.net/ejson"
+	"go.n16f.net/bcl"
 	"go.n16f.net/program"
 	"golang.org/x/crypto/sha3"
 )
@@ -27,11 +28,30 @@ const (
 	HashAlgorithmSHA3512 = "SHA3-512"
 )
 
-var HashAlgorithmValues = []HashAlgorithm{
-	HashAlgorithmSHA256,
-	HashAlgorithmSHA512,
-	HashAlgorithmSHA3256,
-	HashAlgorithmSHA3512,
+var HashAlgorithmValues = []string{
+	string(HashAlgorithmSHA256),
+	string(HashAlgorithmSHA512),
+	string(HashAlgorithmSHA3256),
+	string(HashAlgorithmSHA3512),
+}
+
+func (a *HashAlgorithm) ReadBCLValue(v *bcl.Value) error {
+	var s string
+
+	switch v.Type() {
+	case bcl.ValueTypeString:
+		s = v.Content.(string)
+	default:
+		return v.ValueTypeError(bcl.ValueTypeString)
+	}
+
+	if !slices.Contains(HashAlgorithmValues, s) {
+		return fmt.Errorf("invalid hash algorithm")
+	}
+
+	*a = HashAlgorithm(s)
+
+	return nil
 }
 
 func (a HashAlgorithm) HashFunction() func() hash.Hash {
@@ -54,75 +74,52 @@ func (a HashAlgorithm) HashFunction() func() hash.Hash {
 }
 
 type SecretsCfg struct {
-	Hash HashAlgorithm   `json:"hash,omitempty"`
-	HMAC *HMACSecretsCfg `json:"hmac,omitempty"`
+	Hash HashAlgorithm
+	HMAC *HMACSecretsCfg
 }
 
-func (cfg *SecretsCfg) ValidateJSON(v *ejson.Validator) {
-	if cfg.Hash != "" && cfg.HMAC != nil {
-		v.AddError(nil, "invalid_configuration",
-			"cannot provide both a hash algorithm and HMAC configuration")
-	}
+func (cfg *SecretsCfg) Init(block *bcl.Element) {
+	block.CheckElementsOneOf("hash", "hmac")
 
-	if cfg.Hash != "" {
-		v.CheckStringValue("hash", cfg.Hash, HashAlgorithmValues)
-	}
+	block.MaybeEntryValue("hash", &cfg.Hash)
 
-	v.CheckOptionalObject("hmac", cfg.HMAC)
+	if entry := block.MaybeEntry("hmac"); entry != nil {
+		cfg.HMAC = new(HMACSecretsCfg)
+		entry.Values("hmac", &cfg.HMAC.Hash, &cfg.HMAC.Key)
+	}
 }
 
 type HMACSecretsCfg struct {
-	Hash HashAlgorithm `json:"hash"`
-	Key  []byte        `json:"key"`
-}
-
-func (cfg *HMACSecretsCfg) ValidateJSON(v *ejson.Validator) {
-	v.CheckStringValue("hash", cfg.Hash, HashAlgorithmValues)
-	v.CheckArrayNotEmpty("key", cfg.Key)
+	Hash HashAlgorithm
+	Key  []byte
 }
 
 type AuthCfg struct {
-	Secrets *SecretsCfg `json:"secrets,omitempty"`
-	Realm   string      `json:"realm,omitempty"`
+	Secrets *SecretsCfg
+	Realm   string
 
-	Basic  *BasicAuthCfg  `json:"basic,omitempty"`
-	Bearer *BearerAuthCfg `json:"bearer,omitempty"`
+	Basic  *BasicAuthCfg
+	Bearer *BearerAuthCfg
 }
 
-func (cfg *AuthCfg) ValidateJSON(v *ejson.Validator) {
-	v.CheckOptionalObject("secrets", cfg.Secrets)
-
-	if cfg.Basic != nil && cfg.Bearer != nil {
-		v.AddError(nil, "invalid_configuration",
-			"cannot provide multiple authentication method")
+func (cfg *AuthCfg) Init(block *bcl.Element) {
+	if block := block.MaybeBlock("secrets"); block != nil {
+		cfg.Secrets = new(SecretsCfg)
+		cfg.Secrets.Init(block)
 	}
 
-	v.CheckOptionalObject("basic", cfg.Basic)
-	v.CheckOptionalObject("bearer", cfg.Bearer)
-}
+	block.MaybeEntryValue("realm", &cfg.Realm)
 
-type BasicAuthCfg struct {
-	Credentials        []string `json:"credentials,omitempty"`
-	CredentialFilePath string   `json:"credential_file_path,omitempty"`
-}
+	block.CheckBlocksOneOf("basic", "bearer")
 
-func (cfg *BasicAuthCfg) ValidateJSON(v *ejson.Validator) {
-	if cfg.CredentialFilePath != "" && len(cfg.Credentials) > 0 {
-		v.AddError(nil, "invalid_configuration",
-			"cannot provide both a credential file path and a list "+
-				"of credentials")
+	if block := block.MaybeBlock("basic"); block != nil {
+		cfg.Basic = new(BasicAuthCfg)
+		cfg.Basic.Init(block)
 	}
-}
 
-type BearerAuthCfg struct {
-	Tokens        []string `json:"tokens,omitempty"`
-	TokenFilePath string   `json:"token_file_path,omitempty"`
-}
-
-func (cfg *BearerAuthCfg) ValidateJSON(v *ejson.Validator) {
-	if cfg.TokenFilePath != "" && len(cfg.Tokens) > 0 {
-		v.AddError(nil, "invalid_configuration",
-			"cannot provide both a token file path and a list of tokens")
+	if block := block.MaybeBlock("bearer"); block != nil {
+		cfg.Bearer = new(BearerAuthCfg)
+		cfg.Bearer.Init(block)
 	}
 }
 

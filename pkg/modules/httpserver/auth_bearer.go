@@ -4,7 +4,26 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"go.n16f.net/bcl"
 )
+
+type BearerAuthCfg struct {
+	Tokens        []string
+	TokenFilePath string
+}
+
+func (cfg *BearerAuthCfg) Init(block *bcl.Element) {
+	block.CheckEntriesOneOf("token", "token_file_path")
+
+	for _, entry := range block.Entries("token") {
+		var token string
+		entry.Value(&token)
+		cfg.Tokens = append(cfg.Tokens, token)
+	}
+
+	block.MaybeEntryValues("token_file_path", &cfg.TokenFilePath)
+}
 
 type BearerAuth struct {
 	Cfg    *AuthCfg

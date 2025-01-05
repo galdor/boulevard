@@ -10,8 +10,8 @@ import (
 	"strings"
 	texttemplate "text/template"
 
+	"go.n16f.net/bcl"
 	"go.n16f.net/boulevard/pkg/boulevard"
-	"go.n16f.net/ejson"
 )
 
 var statusMediaTypes = []*MediaType{
@@ -21,13 +21,16 @@ var statusMediaTypes = []*MediaType{
 }
 
 type StatusData struct {
-	Modules []*boulevard.ModuleStatus `json:"modules"`
+	Modules []*boulevard.ModuleStatus
 }
 
 type StatusActionCfg struct {
 }
 
-func (cfg *StatusActionCfg) ValidateJSON(v *ejson.Validator) {
+func (cfg *StatusActionCfg) Init(elt *bcl.Element) {
+	if elt.IsBlock() {
+	} else {
+	}
 }
 
 type StatusAction struct {

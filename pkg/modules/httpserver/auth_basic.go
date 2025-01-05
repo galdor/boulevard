@@ -5,11 +5,30 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"go.n16f.net/bcl"
 )
 
+type BasicAuthCfg struct {
+	Users        []string
+	UserFilePath string
+}
+
+func (cfg *BasicAuthCfg) Init(block *bcl.Element) {
+	block.CheckEntriesOneOf("user", "user_file_path")
+
+	for _, entry := range block.Entries("user") {
+		var username, password string
+		entry.Values(&username, &password)
+		cfg.Users = append(cfg.Users, username+":"+password)
+	}
+
+	block.MaybeEntryValues("user_file_path", &cfg.UserFilePath)
+}
+
 type BasicAuth struct {
-	Cfg         *AuthCfg
-	Credentials map[string]struct{}
+	Cfg   *AuthCfg
+	Users map[string]struct{}
 }
 
 func (a *BasicAuth) Init(cfg *AuthCfg) error {
@@ -17,14 +36,14 @@ func (a *BasicAuth) Init(cfg *AuthCfg) error {
 
 	basicCfg := a.Cfg.Basic
 
-	if filePath := basicCfg.CredentialFilePath; filePath == "" {
-		a.Credentials = make(map[string]struct{})
-		for _, c := range basicCfg.Credentials {
-			a.Credentials[c] = struct{}{}
+	if filePath := basicCfg.UserFilePath; filePath == "" {
+		a.Users = make(map[string]struct{})
+		for _, u := range basicCfg.Users {
+			a.Users[u] = struct{}{}
 		}
 	} else {
-		if err := a.loadCredentials(filePath); err != nil {
-			return fmt.Errorf("cannot load credentials: %w", err)
+		if err := a.loadUsers(filePath); err != nil {
+			return fmt.Errorf("cannot load user credentials: %w", err)
 		}
 	}
 
@@ -72,7 +91,7 @@ func (a *BasicAuth) AuthenticateRequest(ctx *RequestContext) error {
 
 	credentials := username + ":" + transformAuthSecret(password, a.Cfg)
 
-	if _, found := a.Credentials[credentials]; !found {
+	if _, found := a.Users[credentials]; !found {
 		ctx.ReplyError(403)
 		return fmt.Errorf("invalid credentials")
 	}
@@ -80,13 +99,13 @@ func (a *BasicAuth) AuthenticateRequest(ctx *RequestContext) error {
 	return nil
 }
 
-func (a *BasicAuth) loadCredentials(filePath string) error {
+func (a *BasicAuth) loadUsers(filePath string) error {
 	credentials, err := loadAuthSecretFile(filePath)
 	if err != nil {
 		return err
 	}
 
-	a.Credentials = credentials
+	a.Users = credentials
 	return nil
 }
 

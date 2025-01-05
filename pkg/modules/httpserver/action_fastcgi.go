@@ -14,10 +14,10 @@ import (
 	"strings"
 	"time"
 
+	"go.n16f.net/bcl"
 	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/boulevard/pkg/fastcgi"
 	"go.n16f.net/boulevard/pkg/netutils"
-	"go.n16f.net/ejson"
 	"go.n16f.net/log"
 )
 
@@ -32,47 +32,55 @@ const (
 )
 
 type FastCGIActionCfg struct {
-	Address       string            `json:"address"`
-	Parameters    map[string]string `json:"parameters,omitempty"`
-	Path          string            `json:"path,omitempty"`
-	DefaultScript string            `json:"default_script,omitempty"`
-	ScriptRegexp  string            `json:"script_regexp,omitempty"`
+	Address       string
+	Parameters    map[string]string
+	Path          string
+	DefaultScript string
+	ScriptRegexp  string
 
-	TemporaryDirectoryPath string `json:"temporary_directory_path,omitempty"`
+	TemporaryDirectoryPath string
 
-	RequestBodyMemoryBufferSize *int64 `json:"request_body_memory_buffer_size,omitempty"`
-	MaxRequestBodySize          *int64 `json:"max_request_body_size,omitempty"`
+	RequestBodyMemoryBufferSize *int64
+	MaxRequestBodySize          *int64
 
-	ResponseBodyMemoryBufferSize *int64 `json:"response_body_memory_buffer_size,omitempty"`
-	MaxResponseBodySize          *int64 `json:"max_response_body_size,omitempty"`
+	ResponseBodyMemoryBufferSize *int64
+	MaxResponseBodySize          *int64
 
-	RequestTimeout *float64 `json:"request_timeout,omitempty"` // seconds
+	RequestTimeout *float64
 }
 
-func (cfg *FastCGIActionCfg) ValidateJSON(v *ejson.Validator) {
-	v.CheckNetworkAddress("address", cfg.Address)
+func (cfg *FastCGIActionCfg) Init(block *bcl.Element) {
+	// TODO Validate address
+	block.EntryValue("address", &cfg.Address)
 
-	if cfg.RequestBodyMemoryBufferSize != nil {
-		v.CheckInt64Min("request_body_memory_buffer_size",
-			*cfg.RequestBodyMemoryBufferSize, 0)
+	cfg.Parameters = make(map[string]string)
+	for _, entry := range block.Entries("parameter") {
+		var name, value string
+
+		if entry.Values(&name, &value) {
+			cfg.Parameters[name] = value
+		}
 	}
 
-	if cfg.MaxRequestBodySize != nil {
-		v.CheckInt64Min("max_request_body_size", *cfg.MaxRequestBodySize, 0)
-	}
+	block.MaybeEntryValue("path", &cfg.Path)
+	block.MaybeEntryValue("default_script", &cfg.DefaultScript)
+	block.MaybeEntryValue("script_regexp", &cfg.ScriptRegexp)
 
-	if cfg.ResponseBodyMemoryBufferSize != nil {
-		v.CheckInt64Min("response_body_memory_buffer_size",
-			*cfg.ResponseBodyMemoryBufferSize, 0)
-	}
+	block.MaybeEntryValue("temporary_directory_path",
+		&cfg.TemporaryDirectoryPath)
 
-	if cfg.MaxResponseBodySize != nil {
-		v.CheckInt64Min("max_response_body_size", *cfg.MaxResponseBodySize, 0)
-	}
+	// TODO Validate minimum sizes 1
+	block.MaybeEntryValue("request_body_memory_buffer_size",
+		&cfg.RequestBodyMemoryBufferSize)
+	block.MaybeEntryValue("max_request_body_size", &cfg.MaxRequestBodySize)
 
-	if timeout := cfg.RequestTimeout; timeout != nil {
-		v.CheckFloatMin("request_timeout", *cfg.RequestTimeout, 0.0)
-	}
+	// TODO Validate minimum sizes 1
+	block.MaybeEntryValue("response_body_memory_buffer_size",
+		&cfg.ResponseBodyMemoryBufferSize)
+	block.MaybeEntryValue("max_response_body_size", &cfg.MaxResponseBodySize)
+
+	// TODO Validate minimum duration 0.0
+	block.MaybeEntryValue("request_timeout", &cfg.RequestTimeout)
 }
 
 type FastCGIAction struct {

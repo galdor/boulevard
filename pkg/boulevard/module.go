@@ -2,7 +2,7 @@ package boulevard
 
 import (
 	"go.n16f.net/acme"
-	"go.n16f.net/ejson"
+	"go.n16f.net/bcl"
 	"go.n16f.net/log"
 )
 
@@ -13,10 +13,11 @@ type ModuleInfo struct {
 }
 
 type ModuleCfg interface {
-	ejson.Validatable
+	Init(*bcl.Element)
 }
 
 type ModuleData struct {
+	Id   string
 	Name string
 
 	Logger  *log.Logger
@@ -40,6 +41,5 @@ type Module interface {
 type ModuleStatus struct {
 	Name string      `json:"name"`
 	Info *ModuleInfo `json:"-"`
-	Cfg  ModuleCfg   `json:"-"`
 	Data any         `json:"data"`
 }
