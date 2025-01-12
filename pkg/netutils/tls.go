@@ -16,8 +16,10 @@ type TLSCfg struct {
 
 func (cfg *TLSCfg) Init(block *bcl.Element) {
 	// TODO Validate all domains
-	if block.CheckEntryMinValues("domains", 1) {
-		block.EntryValue("domains", &cfg.Domains)
+	for _, entry := range block.Entries("domain") {
+		var domain string
+		entry.Value(&domain)
+		cfg.Domains = append(cfg.Domains, domain)
 	}
 }
 

@@ -39,7 +39,8 @@ http_server "web" {
     address ":4430"
 
     tls {
-      domains "localhost" "www.localhost"
+      domain "localhost"
+      domain "www.localhost"
     }
   }
 
@@ -145,7 +146,7 @@ tcp_server "irc" {
     address ":6697"
 
     tls {
-      domains "localhost"
+      domain "localhost"
     }
   }
 

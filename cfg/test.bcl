@@ -29,7 +29,7 @@ http_server "frontend" {
     address ":4430"
 
     tls {
-      domains "localhost"
+      domain "localhost"
     }
   }
 
