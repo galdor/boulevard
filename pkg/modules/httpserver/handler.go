@@ -45,7 +45,7 @@ func (cfg *HandlerCfg) Init(block *bcl.Element) {
 		cfg.Handlers = append(cfg.Handlers, &hcfg)
 	}
 
-	block.CheckElementsOneOf("reply", "redirect", "serve", "reverse_proxy",
+	block.CheckElementsMaybeOneOf("reply", "redirect", "serve", "reverse_proxy",
 		"status", "fastcgi")
 
 	if elt := block.MaybeElement("reply"); elt != nil {
@@ -156,9 +156,8 @@ func NewHandler(mod *Module, cfg *HandlerCfg) (*Handler, error) {
 	case cfg.FastCGI != nil:
 		action, err = NewFastCGIAction(&h, cfg.FastCGI)
 	default:
-		if len(cfg.Handlers) == 0 {
-			return nil, fmt.Errorf("missing action configuration")
-		}
+		reply := ReplyActionCfg{Status: 200}
+		action, err = NewReplyAction(&h, &reply)
 	}
 
 	if err != nil {

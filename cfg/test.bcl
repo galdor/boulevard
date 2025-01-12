@@ -48,13 +48,10 @@ http_server "frontend" {
         user "alice" "fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"
       }
     }
-
-    reply 200
   }
 
   handler {
     match "/auth/global"
-    reply 200
   }
 
   handler {
@@ -65,8 +62,6 @@ http_server "frontend" {
         user_file_path "test/basic-credentials.txt"
       }
     }
-
-    reply 200
   }
 
   handler {
@@ -78,8 +73,6 @@ http_server "frontend" {
         token "fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"
       }
     }
-
-    reply 200
   }
 
   handler {
@@ -90,8 +83,6 @@ http_server "frontend" {
         token_file_path "test/bearer-tokens.txt"
       }
     }
-
-    reply 200
   }
 
   # Nested handler tests
@@ -113,8 +104,6 @@ http_server "frontend" {
         }
       }
 
-      reply 200 "bar"
-
       handler {
         match "x"
         reply 200 "x"
@@ -124,6 +113,8 @@ http_server "frontend" {
         match "/nested/bar/y"
         reply 200 "y"
       }
+
+      reply 200 "bar"
     }
   }
 
