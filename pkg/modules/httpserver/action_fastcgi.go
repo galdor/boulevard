@@ -38,7 +38,7 @@ type FastCGIActionCfg struct {
 	DefaultScript string
 	ScriptRegexp  string
 
-	TemporaryDirectoryPath string
+	TemporaryDirectory string
 
 	RequestBodyMemoryBufferSize *int64
 	MaxRequestBodySize          *int64
@@ -66,8 +66,7 @@ func (cfg *FastCGIActionCfg) Init(block *bcl.Element) {
 	block.MaybeEntryValue("default_script", &cfg.DefaultScript)
 	block.MaybeEntryValue("script_regexp", &cfg.ScriptRegexp)
 
-	block.MaybeEntryValue("temporary_directory_path",
-		&cfg.TemporaryDirectoryPath)
+	block.MaybeEntryValue("temporary_directory", &cfg.TemporaryDirectory)
 
 	// TODO Validate minimum sizes 1
 	block.MaybeEntryValue("request_body_memory_buffer_size",
@@ -127,7 +126,7 @@ func NewFastCGIAction(h *Handler, cfg *FastCGIActionCfg) (*FastCGIAction, error)
 		a.scriptRE = re
 	}
 
-	a.tmpDirPath = cfg.TemporaryDirectoryPath
+	a.tmpDirPath = cfg.TemporaryDirectory
 	if a.tmpDirPath == "" {
 		dirPath, err := os.MkdirTemp("", "boulevard-fastcgi-*")
 		if err != nil {

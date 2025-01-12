@@ -80,7 +80,7 @@ http_server "frontend" {
 
     authentication {
       bearer {
-        token_file_path "test/bearer-tokens.txt"
+        token_file "test/bearer-tokens.txt"
       }
     }
   }

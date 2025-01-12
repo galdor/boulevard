@@ -9,12 +9,12 @@ import (
 )
 
 type BearerAuthCfg struct {
-	Tokens        []string
-	TokenFilePath string
+	Tokens    []string
+	TokenFile string
 }
 
 func (cfg *BearerAuthCfg) Init(block *bcl.Element) {
-	block.CheckEntriesOneOf("token", "token_file_path")
+	block.CheckEntriesOneOf("token", "token_file")
 
 	for _, entry := range block.Entries("token") {
 		var token string
@@ -22,7 +22,7 @@ func (cfg *BearerAuthCfg) Init(block *bcl.Element) {
 		cfg.Tokens = append(cfg.Tokens, token)
 	}
 
-	block.MaybeEntryValues("token_file_path", &cfg.TokenFilePath)
+	block.MaybeEntryValues("token_file", &cfg.TokenFile)
 }
 
 type BearerAuth struct {
@@ -35,7 +35,7 @@ func (a *BearerAuth) Init(cfg *AuthCfg) error {
 
 	bearerCfg := a.Cfg.Bearer
 
-	if filePath := bearerCfg.TokenFilePath; filePath == "" {
+	if filePath := bearerCfg.TokenFile; filePath == "" {
 		a.Tokens = make(map[string]struct{})
 		for _, token := range bearerCfg.Tokens {
 			a.Tokens[token] = struct{}{}
