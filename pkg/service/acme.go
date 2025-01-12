@@ -10,7 +10,7 @@ import (
 
 type ACMECfg struct {
 	DatastorePath       string
-	Contact             []string
+	Contacts            []string
 	DirectoryURI        string
 	HTTPListenerAddress string
 	HTTPUpstreamURI     string
@@ -21,8 +21,10 @@ func (cfg *ACMECfg) Init(block *bcl.Element) {
 	block.EntryValue("datastore_path", &cfg.DatastorePath)
 
 	// TODO Validate email addresses
-	if block.CheckEntryMinValues("contact", 1) {
-		block.EntryValues("contact", &cfg.Contact)
+	for _, entry := range block.Entries("contact") {
+		var contact string
+		entry.Value(&contact)
+		cfg.Contacts = append(cfg.Contacts, contact)
 	}
 
 	block.MaybeEntryValue("pebble", &cfg.Pebble)
@@ -48,8 +50,8 @@ func (s *Service) initACMEClient() error {
 		return fmt.Errorf("cannot create file system datastore: %w", err)
 	}
 
-	contactURIs := make([]string, len(cfg.Contact))
-	for i, address := range cfg.Contact {
+	contactURIs := make([]string, len(cfg.Contacts))
+	for i, address := range cfg.Contacts {
 		contactURIs[i] = "mailto:" + address
 	}
 
