@@ -2,10 +2,10 @@ package httpserver
 
 import (
 	"fmt"
+	"regexp"
 
 	"go.n16f.net/bcl"
 	"go.n16f.net/boulevard/pkg/netutils"
-	"go.n16f.net/boulevard/pkg/utils"
 )
 
 type HandlerCfg struct {
@@ -82,9 +82,9 @@ func (cfg *HandlerCfg) Init(block *bcl.Element) {
 type MatchCfg struct {
 	Method     string
 	Host       *netutils.DomainNamePattern
-	HostRegexp *utils.Regexp
+	HostRegexp *regexp.Regexp
 	Path       *PathPattern
-	PathRegexp *utils.Regexp
+	PathRegexp *regexp.Regexp
 }
 
 func (cfg *MatchCfg) Init(elt *bcl.Element) {
