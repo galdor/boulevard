@@ -27,10 +27,12 @@ type StatusData struct {
 type StatusActionCfg struct {
 }
 
-func (cfg *StatusActionCfg) Init(elt *bcl.Element) {
+func (cfg *StatusActionCfg) ReadBCLElement(elt *bcl.Element) error {
 	if elt.IsBlock() {
 	} else {
 	}
+
+	return nil
 }
 
 type StatusAction struct {

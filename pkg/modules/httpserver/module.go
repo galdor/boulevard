@@ -23,29 +23,18 @@ type ModuleCfg struct {
 	AccessLogger *AccessLoggerCfg
 }
 
-func (cfg *ModuleCfg) Init(block *bcl.Element) {
-	for _, block := range block.Blocks("listener") {
-		var lcfg netutils.TCPListenerCfg
-		lcfg.Init(block)
-
-		cfg.Listeners = append(cfg.Listeners, &lcfg)
-	}
+func (cfg *ModuleCfg) ReadBCLElement(block *bcl.Element) error {
+	block.Blocks("listener", &cfg.Listeners)
 	if len(cfg.Listeners) == 0 {
 		block.AddSimpleValidationError("HTTP server does not contain " +
 			"any listener")
 	}
 
-	for _, block := range block.Blocks("handler") {
-		var hcfg HandlerCfg
-		hcfg.Init(block)
+	block.Blocks("handler", &cfg.Handlers)
 
-		cfg.Handlers = append(cfg.Handlers, &hcfg)
-	}
+	block.MaybeBlock("access_logs", &cfg.AccessLogger)
 
-	if block := block.MaybeBlock("access_logs"); block != nil {
-		cfg.AccessLogger = new(AccessLoggerCfg)
-		cfg.AccessLogger.Init(block)
-	}
+	return nil
 }
 
 func NewModuleCfg() boulevard.ModuleCfg {

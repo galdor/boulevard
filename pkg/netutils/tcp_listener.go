@@ -20,14 +20,11 @@ type TCPListenerCfg struct {
 	TLS     *TLSCfg
 }
 
-func (cfg *TCPListenerCfg) Init(block *bcl.Element) {
+func (cfg *TCPListenerCfg) ReadBCLElement(block *bcl.Element) error {
 	block.EntryValue("address",
 		bcl.WithValueValidation(&cfg.Address, ValidateBCLAddress))
-
-	if block := block.MaybeBlock("tls"); block != nil {
-		cfg.TLS = new(TLSCfg)
-		cfg.TLS.Init(block)
-	}
+	block.MaybeBlock("tls", &cfg.TLS)
+	return nil
 }
 
 type TCPListener struct {

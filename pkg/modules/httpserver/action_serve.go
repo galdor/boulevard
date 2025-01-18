@@ -15,12 +15,14 @@ type ServeActionCfg struct {
 	Path *boulevard.FormatString
 }
 
-func (cfg *ServeActionCfg) Init(elt *bcl.Element) {
+func (cfg *ServeActionCfg) ReadBCLElement(elt *bcl.Element) error {
 	if elt.IsBlock() {
 		elt.EntryValue("path", &cfg.Path)
 	} else {
 		elt.Values(&cfg.Path)
 	}
+
+	return nil
 }
 
 type ServeAction struct {

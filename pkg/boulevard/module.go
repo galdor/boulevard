@@ -13,7 +13,7 @@ type ModuleInfo struct {
 }
 
 type ModuleCfg interface {
-	Init(*bcl.Element)
+	bcl.ElementReader
 }
 
 type ModuleData struct {

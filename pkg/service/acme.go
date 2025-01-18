@@ -19,21 +19,19 @@ type ACMECfg struct {
 	Pebble              bool
 }
 
-func (cfg *ACMECfg) Init(block *bcl.Element) {
+func (cfg *ACMECfg) ReadBCLElement(block *bcl.Element) error {
 	block.EntryValue("datastore_path", &cfg.DatastorePath)
 
-	for _, entry := range block.Entries("contact") {
+	for _, entry := range block.FindEntries("contact") {
 		var contact string
-
 		entry.Value(
 			bcl.WithValueValidation(&contact, netutils.ValidateBCLEmailAddress))
-
 		cfg.Contacts = append(cfg.Contacts, contact)
 	}
 
 	block.MaybeEntryValue("pebble", &cfg.Pebble)
 
-	if block := block.Block("http_challenge_solver"); block != nil {
+	if block := block.FindBlock("http_challenge_solver"); block != nil {
 		block.MaybeEntryValue("address",
 			bcl.WithValueValidation(&cfg.HTTPListenerAddress,
 				netutils.ValidateBCLAddress))
@@ -42,6 +40,8 @@ func (cfg *ACMECfg) Init(block *bcl.Element) {
 			bcl.WithValueValidation(&cfg.HTTPUpstreamURI,
 				httputils.ValidateBCLHTTPURI))
 	}
+
+	return nil
 }
 
 func (s *Service) initACMEClient() error {

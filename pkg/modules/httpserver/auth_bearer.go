@@ -13,16 +13,18 @@ type BearerAuthCfg struct {
 	TokenFile string
 }
 
-func (cfg *BearerAuthCfg) Init(block *bcl.Element) {
+func (cfg *BearerAuthCfg) ReadBCLElement(block *bcl.Element) error {
 	block.CheckEntriesOneOf("token", "token_file")
 
-	for _, entry := range block.Entries("token") {
+	for _, entry := range block.FindEntries("token") {
 		var token string
 		entry.Value(&token)
 		cfg.Tokens = append(cfg.Tokens, token)
 	}
 
 	block.MaybeEntryValues("token_file", &cfg.TokenFile)
+
+	return nil
 }
 
 type BearerAuth struct {

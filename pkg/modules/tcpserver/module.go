@@ -32,13 +32,8 @@ type ModuleCfg struct {
 	ReverseProxy ReverseProxyAction
 }
 
-func (cfg *ModuleCfg) Init(block *bcl.Element) {
-	for _, block := range block.Blocks("listener") {
-		var lcfg netutils.TCPListenerCfg
-		lcfg.Init(block)
-
-		cfg.Listeners = append(cfg.Listeners, &lcfg)
-	}
+func (cfg *ModuleCfg) ReadBCLElement(block *bcl.Element) error {
+	block.Blocks("listener", &cfg.Listeners)
 	if len(cfg.Listeners) == 0 {
 		block.AddSimpleValidationError("TCP server does not contain " +
 			"any listener")
@@ -54,16 +49,16 @@ func (cfg *ModuleCfg) Init(block *bcl.Element) {
 		bcl.WithValueValidation(&cfg.WriteBufferSize,
 			bcl.ValidatePositiveInteger))
 
-	if elt := block.Element("reverse_proxy"); elt != nil {
-		cfg.ReverseProxy.Init(elt)
-	}
+	block.Element("reverse_proxy", &cfg.ReverseProxy)
+
+	return nil
 }
 
 type ReverseProxyAction struct {
 	Address string
 }
 
-func (cfg *ReverseProxyAction) Init(elt *bcl.Element) {
+func (cfg *ReverseProxyAction) ReadBCLElement(elt *bcl.Element) error {
 	if elt.IsBlock() {
 		elt.EntryValue("address",
 			bcl.WithValueValidation(&cfg.Address, netutils.ValidateBCLAddress))
@@ -71,6 +66,8 @@ func (cfg *ReverseProxyAction) Init(elt *bcl.Element) {
 		elt.Value(
 			bcl.WithValueValidation(&cfg.Address, netutils.ValidateBCLAddress))
 	}
+
+	return nil
 }
 
 func NewModuleCfg() boulevard.ModuleCfg {

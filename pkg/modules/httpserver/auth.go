@@ -78,15 +78,17 @@ type SecretsCfg struct {
 	HMAC *HMACSecretsCfg
 }
 
-func (cfg *SecretsCfg) Init(block *bcl.Element) {
+func (cfg *SecretsCfg) ReadBCLElement(block *bcl.Element) error {
 	block.CheckElementsOneOf("hash", "hmac")
 
 	block.MaybeEntryValue("hash", &cfg.Hash)
 
-	if entry := block.MaybeEntry("hmac"); entry != nil {
+	if entry := block.FindEntry("hmac"); entry != nil {
 		cfg.HMAC = new(HMACSecretsCfg)
 		entry.Values("hmac", &cfg.HMAC.Hash, &cfg.HMAC.Key)
 	}
+
+	return nil
 }
 
 type HMACSecretsCfg struct {
@@ -102,25 +104,15 @@ type AuthCfg struct {
 	Bearer *BearerAuthCfg
 }
 
-func (cfg *AuthCfg) Init(block *bcl.Element) {
-	if block := block.MaybeBlock("secrets"); block != nil {
-		cfg.Secrets = new(SecretsCfg)
-		cfg.Secrets.Init(block)
-	}
-
+func (cfg *AuthCfg) ReadBCLElement(block *bcl.Element) error {
+	block.MaybeBlock("secrets", &cfg.Secrets)
 	block.MaybeEntryValue("realm", &cfg.Realm)
 
 	block.CheckBlocksOneOf("basic", "bearer")
+	block.MaybeBlock("basic", &cfg.Basic)
+	block.MaybeBlock("bearer", &cfg.Bearer)
 
-	if block := block.MaybeBlock("basic"); block != nil {
-		cfg.Basic = new(BasicAuthCfg)
-		cfg.Basic.Init(block)
-	}
-
-	if block := block.MaybeBlock("bearer"); block != nil {
-		cfg.Bearer = new(BearerAuthCfg)
-		cfg.Bearer.Init(block)
-	}
+	return nil
 }
 
 type Auth interface {

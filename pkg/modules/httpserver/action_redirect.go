@@ -21,7 +21,7 @@ type RedirectActionCfg struct {
 	Body   *boulevard.FormatString
 }
 
-func (cfg *RedirectActionCfg) Init(elt *bcl.Element) {
+func (cfg *RedirectActionCfg) ReadBCLElement(elt *bcl.Element) error {
 	cfg.Status = 302
 
 	if elt.IsBlock() {
@@ -31,7 +31,7 @@ func (cfg *RedirectActionCfg) Init(elt *bcl.Element) {
 		elt.EntryValue("uri", &cfg.URI)
 
 		cfg.Header = make(Header)
-		for _, entry := range elt.Entries("header") {
+		for _, entry := range elt.FindEntries("header") {
 			var name string
 			var value boulevard.FormatString
 
@@ -46,6 +46,8 @@ func (cfg *RedirectActionCfg) Init(elt *bcl.Element) {
 			httputils.ValidateBCLStatus),
 			&cfg.URI)
 	}
+
+	return nil
 }
 
 type RedirectAction struct {

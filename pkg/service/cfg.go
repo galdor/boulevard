@@ -34,9 +34,10 @@ func (cfg *ServiceCfg) Load(filePath string) error {
 		return fmt.Errorf("cannot parse %q: %w", filePath, err)
 	}
 
+	doc.TopLevel.MaybeBlock("acme", &cfg.ACME)
+	doc.TopLevel.MaybeBlock("control_api", &cfg.ControlAPI)
+
 	cfg.initLogger(doc)
-	cfg.initACME(doc)
-	cfg.initControlAPI(doc)
 	cfg.initPProf(doc)
 	cfg.initModules(doc, cfg.ModuleInfo)
 
@@ -48,7 +49,7 @@ func (cfg *ServiceCfg) Load(filePath string) error {
 }
 
 func (cfg *ServiceCfg) initLogger(doc *bcl.Document) {
-	block := doc.MaybeBlock("logger")
+	block := doc.FindBlock("logger")
 	if block == nil {
 		return
 	}
@@ -57,7 +58,7 @@ func (cfg *ServiceCfg) initLogger(doc *bcl.Document) {
 
 	block.CheckBlocksMaybeOneOf("terminal", "json")
 
-	if block := block.MaybeBlock("terminal"); block != nil {
+	if block := block.FindBlock("terminal"); block != nil {
 		loggerCfg.BackendType = log.BackendTypeTerminal
 
 		var backendCfg log.TerminalBackendCfg
@@ -66,7 +67,7 @@ func (cfg *ServiceCfg) initLogger(doc *bcl.Document) {
 		loggerCfg.TerminalBackend = &backendCfg
 	}
 
-	if block := block.MaybeBlock("json"); block != nil {
+	if block := block.FindBlock("json"); block != nil {
 		loggerCfg.BackendType = log.BackendTypeJSON
 
 		var backendCfg log.JSONBackendCfg
@@ -85,28 +86,8 @@ func (cfg *ServiceCfg) initLogger(doc *bcl.Document) {
 	cfg.Logger = &loggerCfg
 }
 
-func (cfg *ServiceCfg) initACME(doc *bcl.Document) {
-	block := doc.MaybeBlock("acme")
-	if block == nil {
-		return
-	}
-
-	cfg.ACME = new(ACMECfg)
-	cfg.ACME.Init(block)
-}
-
-func (cfg *ServiceCfg) initControlAPI(doc *bcl.Document) {
-	block := doc.MaybeBlock("control_api")
-	if block == nil {
-		return
-	}
-
-	cfg.ControlAPI = new(ControlAPICfg)
-	cfg.ControlAPI.Init(block)
-}
-
 func (cfg *ServiceCfg) initPProf(doc *bcl.Document) {
-	block := doc.MaybeBlock("pprof")
+	block := doc.FindBlock("pprof")
 	if block == nil {
 		return
 	}
@@ -116,9 +97,9 @@ func (cfg *ServiceCfg) initPProf(doc *bcl.Document) {
 
 func (cfg *ServiceCfg) initModules(doc *bcl.Document, modInfo []*boulevard.ModuleInfo) {
 	for _, info := range modInfo {
-		for _, block := range doc.Blocks(info.Type) {
+		for _, block := range doc.FindBlocks(info.Type) {
 			modCfg := info.InstantiateCfg()
-			modCfg.Init(block)
+			block.Extract(modCfg)
 
 			modCfg2 := ModuleCfg{
 				Info: info,

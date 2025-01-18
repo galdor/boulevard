@@ -18,13 +18,10 @@ type ControlAPICfg struct {
 	AccessLogger *httpserver.AccessLoggerCfg
 }
 
-func (cfg *ControlAPICfg) Init(block *bcl.Element) {
+func (cfg *ControlAPICfg) ReadBCLElement(block *bcl.Element) error {
 	block.EntryValue("path", &cfg.Path)
-
-	if block := block.MaybeBlock("access_logs"); block != nil {
-		cfg.AccessLogger = new(httpserver.AccessLoggerCfg)
-		cfg.AccessLogger.Init(block)
-	}
+	block.MaybeBlock("access_logs", &cfg.AccessLogger)
+	return nil
 }
 
 type ControlAPI struct {

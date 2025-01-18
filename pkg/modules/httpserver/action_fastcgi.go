@@ -49,14 +49,13 @@ type FastCGIActionCfg struct {
 	RequestTimeout *time.Duration
 }
 
-func (cfg *FastCGIActionCfg) Init(block *bcl.Element) {
+func (cfg *FastCGIActionCfg) ReadBCLElement(block *bcl.Element) error {
 	block.EntryValue("address",
 		bcl.WithValueValidation(&cfg.Address, netutils.ValidateBCLAddress))
 
 	cfg.Parameters = make(map[string]string)
-	for _, entry := range block.Entries("parameter") {
+	for _, entry := range block.FindEntries("parameter") {
 		var name, value string
-
 		if entry.Values(&name, &value) {
 			cfg.Parameters[name] = value
 		}
@@ -83,6 +82,8 @@ func (cfg *FastCGIActionCfg) Init(block *bcl.Element) {
 			bcl.ValidatePositiveInteger))
 
 	block.MaybeEntryValue("request_timeout", &cfg.RequestTimeout)
+
+	return nil
 }
 
 type FastCGIAction struct {

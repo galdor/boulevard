@@ -14,14 +14,14 @@ type TLSCfg struct {
 	Domains []string
 }
 
-func (cfg *TLSCfg) Init(block *bcl.Element) {
-	for _, entry := range block.Entries("domain") {
+func (cfg *TLSCfg) ReadBCLElement(block *bcl.Element) error {
+	for _, entry := range block.FindEntries("domain") {
 		var domain string
-
 		entry.Value(bcl.WithValueValidation(&domain, ValidateBCLDomainName))
-
 		cfg.Domains = append(cfg.Domains, domain)
 	}
+
+	return nil
 }
 
 func (cfg *TLSCfg) NetTLSConfig() *tls.Config {

@@ -14,16 +14,18 @@ type BasicAuthCfg struct {
 	UserFilePath string
 }
 
-func (cfg *BasicAuthCfg) Init(block *bcl.Element) {
+func (cfg *BasicAuthCfg) ReadBCLElement(block *bcl.Element) error {
 	block.CheckEntriesOneOf("user", "user_file_path")
 
-	for _, entry := range block.Entries("user") {
+	for _, entry := range block.FindEntries("user") {
 		var username, password string
 		entry.Values(&username, &password)
 		cfg.Users = append(cfg.Users, username+":"+password)
 	}
 
 	block.MaybeEntryValues("user_file_path", &cfg.UserFilePath)
+
+	return nil
 }
 
 type BasicAuth struct {

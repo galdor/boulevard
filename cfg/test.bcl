@@ -1,4 +1,4 @@
-logger {
+logs {
   terminal {
   }
 

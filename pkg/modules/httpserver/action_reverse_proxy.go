@@ -21,13 +21,13 @@ type ReverseProxyActionCfg struct {
 	ResponseHeader Header
 }
 
-func (cfg *ReverseProxyActionCfg) Init(elt *bcl.Element) {
+func (cfg *ReverseProxyActionCfg) ReadBCLElement(elt *bcl.Element) error {
 	if elt.IsBlock() {
 		elt.EntryValue("uri",
 			bcl.WithValueValidation(&cfg.URI, httputils.ValidateBCLHTTPURI))
 
 		cfg.RequestHeader = make(Header)
-		for _, entry := range elt.Entries("request_header") {
+		for _, entry := range elt.FindEntries("request_header") {
 			var name string
 			var value boulevard.FormatString
 
@@ -37,7 +37,7 @@ func (cfg *ReverseProxyActionCfg) Init(elt *bcl.Element) {
 		}
 
 		cfg.ResponseHeader = make(Header)
-		for _, entry := range elt.Entries("response_header") {
+		for _, entry := range elt.FindEntries("response_header") {
 			var name string
 			var value boulevard.FormatString
 
@@ -49,6 +49,8 @@ func (cfg *ReverseProxyActionCfg) Init(elt *bcl.Element) {
 		elt.Value(
 			bcl.WithValueValidation(&cfg.URI, httputils.ValidateBCLHTTPURI))
 	}
+
+	return nil
 }
 
 type ReverseProxyAction struct {

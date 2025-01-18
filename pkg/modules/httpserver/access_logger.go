@@ -23,9 +23,11 @@ type AccessLoggerCfg struct {
 	Format *boulevard.FormatString
 }
 
-func (cfg *AccessLoggerCfg) Init(block *bcl.Element) {
+func (cfg *AccessLoggerCfg) ReadBCLElement(block *bcl.Element) error {
 	block.EntryValue("path", &cfg.Path)
 	block.EntryValue("format", &cfg.Format)
+
+	return nil
 }
 
 type AccessLogger struct {

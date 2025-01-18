@@ -15,7 +15,7 @@ type ReplyActionCfg struct {
 	Body   *boulevard.FormatString
 }
 
-func (cfg *ReplyActionCfg) Init(elt *bcl.Element) {
+func (cfg *ReplyActionCfg) ReadBCLElement(elt *bcl.Element) error {
 	cfg.Status = 200
 
 	if elt.IsBlock() {
@@ -23,7 +23,7 @@ func (cfg *ReplyActionCfg) Init(elt *bcl.Element) {
 			bcl.WithValueValidation(&cfg.Status, httputils.ValidateBCLStatus))
 
 		cfg.Header = make(Header)
-		for _, entry := range elt.Entries("header") {
+		for _, entry := range elt.FindEntries("header") {
 			var name string
 			var value boulevard.FormatString
 
@@ -49,6 +49,8 @@ func (cfg *ReplyActionCfg) Init(elt *bcl.Element) {
 			}
 		}
 	}
+
+	return nil
 }
 
 type ReplyAction struct {

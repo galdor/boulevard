@@ -24,60 +24,24 @@ type HandlerCfg struct {
 	Handlers []*HandlerCfg
 }
 
-func (cfg *HandlerCfg) Init(block *bcl.Element) {
-	if elt := block.Element("match"); elt != nil {
-		cfg.Match.Init(elt)
-	}
+func (cfg *HandlerCfg) ReadBCLElement(block *bcl.Element) error {
+	block.Element("match", &cfg.Match)
 
-	if block := block.MaybeBlock("authentication"); block != nil {
-		cfg.Auth = new(AuthCfg)
-		cfg.Auth.Init(block)
-	}
-
-	if block := block.MaybeBlock("access_logs"); block != nil {
-		cfg.AccessLogger = new(AccessLoggerCfg)
-		cfg.AccessLogger.Init(block)
-	}
-
-	for _, block := range block.Blocks("handler") {
-		var hcfg HandlerCfg
-		hcfg.Init(block)
-
-		cfg.Handlers = append(cfg.Handlers, &hcfg)
-	}
+	block.MaybeBlock("authentication", &cfg.Auth)
+	block.MaybeBlock("access_logs", &cfg.AccessLogger)
 
 	block.CheckElementsMaybeOneOf("reply", "redirect", "serve", "reverse_proxy",
 		"status", "fastcgi")
+	block.MaybeElement("reply", &cfg.Reply)
+	block.MaybeElement("redirect", &cfg.Redirect)
+	block.MaybeElement("serve", &cfg.Serve)
+	block.MaybeElement("reverse_proxy", &cfg.ReverseProxy)
+	block.MaybeElement("status", &cfg.Status)
+	block.MaybeElement("fastcgi", &cfg.FastCGI)
 
-	if elt := block.MaybeElement("reply"); elt != nil {
-		cfg.Reply = new(ReplyActionCfg)
-		cfg.Reply.Init(elt)
-	}
+	block.Blocks("handler", &cfg.Handlers)
 
-	if elt := block.MaybeElement("redirect"); elt != nil {
-		cfg.Redirect = new(RedirectActionCfg)
-		cfg.Redirect.Init(elt)
-	}
-
-	if elt := block.MaybeElement("serve"); elt != nil {
-		cfg.Serve = new(ServeActionCfg)
-		cfg.Serve.Init(elt)
-	}
-
-	if elt := block.MaybeElement("reverse_proxy"); elt != nil {
-		cfg.ReverseProxy = new(ReverseProxyActionCfg)
-		cfg.ReverseProxy.Init(elt)
-	}
-
-	if elt := block.MaybeElement("status"); elt != nil {
-		cfg.Status = new(StatusActionCfg)
-		cfg.Status.Init(elt)
-	}
-
-	if block := block.MaybeBlock("fastcgi"); block != nil {
-		cfg.FastCGI = new(FastCGIActionCfg)
-		cfg.FastCGI.Init(block)
-	}
+	return nil
 }
 
 type MatchCfg struct {
@@ -88,7 +52,7 @@ type MatchCfg struct {
 	PathRegexp *regexp.Regexp
 }
 
-func (cfg *MatchCfg) Init(elt *bcl.Element) {
+func (cfg *MatchCfg) ReadBCLElement(elt *bcl.Element) error {
 	if elt.IsBlock() {
 		elt.MaybeEntryValue("method",
 			bcl.WithValueValidation(&cfg.Method, httputils.ValidateBCLMethod))
@@ -99,6 +63,8 @@ func (cfg *MatchCfg) Init(elt *bcl.Element) {
 	} else {
 		elt.Value(&cfg.Path)
 	}
+
+	return nil
 }
 
 type Handler struct {
