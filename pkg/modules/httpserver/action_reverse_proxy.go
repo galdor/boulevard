@@ -23,8 +23,8 @@ type ReverseProxyActionCfg struct {
 
 func (cfg *ReverseProxyActionCfg) Init(elt *bcl.Element) {
 	if elt.IsBlock() {
-		// TODO Validate URI string
-		elt.EntryValue("uri", &cfg.URI)
+		elt.EntryValue("uri",
+			bcl.WithValueValidation(&cfg.URI, httputils.ValidateBCLHTTPURI))
 
 		cfg.RequestHeader = make(Header)
 		for _, entry := range elt.Entries("request_header") {
@@ -46,8 +46,8 @@ func (cfg *ReverseProxyActionCfg) Init(elt *bcl.Element) {
 			}
 		}
 	} else {
-		// TODO Validate URI string
-		elt.Value(&cfg.URI)
+		elt.Value(
+			bcl.WithValueValidation(&cfg.URI, httputils.ValidateBCLHTTPURI))
 	}
 }
 

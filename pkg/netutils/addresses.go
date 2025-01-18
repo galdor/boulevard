@@ -1,6 +1,7 @@
 package netutils
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -46,4 +47,31 @@ func FormatNumericAddress(addr net.IP, portNumber int) string {
 	} else {
 		return fmt.Sprintf("%v:%d", addr, portNumber)
 	}
+}
+
+func ValidateBCLAddress(v any) error {
+	_, portString, err := net.SplitHostPort(v.(string))
+	if err != nil {
+		var addrErr *net.AddrError
+		var msg string
+
+		if errors.As(err, &addrErr) {
+			msg = addrErr.Err
+		} else {
+			msg = err.Error()
+		}
+
+		return fmt.Errorf("invalid address: %s", msg)
+	}
+
+	if portString == "" {
+		return fmt.Errorf("invalid address: empty port number")
+	}
+
+	port, err := strconv.ParseInt(portString, 10, 64)
+	if err != nil || port < 1 || port >= 65535 {
+		return fmt.Errorf("invalid address: invalid port number %q", portString)
+	}
+
+	return nil
 }

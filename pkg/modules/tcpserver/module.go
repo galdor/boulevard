@@ -33,21 +33,26 @@ type ModuleCfg struct {
 }
 
 func (cfg *ModuleCfg) Init(block *bcl.Element) {
-	// TODO Validate minimum number of blocks 1
 	for _, block := range block.Blocks("listener") {
 		var lcfg netutils.TCPListenerCfg
 		lcfg.Init(block)
 
 		cfg.Listeners = append(cfg.Listeners, &lcfg)
 	}
+	if len(cfg.Listeners) == 0 {
+		block.AddSimpleValidationError("TCP server does not contain " +
+			"any listener")
+	}
 
 	cfg.ReadBufferSize = DefaultReadBufferSize
-	// TODO Validate minimum size 1
-	block.MaybeEntryValue("read_buffer_size", &cfg.ReadBufferSize)
+	block.MaybeEntryValue("read_buffer_size",
+		bcl.WithValueValidation(&cfg.ReadBufferSize,
+			bcl.ValidatePositiveInteger))
 
 	cfg.WriteBufferSize = DefaultWriteBufferSize
-	// TODO Validate minimum size 1
-	block.MaybeEntryValue("write_buffer_size", &cfg.WriteBufferSize)
+	block.MaybeEntryValue("write_buffer_size",
+		bcl.WithValueValidation(&cfg.WriteBufferSize,
+			bcl.ValidatePositiveInteger))
 
 	if elt := block.Element("reverse_proxy"); elt != nil {
 		cfg.ReverseProxy.Init(elt)
@@ -59,11 +64,12 @@ type ReverseProxyAction struct {
 }
 
 func (cfg *ReverseProxyAction) Init(elt *bcl.Element) {
-	// TODO Validate address
 	if elt.IsBlock() {
-		elt.EntryValue("address", &cfg.Address)
+		elt.EntryValue("address",
+			bcl.WithValueValidation(&cfg.Address, netutils.ValidateBCLAddress))
 	} else {
-		elt.Value(&cfg.Address)
+		elt.Value(
+			bcl.WithValueValidation(&cfg.Address, netutils.ValidateBCLAddress))
 	}
 }
 

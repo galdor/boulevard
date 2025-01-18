@@ -6,6 +6,7 @@ import (
 
 	"go.n16f.net/bcl"
 	"go.n16f.net/boulevard/pkg/boulevard"
+	"go.n16f.net/boulevard/pkg/httputils"
 )
 
 type ReplyActionCfg struct {
@@ -18,8 +19,8 @@ func (cfg *ReplyActionCfg) Init(elt *bcl.Element) {
 	cfg.Status = 200
 
 	if elt.IsBlock() {
-		// TODO Validate integer 200..599
-		elt.MaybeEntryValue("status", &cfg.Status)
+		elt.MaybeEntryValue("status",
+			bcl.WithValueValidation(&cfg.Status, httputils.ValidateBCLStatus))
 
 		cfg.Header = make(Header)
 		for _, entry := range elt.Entries("header") {
@@ -36,10 +37,14 @@ func (cfg *ReplyActionCfg) Init(elt *bcl.Element) {
 		if elt.CheckMinMaxValues(1, 2) {
 			switch elt.NbValues() {
 			case 1:
-				// TODO Validate integer 200..599
-				elt.Values(&cfg.Status)
+				elt.Value(
+					bcl.WithValueValidation(&cfg.Status,
+						httputils.ValidateBCLStatus))
 			case 2:
-				// TODO Validate integer 200..599
+				elt.Values(
+					bcl.WithValueValidation(&cfg.Status,
+						httputils.ValidateBCLStatus),
+					&cfg.Body)
 				elt.Values(&cfg.Status, &cfg.Body)
 			}
 		}

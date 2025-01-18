@@ -6,6 +6,8 @@ import (
 
 	"go.n16f.net/acme"
 	"go.n16f.net/bcl"
+	"go.n16f.net/boulevard/pkg/httputils"
+	"go.n16f.net/boulevard/pkg/netutils"
 )
 
 type ACMECfg struct {
@@ -20,20 +22,25 @@ type ACMECfg struct {
 func (cfg *ACMECfg) Init(block *bcl.Element) {
 	block.EntryValue("datastore_path", &cfg.DatastorePath)
 
-	// TODO Validate email addresses
 	for _, entry := range block.Entries("contact") {
 		var contact string
-		entry.Value(&contact)
+
+		entry.Value(
+			bcl.WithValueValidation(&contact, netutils.ValidateBCLEmailAddress))
+
 		cfg.Contacts = append(cfg.Contacts, contact)
 	}
 
 	block.MaybeEntryValue("pebble", &cfg.Pebble)
 
 	if block := block.Block("http_challenge_solver"); block != nil {
-		// TODO Validate address
-		block.MaybeEntryValue("address", &cfg.HTTPListenerAddress)
-		// TODO Validate URI
-		block.EntryValue("upstream_uri", &cfg.HTTPUpstreamURI)
+		block.MaybeEntryValue("address",
+			bcl.WithValueValidation(&cfg.HTTPListenerAddress,
+				netutils.ValidateBCLAddress))
+
+		block.EntryValue("upstream_uri",
+			bcl.WithValueValidation(&cfg.HTTPUpstreamURI,
+				httputils.ValidateBCLHTTPURI))
 	}
 }
 

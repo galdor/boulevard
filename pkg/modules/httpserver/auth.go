@@ -42,7 +42,7 @@ func (a *HashAlgorithm) ReadBCLValue(v *bcl.Value) error {
 	case bcl.ValueTypeString:
 		s = v.Content.(string)
 	default:
-		return v.ValueTypeError(bcl.ValueTypeString)
+		return bcl.NewValueTypeError(v, bcl.ValueTypeString)
 	}
 
 	if !slices.Contains(HashAlgorithmValues, s) {

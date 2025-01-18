@@ -28,7 +28,7 @@ const (
 	DefaultResponseBodyMemoryBufferSize = 128 * 1024
 	DefaultMaxResponseBodySize          = 4 * 1024 * 1024
 
-	DefaultRequestTimeout = 10.0 // seconds
+	DefaultRequestTimeout = 10.0 * time.Second
 )
 
 type FastCGIActionCfg struct {
@@ -46,12 +46,12 @@ type FastCGIActionCfg struct {
 	ResponseBodyMemoryBufferSize *int64
 	MaxResponseBodySize          *int64
 
-	RequestTimeout *float64
+	RequestTimeout *time.Duration
 }
 
 func (cfg *FastCGIActionCfg) Init(block *bcl.Element) {
-	// TODO Validate address
-	block.EntryValue("address", &cfg.Address)
+	block.EntryValue("address",
+		bcl.WithValueValidation(&cfg.Address, netutils.ValidateBCLAddress))
 
 	cfg.Parameters = make(map[string]string)
 	for _, entry := range block.Entries("parameter") {
@@ -68,17 +68,20 @@ func (cfg *FastCGIActionCfg) Init(block *bcl.Element) {
 
 	block.MaybeEntryValue("temporary_directory", &cfg.TemporaryDirectory)
 
-	// TODO Validate minimum sizes 1
 	block.MaybeEntryValue("request_body_memory_buffer_size",
-		&cfg.RequestBodyMemoryBufferSize)
-	block.MaybeEntryValue("max_request_body_size", &cfg.MaxRequestBodySize)
+		bcl.WithValueValidation(&cfg.RequestBodyMemoryBufferSize,
+			bcl.ValidatePositiveInteger))
+	block.MaybeEntryValue("max_request_body_size",
+		bcl.WithValueValidation(&cfg.MaxRequestBodySize,
+			bcl.ValidatePositiveInteger))
 
-	// TODO Validate minimum sizes 1
 	block.MaybeEntryValue("response_body_memory_buffer_size",
-		&cfg.ResponseBodyMemoryBufferSize)
-	block.MaybeEntryValue("max_response_body_size", &cfg.MaxResponseBodySize)
+		bcl.WithValueValidation(&cfg.ResponseBodyMemoryBufferSize,
+			bcl.ValidatePositiveInteger))
+	block.MaybeEntryValue("max_response_body_size",
+		bcl.WithValueValidation(&cfg.MaxResponseBodySize,
+			bcl.ValidatePositiveInteger))
 
-	// TODO Validate minimum duration 0.0
 	block.MaybeEntryValue("request_timeout", &cfg.RequestTimeout)
 }
 
@@ -156,11 +159,10 @@ func NewFastCGIAction(h *Handler, cfg *FastCGIActionCfg) (*FastCGIAction, error)
 		a.maxResBodySize = *size
 	}
 
-	requestTimeout := DefaultRequestTimeout
+	a.requestTimeout = DefaultRequestTimeout
 	if timeout := cfg.RequestTimeout; timeout != nil {
-		requestTimeout = *timeout
+		a.requestTimeout = *timeout
 	}
-	a.requestTimeout = time.Duration(requestTimeout * float64(time.Second))
 
 	return &a, nil
 }

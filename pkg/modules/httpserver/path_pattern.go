@@ -99,10 +99,8 @@ func (p *PathPattern) ReadBCLValue(v *bcl.Value) error {
 	switch v.Type() {
 	case bcl.ValueTypeString:
 		s = v.Content.(string)
-	case bcl.ValueTypeSymbol:
-		s = string(v.Content.(bcl.Symbol))
 	default:
-		return v.ValueTypeError(bcl.ValueTypeString, bcl.ValueTypeSymbol)
+		return bcl.NewValueTypeError(v, bcl.ValueTypeString)
 	}
 
 	if err := p.Parse(s); err != nil {

@@ -24,12 +24,15 @@ type ModuleCfg struct {
 }
 
 func (cfg *ModuleCfg) Init(block *bcl.Element) {
-	// TODO Validate minimum number of blocks 1
 	for _, block := range block.Blocks("listener") {
 		var lcfg netutils.TCPListenerCfg
 		lcfg.Init(block)
 
 		cfg.Listeners = append(cfg.Listeners, &lcfg)
+	}
+	if len(cfg.Listeners) == 0 {
+		block.AddSimpleValidationError("HTTP server does not contain " +
+			"any listener")
 	}
 
 	for _, block := range block.Blocks("handler") {

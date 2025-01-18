@@ -21,8 +21,8 @@ type TCPListenerCfg struct {
 }
 
 func (cfg *TCPListenerCfg) Init(block *bcl.Element) {
-	// TODO Validate address
-	block.EntryValue("address", &cfg.Address)
+	block.EntryValue("address",
+		bcl.WithValueValidation(&cfg.Address, ValidateBCLAddress))
 
 	if block := block.MaybeBlock("tls"); block != nil {
 		cfg.TLS = new(TLSCfg)

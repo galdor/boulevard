@@ -11,6 +11,7 @@ import (
 
 	"go.n16f.net/bcl"
 	"go.n16f.net/boulevard/pkg/boulevard"
+	"go.n16f.net/boulevard/pkg/httputils"
 )
 
 type RedirectActionCfg struct {
@@ -24,9 +25,9 @@ func (cfg *RedirectActionCfg) Init(elt *bcl.Element) {
 	cfg.Status = 302
 
 	if elt.IsBlock() {
-		// TODO Validate integer 200..599
-		elt.MaybeEntryValue("status", &cfg.Status)
-		// TODO Validate URI string
+		elt.MaybeEntryValue("status", bcl.WithValueValidation(&cfg.Status,
+			httputils.ValidateBCLStatus))
+
 		elt.EntryValue("uri", &cfg.URI)
 
 		cfg.Header = make(Header)
@@ -41,9 +42,9 @@ func (cfg *RedirectActionCfg) Init(elt *bcl.Element) {
 
 		elt.MaybeEntryValue("body", &cfg.Body)
 	} else {
-		// TODO Validate integer 200..599
-		// TODO Validate URI string
-		elt.Values(&cfg.Status, &cfg.URI)
+		elt.Values(bcl.WithValueValidation(&cfg.Status,
+			httputils.ValidateBCLStatus),
+			&cfg.URI)
 	}
 }
 

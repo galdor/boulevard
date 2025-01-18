@@ -154,7 +154,9 @@ func (s *FormatString) ReadBCLValue(v *bcl.Value) error {
 	case bcl.ValueTypeSymbol:
 		vs = string(v.Content.(bcl.Symbol))
 	default:
-		return v.ValueTypeError(bcl.ValueTypeString, bcl.ValueTypeSymbol)
+		return bcl.NewValueTypeError(v,
+			bcl.ValueTypeString, bcl.ValueTypeSymbol)
+
 	}
 
 	if err := s.Parse(vs); err != nil {

@@ -15,10 +15,11 @@ type TLSCfg struct {
 }
 
 func (cfg *TLSCfg) Init(block *bcl.Element) {
-	// TODO Validate all domains
 	for _, entry := range block.Entries("domain") {
 		var domain string
-		entry.Value(&domain)
+
+		entry.Value(bcl.WithValueValidation(&domain, ValidateBCLDomainName))
+
 		cfg.Domains = append(cfg.Domains, domain)
 	}
 }

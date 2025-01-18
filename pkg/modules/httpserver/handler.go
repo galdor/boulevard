@@ -5,6 +5,7 @@ import (
 	"regexp"
 
 	"go.n16f.net/bcl"
+	"go.n16f.net/boulevard/pkg/httputils"
 	"go.n16f.net/boulevard/pkg/netutils"
 )
 
@@ -89,8 +90,8 @@ type MatchCfg struct {
 
 func (cfg *MatchCfg) Init(elt *bcl.Element) {
 	if elt.IsBlock() {
-		// TODO Validate HTTP method
-		elt.MaybeEntryValue("method", &cfg.Method)
+		elt.MaybeEntryValue("method",
+			bcl.WithValueValidation(&cfg.Method, httputils.ValidateBCLMethod))
 		elt.MaybeEntryValue("host", &cfg.Host)
 		elt.MaybeEntryValue("host_regexp", &cfg.HostRegexp)
 		elt.MaybeEntryValue("path", &cfg.Path)
