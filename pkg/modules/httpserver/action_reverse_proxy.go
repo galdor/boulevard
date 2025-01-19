@@ -11,40 +11,21 @@ import (
 	"strings"
 
 	"go.n16f.net/bcl"
-	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/boulevard/pkg/httputils"
 )
 
 type ReverseProxyActionCfg struct {
 	URI            string
-	RequestHeader  Header
-	ResponseHeader Header
+	RequestHeader  HeaderOps
+	ResponseHeader HeaderOps
 }
 
 func (cfg *ReverseProxyActionCfg) ReadBCLElement(elt *bcl.Element) error {
 	if elt.IsBlock() {
 		elt.EntryValue("uri",
 			bcl.WithValueValidation(&cfg.URI, httputils.ValidateBCLHTTPURI))
-
-		cfg.RequestHeader = make(Header)
-		for _, entry := range elt.FindEntries("request_header") {
-			var name string
-			var value boulevard.FormatString
-
-			if entry.Values(&name, &value) {
-				cfg.RequestHeader[name] = &value
-			}
-		}
-
-		cfg.ResponseHeader = make(Header)
-		for _, entry := range elt.FindEntries("response_header") {
-			var name string
-			var value boulevard.FormatString
-
-			if entry.Values(&name, &value) {
-				cfg.ResponseHeader[name] = &value
-			}
-		}
+		elt.MaybeBlock("request_header", &cfg.RequestHeader)
+		elt.MaybeBlock("response_header", &cfg.ResponseHeader)
 	} else {
 		elt.Value(
 			bcl.WithValueValidation(&cfg.URI, httputils.ValidateBCLHTTPURI))

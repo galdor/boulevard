@@ -35,7 +35,14 @@ http_server "frontend" {
 
   handler {
     match "/hello"
-    reply 200 "hello"
+
+    reply {
+      header {
+        add "Server" "Boulevard"
+      }
+
+      body "world"
+    }
   }
 
   # Authentication tests

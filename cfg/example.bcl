@@ -54,8 +54,12 @@ http_server "web" {
 
     reply {
       status 200
+
+      header {
+        add "Server" "Boulevard"
+      }
+
       body "Hello world!\n"
-      header "Server" "Boulevard"
     }
   }
 
@@ -121,7 +125,10 @@ http_server "web" {
 
     reverse_proxy {
       uri "http://localhost:9002"
-      response_header "Server" "Boulevard"
+
+      response_header {
+        set "Server" "Boulevard"
+      }
     }
   }
 
