@@ -49,7 +49,7 @@ func (cfg *ServiceCfg) Load(filePath string) error {
 }
 
 func (cfg *ServiceCfg) initLogger(doc *bcl.Document) {
-	block := doc.FindBlock("logger")
+	block := doc.FindBlock("logs")
 	if block == nil {
 		return
 	}
