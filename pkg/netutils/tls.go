@@ -45,23 +45,23 @@ func (cfg *TLSCfg) ReadBCLElement(block *bcl.Element) error {
 	} else {
 		block.EntryValue("certificate_file", &cfg.CertificateFile)
 		block.EntryValue("private_key_file", &cfg.PrivateKeyFile)
+	}
 
-		var minVersion string
-		block.MaybeEntryValue("min_version",
-			bcl.WithValueValidation(&minVersion, ValidateBCLTLSVersion))
-		cfg.MinVersion, _ = ParseTLSVersion(minVersion)
+	var minVersion string
+	block.MaybeEntryValue("min_version",
+		bcl.WithValueValidation(&minVersion, ValidateBCLTLSVersion))
+	cfg.MinVersion, _ = ParseTLSVersion(minVersion)
 
-		var maxVersion string
-		block.MaybeEntryValue("max_version",
-			bcl.WithValueValidation(&maxVersion, ValidateBCLTLSVersion))
-		cfg.MaxVersion, _ = ParseTLSVersion(maxVersion)
+	var maxVersion string
+	block.MaybeEntryValue("max_version",
+		bcl.WithValueValidation(&maxVersion, ValidateBCLTLSVersion))
+	cfg.MaxVersion, _ = ParseTLSVersion(maxVersion)
 
-		for _, entry := range block.FindEntries("cipher_suite") {
-			var name string
-			entry.Value(bcl.WithValueValidation(&name,
-				ValidateBCLTLSCipherSuite))
-			cfg.CipherSuites = append(cfg.CipherSuites, tlsCipherSuites[name])
-		}
+	for _, entry := range block.FindEntries("cipher_suite") {
+		var name string
+		entry.Value(bcl.WithValueValidation(&name,
+			ValidateBCLTLSCipherSuite))
+		cfg.CipherSuites = append(cfg.CipherSuites, tlsCipherSuites[name])
 	}
 
 	return nil
