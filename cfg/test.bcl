@@ -29,7 +29,9 @@ http_server "frontend" {
     address ":4430"
 
     tls {
-      domain "localhost"
+      acme {
+        domain "localhost"
+      }
     }
   }
 

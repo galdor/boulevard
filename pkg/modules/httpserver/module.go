@@ -25,14 +25,12 @@ type ModuleCfg struct {
 
 func (cfg *ModuleCfg) ReadBCLElement(block *bcl.Element) error {
 	block.Blocks("listener", &cfg.Listeners)
-	if len(cfg.Listeners) == 0 {
-		block.AddSimpleValidationError("HTTP server does not contain " +
-			"any listener")
-	}
-
 	block.Blocks("handler", &cfg.Handlers)
-
 	block.MaybeBlock("access_logs", &cfg.AccessLogger)
+
+	if len(cfg.Listeners) == 0 {
+		return fmt.Errorf("HTTP server does not contain any listener")
+	}
 
 	return nil
 }

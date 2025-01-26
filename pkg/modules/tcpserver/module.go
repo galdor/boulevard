@@ -34,10 +34,6 @@ type ModuleCfg struct {
 
 func (cfg *ModuleCfg) ReadBCLElement(block *bcl.Element) error {
 	block.Blocks("listener", &cfg.Listeners)
-	if len(cfg.Listeners) == 0 {
-		block.AddSimpleValidationError("TCP server does not contain " +
-			"any listener")
-	}
 
 	cfg.ReadBufferSize = DefaultReadBufferSize
 	block.MaybeEntryValue("read_buffer_size",
@@ -50,6 +46,10 @@ func (cfg *ModuleCfg) ReadBCLElement(block *bcl.Element) error {
 			bcl.ValidatePositiveInteger))
 
 	block.Element("reverse_proxy", &cfg.ReverseProxy)
+
+	if len(cfg.Listeners) == 0 {
+		return fmt.Errorf("TCP server does not contain any listener")
+	}
 
 	return nil
 }

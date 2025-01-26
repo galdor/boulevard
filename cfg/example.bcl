@@ -39,8 +39,19 @@ http_server "web" {
     address ":4430"
 
     tls {
-      domain "localhost"
-      domain "www.localhost"
+      acme {
+        domain "localhost"
+        domain "www.localhost"
+      }
+    }
+  }
+
+  listener {
+    address ":4431"
+
+    tls {
+      certificate_file "local/tls/certificates/boulevard.crt"
+      private_key_file "local/tls/private-keys/boulevard.key"
     }
   }
 
@@ -153,7 +164,9 @@ tcp_server "irc" {
     address ":6697"
 
     tls {
-      domain "localhost"
+      acme {
+        domain "localhost"
+      }
     }
   }
 
