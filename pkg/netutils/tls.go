@@ -26,6 +26,8 @@ type TLSCfg struct {
 	// Manual configuration
 	CertificateFile string
 	PrivateKeyFile  string
+	MinVersion      uint16
+	MaxVersion      uint16
 	CipherSuites    []uint16
 }
 
@@ -44,6 +46,16 @@ func (cfg *TLSCfg) ReadBCLElement(block *bcl.Element) error {
 		block.EntryValue("certificate_file", &cfg.CertificateFile)
 		block.EntryValue("private_key_file", &cfg.PrivateKeyFile)
 
+		var minVersion string
+		block.MaybeEntryValue("min_version",
+			bcl.WithValueValidation(&minVersion, ValidateBCLTLSVersion))
+		cfg.MinVersion, _ = ParseTLSVersion(minVersion)
+
+		var maxVersion string
+		block.MaybeEntryValue("max_version",
+			bcl.WithValueValidation(&maxVersion, ValidateBCLTLSVersion))
+		cfg.MaxVersion, _ = ParseTLSVersion(maxVersion)
+
 		for _, entry := range block.FindEntries("cipher_suite") {
 			var name string
 			entry.Value(bcl.WithValueValidation(&name,
@@ -53,6 +65,27 @@ func (cfg *TLSCfg) ReadBCLElement(block *bcl.Element) error {
 	}
 
 	return nil
+}
+
+func ValidateBCLTLSVersion(v any) error {
+	name := v.(string)
+	_, err := ParseTLSVersion(name)
+	return err
+}
+
+func ParseTLSVersion(s string) (uint16, error) {
+	switch s {
+	case "1.0":
+		return tls.VersionTLS10, nil
+	case "1.1":
+		return tls.VersionTLS11, nil
+	case "1.2":
+		return tls.VersionTLS12, nil
+	case "1.3":
+		return tls.VersionTLS13, nil
+	default:
+		return 0, fmt.Errorf("invalid TLS version")
+	}
 }
 
 func ValidateBCLTLSCipherSuite(v any) error {

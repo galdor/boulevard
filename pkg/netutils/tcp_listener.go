@@ -82,6 +82,9 @@ func (l *TCPListener) Start() error {
 			tlsCfg, err = l.localTLSCfg()
 		}
 
+		tlsCfg.MinVersion = cfg.MinVersion
+		tlsCfg.MaxVersion = cfg.MaxVersion
+
 		if len(cfg.CipherSuites) > 0 {
 			tlsCfg.CipherSuites = cfg.CipherSuites
 		}
