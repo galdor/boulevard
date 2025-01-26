@@ -1,10 +1,21 @@
 package netutils
 
 import (
+	"crypto/tls"
 	"fmt"
 
 	"go.n16f.net/bcl"
 )
+
+var tlsCipherSuites map[string]uint16
+
+func init() {
+	tlsCipherSuites = make(map[string]uint16)
+	suites := append(tls.CipherSuites(), tls.InsecureCipherSuites()...)
+	for _, suite := range suites {
+		tlsCipherSuites[suite.Name] = suite.ID
+	}
+}
 
 type TLSCfg struct {
 	CertificateName string
@@ -15,6 +26,7 @@ type TLSCfg struct {
 	// Manual configuration
 	CertificateFile string
 	PrivateKeyFile  string
+	CipherSuites    []uint16
 }
 
 func (cfg *TLSCfg) ReadBCLElement(block *bcl.Element) error {
@@ -31,6 +43,23 @@ func (cfg *TLSCfg) ReadBCLElement(block *bcl.Element) error {
 	} else {
 		block.EntryValue("certificate_file", &cfg.CertificateFile)
 		block.EntryValue("private_key_file", &cfg.PrivateKeyFile)
+
+		for _, entry := range block.FindEntries("cipher_suite") {
+			var name string
+			entry.Value(bcl.WithValueValidation(&name,
+				ValidateBCLTLSCipherSuite))
+			cfg.CipherSuites = append(cfg.CipherSuites, tlsCipherSuites[name])
+		}
+	}
+
+	return nil
+}
+
+func ValidateBCLTLSCipherSuite(v any) error {
+	name := v.(string)
+
+	if _, found := tlsCipherSuites[name]; !found {
+		return fmt.Errorf("unknown TLS cipher suite")
 	}
 
 	return nil
