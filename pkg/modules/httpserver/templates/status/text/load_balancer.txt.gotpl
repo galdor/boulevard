@@ -1,0 +1,5 @@
+
+  SERVERS
+  {{- range .Servers}}
+  {{.Address}}
+  {{- end -}}

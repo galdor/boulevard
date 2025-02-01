@@ -1,0 +1,15 @@
+<table>
+  <thead>
+    <tr>
+      <th>Address</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {{range .Servers}}
+    <tr>
+      <td>{{.Address}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>

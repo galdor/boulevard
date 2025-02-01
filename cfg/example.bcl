@@ -30,7 +30,16 @@ pprof {
   address ":6060"
 }
 
-load_balancer "test" {
+load_balancer "nginx" {
+  server "127.42.2.1"
+  server "127.42.2.2"
+  server "127.42.2.3"
+
+  # health {
+  #   http {
+  #     path "/nginx/ping"
+  #   }
+  # }
 }
 
 http_server "web" {
