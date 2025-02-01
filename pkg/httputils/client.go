@@ -244,7 +244,7 @@ func (c *Client) closeIdleConnections() {
 	defer c.idleConnMutex.Unlock()
 
 	var idleConns []*ClientConn
-	nextTimeout := now
+	nextTimeout := now.Add(c.Cfg.IdleConnectionTimeout)
 
 	for _, conn := range c.idleConns {
 		lastActivity := conn.lastActivity.Load()
