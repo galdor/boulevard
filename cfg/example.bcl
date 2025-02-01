@@ -145,7 +145,7 @@ http_server "web" {
     match "/nginx/"
 
     reverse_proxy {
-      uri "http://localhost:9002"
+      uri "http://127.42.1.1:9002"
 
       response_header {
         set "Server" "Boulevard"

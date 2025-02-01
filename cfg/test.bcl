@@ -130,7 +130,7 @@ http_server "frontend" {
   # Reverse proxy tests
   handler {
     match "/nginx/"
-    reverse_proxy "http://localhost:9002"
+    reverse_proxy "http://127.42.1.1:9002"
   }
 
   handler {

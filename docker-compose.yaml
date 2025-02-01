@@ -27,7 +27,42 @@ services:
   nginx:
     container_name: "boulevard-nginx"
     image: "nginx:1.27"
-    ports:
-      - "9002:9002"
+    environment:
+      NGINX_INSTANCE: "main"
+      NGINX_ADDRESS: "127.42.1.1"
+      NGINX_ENVSUBST_OUTPUT_DIR: "/etc/nginx"
+    # All NGINX instances must listen on the host so that we can listen on
+    # multiple local addresses (127.0.0.0/8).
+    network_mode: "host"
     volumes:
-      - "./docker-compose/nginx/nginx.conf:/etc/nginx/nginx.conf:ro"
+      - "./docker-compose/nginx/nginx.conf:/etc/nginx/templates/nginx.conf.template:ro"
+  nginx-i1:
+    container_name: "boulevard-nginx-i1"
+    image: "nginx:1.27"
+    environment:
+      NGINX_INSTANCE: "i1"
+      NGINX_ADDRESS: "127.42.2.1"
+      NGINX_ENVSUBST_OUTPUT_DIR: "/etc/nginx"
+    network_mode: "host"
+    volumes:
+      - "./docker-compose/nginx/nginx.conf:/etc/nginx/templates/nginx.conf.template:ro"
+  nginx-i2:
+    container_name: "boulevard-nginx-i2"
+    image: "nginx:1.27"
+    environment:
+      NGINX_INSTANCE: "i2"
+      NGINX_ADDRESS: "127.42.2.2"
+      NGINX_ENVSUBST_OUTPUT_DIR: "/etc/nginx"
+    network_mode: "host"
+    volumes:
+      - "./docker-compose/nginx/nginx.conf:/etc/nginx/templates/nginx.conf.template:ro"
+  nginx-i3:
+    container_name: "boulevard-nginx-i3"
+    image: "nginx:1.27"
+    environment:
+      NGINX_INSTANCE: "i3"
+      NGINX_ADDRESS: "127.42.2.3"
+      NGINX_ENVSUBST_OUTPUT_DIR: "/etc/nginx"
+    network_mode: "host"
+    volumes:
+      - "./docker-compose/nginx/nginx.conf:/etc/nginx/templates/nginx.conf.template:ro"
