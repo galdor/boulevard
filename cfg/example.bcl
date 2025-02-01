@@ -30,6 +30,9 @@ pprof {
   address ":6060"
 }
 
+load_balancer "test" {
+}
+
 http_server "web" {
   listener {
     address ":8080"

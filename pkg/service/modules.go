@@ -6,12 +6,14 @@ import (
 
 	"go.n16f.net/boulevard/pkg/boulevard"
 	modhttpserver "go.n16f.net/boulevard/pkg/modules/httpserver"
+	modloadbalancer "go.n16f.net/boulevard/pkg/modules/loadbalancer"
 	modtcpserver "go.n16f.net/boulevard/pkg/modules/tcpserver"
 	"go.n16f.net/log"
 )
 
 var DefaultModules = []*boulevard.ModuleInfo{
 	modhttpserver.ModuleInfo(),
+	modloadbalancer.ModuleInfo(),
 	modtcpserver.ModuleInfo(),
 }
 
