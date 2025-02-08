@@ -12,15 +12,15 @@ import (
 
 type ServiceCfg struct {
 	// Provided by the caller of NewService
-	BuildId    string
-	ModuleInfo []*boulevard.ModuleInfo
+	BuildId      string
+	ProtocolInfo []*boulevard.ProtocolInfo
 
-	// Populated by ServiceCfg.Load
+	// Set by ServiceCfg.Load
 	Logger       *log.LoggerCfg
 	ACME         *ACMECfg
 	ControlAPI   *ControlAPICfg
 	PProfAddress string
-	Modules      []*ModuleCfg
+	Servers      []*boulevard.ServerCfg
 }
 
 func (cfg *ServiceCfg) Load(filePath string) error {
@@ -39,7 +39,7 @@ func (cfg *ServiceCfg) Load(filePath string) error {
 
 	cfg.initLogger(doc)
 	cfg.initPProf(doc)
-	cfg.initModules(doc, cfg.ModuleInfo)
+	cfg.initServers(doc, cfg.ProtocolInfo)
 
 	if err := doc.ValidationErrors(); err != nil {
 		return fmt.Errorf("invalid configuration:\n%w", err)
@@ -95,19 +95,38 @@ func (cfg *ServiceCfg) initPProf(doc *bcl.Document) {
 	block.EntryValue("address", &cfg.PProfAddress)
 }
 
-func (cfg *ServiceCfg) initModules(doc *bcl.Document, modInfo []*boulevard.ModuleInfo) {
-	for _, info := range modInfo {
-		for _, block := range doc.FindBlocks(info.Type) {
-			modCfg := info.InstantiateCfg()
-			block.Extract(modCfg)
+func (cfg *ServiceCfg) initServers(doc *bcl.Document, protocolsInfo []*boulevard.ProtocolInfo) {
+	protoNames := make([]string, len(protocolsInfo))
+	for i, info := range protocolsInfo {
+		protoNames[i] = info.Name
+	}
 
-			modCfg2 := ModuleCfg{
-				Info: info,
-				Name: block.BlockName(),
-				Cfg:  modCfg,
+	for _, block := range doc.FindBlocks("server") {
+		block.CheckBlocksOneOf(protoNames...)
+
+		var protoInfo *boulevard.ProtocolInfo
+		var protoCfg boulevard.ProtocolCfg
+		var proto boulevard.Protocol
+
+		for _, info := range protocolsInfo {
+			if block := block.FindBlock(info.Name); block != nil {
+				protoInfo = info
+				protoCfg = info.InstantiateCfg()
+				proto = info.Instantiate()
+
+				block.Extract(protoCfg)
+				break
 			}
-
-			cfg.Modules = append(cfg.Modules, &modCfg2)
 		}
+
+		serverCfg := boulevard.ServerCfg{
+			Name:         block.BlockName(),
+			Protocol:     proto,
+			ProtocolInfo: protoInfo,
+			ProtocolCfg:  protoCfg,
+		}
+
+		block.Extract(&serverCfg)
+		cfg.Servers = append(cfg.Servers, &serverCfg)
 	}
 }

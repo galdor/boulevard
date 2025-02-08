@@ -3,11 +3,11 @@ package service
 import (
 	"fmt"
 
-	"go.n16f.net/boulevard/pkg/modules/httpserver"
+	"go.n16f.net/boulevard/pkg/protocols/http"
 )
 
 type ControlAPIHandler struct {
-	Ctx *httpserver.RequestContext
+	Ctx *http.RequestContext
 }
 
 func (h *ControlAPIHandler) ReplyJSON(status int, value any) {

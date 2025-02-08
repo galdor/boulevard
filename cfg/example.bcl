@@ -30,19 +30,7 @@ pprof {
   address ":6060"
 }
 
-load_balancer "nginx" {
-  server "127.42.2.1"
-  server "127.42.2.2"
-  server "127.42.2.3"
-
-  # health {
-  #   http {
-  #     path "/nginx/ping"
-  #   }
-  # }
-}
-
-http_server "web" {
+server "web" {
   listener {
     address ":8080"
   }
@@ -74,107 +62,126 @@ http_server "web" {
     }
   }
 
-  access_logs {
-    path "local/logs/{module.name}.log"
-    format "{http.client_address} {http.request.method} {http.request.path} {http.response.status:-} {http.response_time}"
-  }
-
-  handler {
-    match "/hello"
-
-    reply {
-      status 200
-
-      header {
-        add "Server" "Boulevard"
-      }
-
-      body "Hello world!\n"
-    }
-  }
-
-  handler {
-    match "/redirect/"
-    redirect 302 "/{http.match.subpath}"
-  }
-
-  handler {
-    match "/nested/"
-
+  http {
     handler {
-      match {
-        method "POST"
-      }
+      match "/hello"
 
-      reply 200 "POST!\n"
+      reply {
+        status 200
+
+        header {
+          add "Server" "Boulevard"
+        }
+
+        body "Hello world!\n"
+      }
     }
 
     handler {
-      match "/nested/foo/"
-      reply 200 "Foo!\n"
+      match "/redirect/"
+      redirect 302 "/{http.match.subpath}"
     }
-  }
 
-  handler {
-    match "/status"
-    status
-  }
+    handler {
+      match "/nested/"
 
-  handler {
-    match "/boulevard/"
-    serve "."
-  }
+      handler {
+        match {
+          method "POST"
+        }
 
-  handler {
-    match "/private/"
-
-    authentication {
-      secrets {
-        hash "SHA3-256"
+        reply 200 "POST!\n"
       }
 
-      basic {
-        # bob:secret
-        user "bob" "f5a5207a8729b1f709cb710311751eb2fc8acad5a1fb8ac991b736e69b6529a3"
-        # alice:secret2
-        user "alice" "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a"
+      handler {
+        match "/nested/foo/"
+        reply 200 "Foo!\n"
       }
     }
 
-    reply 200 "access authorized\n"
-  }
+    handler {
+      match "/status"
+      status
+    }
 
-  handler {
-    match "/forbidden/"
+    handler {
+      match "/boulevard/"
+      serve "."
+    }
 
-    reply 403 "access denied\n"
-  }
+    handler {
+      match "/private/"
 
-  handler {
-    match "/nginx/"
+      authentication {
+        secrets {
+          hash "SHA3-256"
+        }
 
-    reverse_proxy {
-      uri "http://127.42.1.1:9002"
+        basic {
+          # bob:secret
+          user "bob" "f5a5207a8729b1f709cb710311751eb2fc8acad5a1fb8ac991b736e69b6529a3"
+          # alice:secret2
+          user "alice" "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a"
+        }
+      }
 
-      response_header {
-        set "Server" "Boulevard"
+      reply 200 "access authorized\n"
+    }
+
+    handler {
+      match "/forbidden/"
+
+      reply 403 "access denied\n"
+    }
+
+    handler {
+      match "/nginx/"
+
+      reverse_proxy {
+        uri "http://127.42.1.1:9002"
+
+        response_header {
+          set "Server" "Boulevard"
+        }
       }
     }
-  }
 
-  handler {
-    match "/fpm/"
+    # handler {
+    #   match "/nginx-pool/"
 
-    fastcgi {
-      address "localhost:9000"
-      path "/app/test"
-      default_script "index.php"
-      script_regexp "^.+?\\.php"
+    #   reverse_proxy {
+    #     load_balancer {
+    #       server "127.42.2.1"
+    #       server "127.42.2.2"
+    #       server "127.42.2.3"
+
+    #       health {
+    #         http {
+    #           path "/nginx/ping"
+    #         }
+    #       }
+    #     }
+
+    #     response_header {
+    #       set "Server" "Boulevard"
+    #     }
+    #   }
+    # }
+
+    handler {
+      match "/fpm/"
+
+      fastcgi {
+        address "localhost:9000"
+        path "/app/test"
+        default_script "index.php"
+        script_regexp "^.+?\\.php"
+      }
     }
   }
 }
 
-tcp_server "irc" {
+server "irc" {
   listener {
     address ":6667"
   }
@@ -189,5 +196,7 @@ tcp_server "irc" {
     }
   }
 
-  reverse_proxy "localhost:6698"
+  tcp {
+    reverse_proxy "localhost:6698"
+  }
 }

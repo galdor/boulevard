@@ -20,7 +20,7 @@ control_api {
   path "/tmp/boulevard.sock"
 }
 
-http_server "frontend" {
+server "web" {
   listener {
     address ":8080"
   }
@@ -35,106 +35,108 @@ http_server "frontend" {
     }
   }
 
-  handler {
-    match "/hello"
-
-    reply {
-      header {
-        add "Server" "Boulevard"
-      }
-
-      body "world"
-    }
-  }
-
-  # Authentication tests
-  handler {
-    match "/auth/basic/credentials"
-
-    authentication {
-      basic {
-        user "bob" "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
-        user "alice" "fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"
-      }
-    }
-  }
-
-  handler {
-    match "/auth/global"
-  }
-
-  handler {
-    match "/auth/basic/credential-file"
-
-    authentication {
-      basic {
-        user_file_path "test/basic-credentials.txt"
-      }
-    }
-  }
-
-  handler {
-    match "/auth/bearer/tokens"
-
-    authentication {
-      bearer {
-        token "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
-        token "fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"
-      }
-    }
-  }
-
-  handler {
-    match "/auth/bearer/token-file"
-
-    authentication {
-      bearer {
-        token_file "test/bearer-tokens.txt"
-      }
-    }
-  }
-
-  # Nested handler tests
-  handler {
-    match "/nested/"
-    reply 200 "default"
-
+  http {
     handler {
-      match "/nested/foo"
-      reply 200 "foo"
+      match "/hello"
+
+      reply {
+        header {
+          add "Server" "Boulevard"
+        }
+
+        body "world"
+      }
+    }
+
+    # Authentication tests
+    handler {
+      match "/auth/basic/credentials"
+
+      authentication {
+        basic {
+          user "bob" "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
+          user "alice" "fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"
+        }
+      }
     }
 
     handler {
-      match "bar/"
+      match "/auth/global"
+    }
+
+    handler {
+      match "/auth/basic/credential-file"
+
+      authentication {
+        basic {
+          user_file_path "test/basic-credentials.txt"
+        }
+      }
+    }
+
+    handler {
+      match "/auth/bearer/tokens"
 
       authentication {
         bearer {
           token "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
+          token "fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"
         }
       }
-
-      handler {
-        match "x"
-        reply 200 "x"
-      }
-
-      handler {
-        match "/nested/bar/y"
-        reply 200 "y"
-      }
-
-      reply 200 "bar"
     }
-  }
 
-  # Reverse proxy tests
-  handler {
-    match "/nginx/"
-    reverse_proxy "http://127.42.1.1:9002"
-  }
+    handler {
+      match "/auth/bearer/token-file"
 
-  handler {
-    match "/websocket"
-    reverse_proxy "http://localhost:9003"
+      authentication {
+        bearer {
+          token_file "test/bearer-tokens.txt"
+        }
+      }
+    }
+
+    # Nested handler tests
+    handler {
+      match "/nested/"
+      reply 200 "default"
+
+      handler {
+        match "/nested/foo"
+        reply 200 "foo"
+      }
+
+      handler {
+        match "bar/"
+
+        authentication {
+          bearer {
+            token "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
+          }
+        }
+
+        handler {
+          match "x"
+          reply 200 "x"
+        }
+
+        handler {
+          match "/nested/bar/y"
+          reply 200 "y"
+        }
+
+        reply 200 "bar"
+      }
+    }
+
+    # Reverse proxy tests
+    handler {
+      match "/nginx/"
+      reverse_proxy "http://127.42.1.1:9002"
+    }
+
+    handler {
+      match "/websocket"
+      reverse_proxy "http://localhost:9003"
+    }
   }
 }

@@ -1,0 +1,6 @@
+BOULEVARD STATUS
+{{- range $i, $server := .Servers}}
+
+{{.Name}}
+{{index $.ServerData $i}}
+{{- end}}

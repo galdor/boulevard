@@ -1,0 +1,42 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <title>Boulevard status</title>
+
+    <style>
+     body {
+       max-width: 960px;
+       margin-left: auto;
+       margin-right: auto;
+
+       font-family: monospace;
+
+       background-color: #e0e0e0;
+     }
+
+     table {
+       border-collapse: collapse;
+       border-spacing: 0;
+     }
+
+     table, thead tr {
+       border: 2px solid black;
+     }
+
+     th, td {
+       border: 1px solid black;
+       padding: 0.15rem 0.30rem;
+     }
+    </style>
+  </head>
+  <body>
+    <h1>Boulevard status</h1>
+    {{range $i, $server := .Servers}}
+    <h2>{{.Name}}</h2>
+    {{index $.ServerData $i}}
+    {{end}}
+  </body>
+</html>

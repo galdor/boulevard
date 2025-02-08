@@ -41,7 +41,7 @@ func run(p *program.Program) {
 	var cfg service.ServiceCfg
 
 	cfg.BuildId = buildId
-	cfg.ModuleInfo = service.DefaultModules
+	cfg.ProtocolInfo = service.DefaultProtocols
 
 	if cfgPath != "" {
 		p.Info("loading configuration file %q", cfgPath)

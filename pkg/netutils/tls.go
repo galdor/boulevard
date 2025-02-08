@@ -18,8 +18,6 @@ func init() {
 }
 
 type TLSCfg struct {
-	CertificateName string
-
 	// ACME
 	Domains []string
 

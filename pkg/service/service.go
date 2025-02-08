@@ -15,12 +15,10 @@ type Service struct {
 	Cfg ServiceCfg
 	Log *log.Logger
 
-	moduleInfo   map[string]*boulevard.ModuleInfo
-	modules      map[string]*Module
-	modulesMutex sync.Mutex
-
-	acmeClient *acme.Client
-	controlAPI *ControlAPI
+	acmeClient  *acme.Client
+	controlAPI  *ControlAPI
+	servers     map[string]*boulevard.Server
+	serverMutex sync.Mutex
 
 	httpUserAgent string
 
@@ -43,9 +41,6 @@ func NewService(cfg ServiceCfg) (*Service, error) {
 	s := Service{
 		Cfg: cfg,
 		Log: logger,
-
-		moduleInfo: make(map[string]*boulevard.ModuleInfo),
-		modules:    make(map[string]*Module),
 
 		stopChan: make(chan struct{}),
 	}
@@ -72,7 +67,7 @@ func (s *Service) Start() error {
 
 	s.startPProf()
 
-	if err := s.startModules(); err != nil {
+	if err := s.startServers(); err != nil {
 		return err
 	}
 
@@ -91,7 +86,7 @@ func (s *Service) Stop() {
 	s.wg.Wait()
 
 	s.stopControlAPI()
-	s.stopModules()
+	s.stopServers()
 	s.stopACMEClient()
 }
 

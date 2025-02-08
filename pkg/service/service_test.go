@@ -59,8 +59,8 @@ func createTestACMEDatastore() {
 
 func initTestService() {
 	cfg := ServiceCfg{
-		BuildId:    "test-" + time.Now().Format(time.RFC3339),
-		ModuleInfo: DefaultModules,
+		BuildId:      "test-" + time.Now().Format(time.RFC3339),
+		ProtocolInfo: DefaultProtocols,
 	}
 
 	if err := cfg.Load(testCfgPath); err != nil {

@@ -4,18 +4,18 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"net/http"
+	nethttp "net/http"
 	"strings"
 	"sync"
 
 	"go.n16f.net/bcl"
-	"go.n16f.net/boulevard/pkg/modules/httpserver"
+	"go.n16f.net/boulevard/pkg/protocols/http"
 	"go.n16f.net/log"
 )
 
 type ControlAPICfg struct {
 	Path         string
-	AccessLogger *httpserver.AccessLoggerCfg
+	AccessLogger *http.AccessLoggerCfg
 }
 
 func (cfg *ControlAPICfg) ReadBCLElement(block *bcl.Element) error {
@@ -29,8 +29,8 @@ type ControlAPI struct {
 	Log     *log.Logger
 	Service *Service
 
-	httpServer   *http.Server
-	accessLogger *httpserver.AccessLogger
+	httpServer   *nethttp.Server
+	accessLogger *http.AccessLogger
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -59,7 +59,7 @@ func (s *Service) initControlAPI() error {
 	}
 
 	if logCfg := cfg.AccessLogger; logCfg != nil {
-		log, err := httpserver.NewAccessLogger(logCfg, nil)
+		log, err := http.NewAccessLogger(logCfg, nil)
 		if err != nil {
 			return fmt.Errorf("cannot create access logger: %w", err)
 		}
@@ -104,7 +104,7 @@ func (api *ControlAPI) Start() error {
 
 	api.Log.Info("listening on %q", api.Cfg.Path)
 
-	api.httpServer = &http.Server{
+	api.httpServer = &nethttp.Server{
 		Handler:  api,
 		ErrorLog: api.Log.StdLogger(log.LevelError),
 	}
@@ -126,14 +126,14 @@ func (api *ControlAPI) serve(listener net.Listener) {
 	defer listener.Close()
 
 	err := api.httpServer.Serve(listener)
-	if err != http.ErrServerClosed {
+	if err != nethttp.ErrServerClosed {
 		api.Log.Error("cannot run HTTP server: %v", err)
 		return
 	}
 }
 
-func (api *ControlAPI) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	ctx := httpserver.NewRequestContext(api.ctx, req, w)
+func (api *ControlAPI) ServeHTTP(w nethttp.ResponseWriter, req *nethttp.Request) {
+	ctx := http.NewRequestContext(api.ctx, req, w)
 	ctx.Log = api.Log.Child("", nil)
 	ctx.AccessLogger = api.accessLogger
 
