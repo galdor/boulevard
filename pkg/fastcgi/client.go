@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"sync"
+	"syscall"
 
 	"go.n16f.net/log"
 )
@@ -74,6 +76,27 @@ func (c *Client) FetchValues(ctx context.Context) (NameValuePairs, error) {
 }
 
 func (c *Client) SendRequest(ctx context.Context, role Role, params NameValuePairs, stdin, data io.Reader, stdout io.Writer, stderr *bytes.Buffer) (*Header, error) {
+	var retry bool
+
+sendRequest:
+	header, err := c.sendRequest(ctx, role, params, stdin, data, stdout, stderr)
+	if err != nil {
+		// We do not want to fail if the connection to the upstream server was
+		// severed: most of the time, we can just reconnect and it will work
+		// just fine. Of course we only try once: if it is down, it is down.
+
+		if !retry && isConnectionClosedWriteError(err) {
+			retry = true
+			goto sendRequest
+		}
+
+		return nil, err
+	}
+
+	return header, nil
+}
+
+func (c *Client) sendRequest(ctx context.Context, role Role, params NameValuePairs, stdin, data io.Reader, stdout io.Writer, stderr *bytes.Buffer) (*Header, error) {
 	conn, err := c.acquireConnection(ctx)
 	if err != nil {
 		return nil, err
@@ -159,4 +182,18 @@ func (c *Client) releaseConnection(conn *Connection) {
 	c.connMutex.Lock()
 	c.idleConns[conn] = struct{}{}
 	c.connMutex.Unlock()
+}
+
+func isConnectionClosedWriteError(err error) bool {
+	var syscallErr *os.SyscallError
+
+	if errors.As(err, &syscallErr) {
+		if errno, ok := syscallErr.Err.(syscall.Errno); ok {
+			if errno == syscall.EPIPE {
+				return true
+			}
+		}
+	}
+
+	return false
 }
