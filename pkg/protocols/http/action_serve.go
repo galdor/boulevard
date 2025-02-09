@@ -2,6 +2,7 @@ package http
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -12,12 +13,14 @@ import (
 )
 
 type ServeActionCfg struct {
-	Path *boulevard.FormatString
+	Path         *boulevard.FormatString
+	FileNotFound *ServeActionFileNotFoundCfg
 }
 
 func (cfg *ServeActionCfg) ReadBCLElement(elt *bcl.Element) error {
 	if elt.IsBlock() {
 		elt.EntryValue("path", &cfg.Path)
+		elt.MaybeBlock("file_not_found", &cfg.FileNotFound)
 	} else {
 		elt.Values(&cfg.Path)
 	}
@@ -25,9 +28,19 @@ func (cfg *ServeActionCfg) ReadBCLElement(elt *bcl.Element) error {
 	return nil
 }
 
+type ServeActionFileNotFoundCfg struct {
+	Reply     *ReplyActionCfg
+}
+
+func (cfg *ServeActionFileNotFoundCfg) ReadBCLElement(block *bcl.Element) error {
+	block.MaybeElement("reply", &cfg.Reply)
+	return nil
+}
+
 type ServeAction struct {
-	Handler *Handler
-	Cfg     *ServeActionCfg
+	Handler           *Handler
+	Cfg               *ServeActionCfg
+	FileNotFoundReply *ReplyAction
 }
 
 func NewServeAction(h *Handler, cfg *ServeActionCfg) (*ServeAction, error) {
@@ -36,14 +49,34 @@ func NewServeAction(h *Handler, cfg *ServeActionCfg) (*ServeAction, error) {
 		Cfg:     cfg,
 	}
 
+	if cfg.FileNotFound != nil && cfg.FileNotFound.Reply != nil {
+		reply, err := NewReplyAction(h, cfg.FileNotFound.Reply)
+		if err != nil {
+			return nil, fmt.Errorf("cannot create file not found reply "+
+				"action: %w", err)
+		}
+
+		a.FileNotFoundReply = reply
+	}
+
 	return &a, nil
 }
 
 func (a *ServeAction) Start() error {
+	if a.FileNotFoundReply != nil {
+		if err := a.FileNotFoundReply.Start(); err != nil {
+			return fmt.Errorf("cannot start file not found reply action: %w",
+				err)
+		}
+	}
+
 	return nil
 }
 
 func (a *ServeAction) Stop() {
+	if a.FileNotFoundReply != nil {
+		a.FileNotFoundReply.Stop()
+	}
 }
 
 func (a *ServeAction) HandleRequest(ctx *RequestContext) {
@@ -54,7 +87,12 @@ func (a *ServeAction) HandleRequest(ctx *RequestContext) {
 	info, err := os.Stat(filePath)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			ctx.ReplyError(404)
+			if a.FileNotFoundReply == nil {
+				ctx.ReplyError(404)
+			} else {
+				a.FileNotFoundReply.HandleRequest(ctx)
+			}
+
 			return
 		}
 

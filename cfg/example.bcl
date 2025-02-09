@@ -112,6 +112,20 @@ server "web" {
     handler {
       match "/boulevard/"
       serve "."
+
+      handler {
+        match {
+          path "local/"
+        }
+
+        serve {
+          path "local"
+
+          file_not_found {
+            reply 404 "File not found.\n"
+          }
+        }
+      }
     }
 
     handler {
