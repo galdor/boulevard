@@ -88,6 +88,7 @@ func (p *Protocol) Start(server *boulevard.Server) error {
 
 	p.connections = make(map[*Connection]struct{})
 
+	p.wg.Add(len(server.Listeners))
 	for _, l := range server.Listeners {
 		go p.listen(l)
 	}
@@ -106,6 +107,8 @@ func (p *Protocol) Stop() {
 }
 
 func (p *Protocol) listen(l *boulevard.Listener) {
+	defer p.wg.Done()
+
 	for {
 		conn, err := l.Listener.Accept()
 		if err != nil {

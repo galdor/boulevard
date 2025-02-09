@@ -78,11 +78,20 @@ func StartServer(cfg *ServerCfg) (*Server, error) {
 func (s *Server) Stop() {
 	close(s.stopChan)
 
-	s.Cfg.Protocol.Stop()
+	// Stop listening first, then let protocol implementations close any
+	// connection: if a connection is accepted after closing existing ones but
+	// before stopping listeners, we will leak its file descriptor.
+	//
+	// This also ensures that goroutines running Accept on these listeners (see
+	// for example the protocols/tcp package) can be properly interrupted before
+	// the Stop method of the protocol returns, avoiding interesting race
+	// conditions.
 
 	for _, l := range s.Listeners {
 		l.Stop()
 	}
+
+	s.Cfg.Protocol.Stop()
 }
 
 func (s *Server) Fatal(format string, args ...any) {
