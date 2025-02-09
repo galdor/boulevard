@@ -43,7 +43,7 @@ func NewAccessLogger(cfg *AccessLoggerCfg, vars map[string]string) (*AccessLogge
 
 	filePath := cfg.Path.Expand(vars)
 
-	flags := os.O_WRONLY | os.O_CREATE | os.O_TRUNC
+	flags := os.O_WRONLY | os.O_CREATE | os.O_APPEND
 	file, err := os.OpenFile(filePath, flags, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open %q: %w", filePath, err)

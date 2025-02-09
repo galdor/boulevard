@@ -63,6 +63,11 @@ server "web" {
   }
 
   http {
+    access_logs {
+      path "local/logs/server-{server.name}.log"
+      format common
+    }
+
     handler {
       match "/hello"
 
