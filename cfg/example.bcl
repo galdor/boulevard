@@ -121,6 +121,8 @@ server "web" {
         serve {
           path "local"
 
+          index_file "index.txt"
+
           file_not_found {
             reply 404 "File not found.\n"
           }

@@ -14,12 +14,20 @@ import (
 
 type ServeActionCfg struct {
 	Path         *boulevard.FormatString
+	IndexFiles   []string
 	FileNotFound *ServeActionFileNotFoundCfg
 }
 
 func (cfg *ServeActionCfg) ReadBCLElement(elt *bcl.Element) error {
 	if elt.IsBlock() {
 		elt.EntryValue("path", &cfg.Path)
+
+		for _, entry := range elt.FindEntries("index_file") {
+			var file string
+			entry.Value(&file)
+			cfg.IndexFiles = append(cfg.IndexFiles, file)
+		}
+
 		elt.MaybeBlock("file_not_found", &cfg.FileNotFound)
 	} else {
 		elt.Values(&cfg.Path)
@@ -29,7 +37,7 @@ func (cfg *ServeActionCfg) ReadBCLElement(elt *bcl.Element) error {
 }
 
 type ServeActionFileNotFoundCfg struct {
-	Reply     *ReplyActionCfg
+	Reply *ReplyActionCfg
 }
 
 func (cfg *ServeActionFileNotFoundCfg) ReadBCLElement(block *bcl.Element) error {
@@ -98,6 +106,26 @@ func (a *ServeAction) HandleRequest(ctx *RequestContext) {
 
 		ctx.Log.Error("cannot stat %q: %v", filePath, err)
 		ctx.ReplyError(500)
+		return
+	}
+
+	if info.Mode().IsDir() {
+		for _, indexFile := range a.Cfg.IndexFiles {
+			indexFilePath := path.Join(basePath, indexFile)
+			indexInfo, err := os.Stat(indexFilePath)
+			if err == nil {
+				body, err := os.Open(indexFilePath)
+				if err == nil {
+					defer body.Close()
+
+					http.ServeContent(ctx.ResponseWriter, ctx.Request,
+						indexFilePath, indexInfo.ModTime(), body)
+					return
+				}
+			}
+		}
+
+		ctx.ReplyError(403)
 		return
 	}
 
