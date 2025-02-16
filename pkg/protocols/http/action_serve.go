@@ -16,7 +16,7 @@ import (
 
 const (
 	DefaultServeActionIndexViewMaxFiles = 1000
-	ServeActionTimestampLayout          = "2006-01-02 15:04:05Z07:00"
+	ServeActionTimestampLayout          = "2006-01-02 15:04:05Z"
 )
 
 type ServeActionCfg struct {
@@ -213,10 +213,13 @@ func (a *ServeAction) serveIndexView(dirPath string, ctx *RequestContext) {
 		Entries       []ServeIndexEntry `json:"entries"`
 
 		MaxFilenameLength int `json:"-"`
+		MTimeLength       int `json:"-"`
 		MaxSizeLength     int `json:"-"`
 	}{
 		DirectoryPath: relDirPath,
 		Entries:       entries,
+
+		MTimeLength: len(ServeActionTimestampLayout),
 	}
 
 	for _, e := range entries {

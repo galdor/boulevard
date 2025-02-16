@@ -10,7 +10,9 @@ import (
 )
 
 var functions = map[string]any{
-	"join": strings.Join,
+	"charString": charString,
+	"join":       strings.Join,
+	"sum":        sum,
 }
 
 func LoadTextTemplates(filesystem fs.FS, patterns ...string) (*texttemplate.Template, error) {
@@ -102,4 +104,20 @@ func walkFS(filesystem fs.FS, suffix string, fn func(string, []byte) error) erro
 
 			return fn(filename, data)
 		})
+}
+
+func charString(c rune, n int) string {
+	s := make([]rune, n)
+	for i := range n {
+		s[i] = c
+	}
+	return string(s)
+}
+
+func sum(is ...int) int {
+	sum := 0
+	for _, i := range is {
+		sum += i
+	}
+	return sum
 }
