@@ -28,7 +28,7 @@
 
      th, td {
        border: 1px solid black;
-       padding: 0.15rem 0.30rem;
+       padding: 0.15rem 0.45rem;
        text-align: left;
      }
 

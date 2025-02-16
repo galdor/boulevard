@@ -16,6 +16,7 @@ import (
 
 const (
 	DefaultServeActionIndexViewMaxFiles = 1000
+	ServeActionTimestampLayout          = "2006-01-02 15:04:05Z07:00"
 )
 
 type ServeActionCfg struct {
@@ -236,9 +237,9 @@ func (a *ServeAction) serveIndexView(dirPath string, ctx *RequestContext) {
 }
 
 type ServeIndexEntry struct {
-	Filename  string `json:"filename"`
-	Size      int64  `json:"size"`
-	Directory bool   `json:"directory"`
+	Filename string `json:"filename"`
+	Size     int64  `json:"size,omitempty"`
+	MTime    string `json:"mtime,omitempty"`
 }
 
 func (a *ServeAction) readIndexEntries(dirPath string) ([]ServeIndexEntry, error) {
@@ -250,14 +251,22 @@ func (a *ServeAction) readIndexEntries(dirPath string) ([]ServeIndexEntry, error
 	idxEntries := make([]ServeIndexEntry, len(dirEntries))
 	for i, de := range dirEntries {
 		ie := ServeIndexEntry{
-			Filename:  de.Name(),
-			Directory: de.IsDir(),
+			Filename: de.Name(),
+		}
+
+		if de.IsDir() {
+			ie.Filename += "/"
 		}
 
 		// Do not fail just because we cannot get file information, we will
 		// simply show them as unavailable in the templates.
 		if info, err := de.Info(); err == nil {
-			ie.Size = info.Size()
+			if !de.IsDir() {
+				ie.Size = info.Size()
+			}
+
+			mtime := info.ModTime()
+			ie.MTime = mtime.UTC().Format(ServeActionTimestampLayout)
 		}
 
 		idxEntries[i] = ie

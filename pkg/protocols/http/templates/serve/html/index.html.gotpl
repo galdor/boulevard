@@ -1,14 +1,16 @@
 {{template "templates/html/header"}}
-<h1>Index of {{.DirectoryPath}}</h1>
+<h1>Directory {{.DirectoryPath}}</h1>
 <table>
   <tr>
     <th>Filename</th>
+    <th>Last modification</th>
     <th>Size</th>
   </tr>
   {{range .Entries -}}
   <tr>
-    <td>{{.Filename}}{{if .Directory}}/{{end}}</td>
-    <td class="right">{{if not .Directory}}{{.Size}}{{end}}</td>
+    <td>{{.Filename}}</td>
+    <td>{{with .MTime}}{{.}}{{end}}</td>
+    <td class="right">{{with .Size}}{{.}}{{end}}</td>
   </tr>
   {{- end}}
 </table>
