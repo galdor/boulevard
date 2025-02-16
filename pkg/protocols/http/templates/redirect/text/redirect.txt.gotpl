@@ -1,0 +1,3 @@
+REDIRECTION
+{{.Status}} {{.Reason}}
+{{.URI}}

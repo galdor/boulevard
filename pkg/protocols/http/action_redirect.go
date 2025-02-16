@@ -3,7 +3,6 @@ package http
 import (
 	"bytes"
 	"fmt"
-	htmltemplate "html/template"
 	"io"
 	"net/http"
 	"net/url"
@@ -43,26 +42,26 @@ type RedirectAction struct {
 	Handler *Handler
 	Cfg     *RedirectActionCfg
 
-	htmlTemplates *htmltemplate.Template
+	view *View
 }
 
 func NewRedirectAction(h *Handler, cfg *RedirectActionCfg) (*RedirectAction, error) {
+	view, err := NewView("templates/redirect")
+	if err != nil {
+		return nil, fmt.Errorf("cannot create view: %w", err)
+	}
+
 	a := RedirectAction{
 		Handler: h,
 		Cfg:     cfg,
+
+		view: view,
 	}
 
 	return &a, nil
 }
 
 func (a *RedirectAction) Start() error {
-	htmlTemplates, err := boulevard.LoadHTMLTemplates(htmlTemplateFS,
-		"templates/redirect/html/*.gotpl")
-	if err != nil {
-		return fmt.Errorf("cannot load HTML templates: %w", err)
-	}
-	a.htmlTemplates = htmlTemplates
-
 	return nil
 }
 
@@ -94,10 +93,20 @@ func (a *RedirectAction) HandleRequest(ctx *RequestContext) {
 		if a.Cfg.Body == nil {
 			header.Set("Content-Type", MediaTypeHTML.String())
 
-			bodyData, err := a.htmlResponseBody(ctx, status, uri.String())
+			tplData := struct {
+				Status int    `json:"status"`
+				Reason string `json:"reason"`
+				URI    string `json:"uri"`
+			}{
+				Status: status,
+				Reason: http.StatusText(status),
+				URI:    uri.String(),
+			}
+
+			bodyData, err := a.view.Render("redirect", tplData, ctx)
 			if err != nil {
-				ctx.Log.Error("cannot render redirection response "+
-					"body data: %v", err)
+				ctx.Log.Error("cannot render redirection response data: %v",
+					err)
 				ctx.ReplyError(500)
 				return
 			}
@@ -110,27 +119,4 @@ func (a *RedirectAction) HandleRequest(ctx *RequestContext) {
 	}
 
 	ctx.Reply(status, body)
-}
-
-func (a *RedirectAction) htmlResponseBody(ctx *RequestContext, status int, uri string) ([]byte, error) {
-	tplData := struct {
-		Status int
-		Reason string
-		URI    string
-	}{
-		Status: status,
-		Reason: http.StatusText(status),
-		URI:    uri,
-	}
-
-	tplName := "templates/redirect/html/redirect"
-
-	var buf bytes.Buffer
-	err := a.htmlTemplates.ExecuteTemplate(&buf, tplName, tplData)
-	if err != nil {
-		return nil, fmt.Errorf("cannot render template %q: %w",
-			tplName, err)
-	}
-
-	return buf.Bytes(), nil
 }

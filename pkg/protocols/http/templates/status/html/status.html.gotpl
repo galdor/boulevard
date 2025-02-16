@@ -36,7 +36,11 @@
     <h1>Boulevard status</h1>
     {{range $i, $server := .Servers}}
     <h2>{{.Name}}</h2>
-    {{index $.ServerData $i}}
-    {{end}}
+    {{if eq .Protocol "http" -}}
+    {{- template "templates/status/html/http" . -}}
+    {{- else if eq .Protocol "tcp" -}}
+    {{- template "templates/status/html/tcp" . -}}
+    {{- end -}}
+    {{- end}}
   </body>
 </html>
