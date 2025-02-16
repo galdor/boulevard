@@ -1,0 +1,15 @@
+{{template "templates/html/header"}}
+<h1>Index of {{.DirectoryPath}}</h1>
+<table>
+  <tr>
+    <th>Filename</th>
+    <th>Size</th>
+  </tr>
+  {{range .Entries -}}
+  <tr>
+    <td>{{.Filename}}{{if .Directory}}/{{end}}</td>
+    <td class="right">{{if not .Directory}}{{.Size}}{{end}}</td>
+  </tr>
+  {{- end}}
+</table>
+{{template "templates/html/footer"}}

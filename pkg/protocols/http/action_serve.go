@@ -1,9 +1,11 @@
 package http
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/fs"
+	"math"
 	"net/http"
 	"os"
 	"path"
@@ -12,9 +14,14 @@ import (
 	"go.n16f.net/boulevard/pkg/boulevard"
 )
 
+const (
+	DefaultServeActionIndexViewMaxFiles = 1000
+)
+
 type ServeActionCfg struct {
 	Path         *boulevard.FormatString
 	IndexFiles   []string
+	IndexView    ServeActionIndexViewCfg
 	FileNotFound *ServeActionFileNotFoundCfg
 }
 
@@ -28,9 +35,29 @@ func (cfg *ServeActionCfg) ReadBCLElement(elt *bcl.Element) error {
 			cfg.IndexFiles = append(cfg.IndexFiles, file)
 		}
 
+		elt.Element("index_view", &cfg.IndexView)
+
 		elt.MaybeBlock("file_not_found", &cfg.FileNotFound)
 	} else {
 		elt.Values(&cfg.Path)
+	}
+
+	return nil
+}
+
+type ServeActionIndexViewCfg struct {
+	Enabled  bool
+	MaxFiles int
+}
+
+func (cfg *ServeActionIndexViewCfg) ReadBCLElement(elt *bcl.Element) error {
+	if elt.IsBlock() {
+		cfg.Enabled = true
+
+		cfg.MaxFiles = DefaultServeActionIndexViewMaxFiles
+		elt.MaybeEntryValue("max_files", &cfg.MaxFiles)
+	} else {
+		elt.Value(&cfg.Enabled)
 	}
 
 	return nil
@@ -49,12 +76,21 @@ type ServeAction struct {
 	Handler           *Handler
 	Cfg               *ServeActionCfg
 	FileNotFoundReply *ReplyAction
+
+	view *View
 }
 
 func NewServeAction(h *Handler, cfg *ServeActionCfg) (*ServeAction, error) {
+	view, err := NewView("templates/serve")
+	if err != nil {
+		return nil, fmt.Errorf("cannot create view: %w", err)
+	}
+
 	a := ServeAction{
 		Handler: h,
 		Cfg:     cfg,
+
+		view: view,
 	}
 
 	if cfg.FileNotFound != nil && cfg.FileNotFound.Reply != nil {
@@ -125,6 +161,11 @@ func (a *ServeAction) HandleRequest(ctx *RequestContext) {
 			}
 		}
 
+		if a.Cfg.IndexView.Enabled {
+			a.serveIndexView(filePath, ctx)
+			return
+		}
+
 		ctx.ReplyError(403)
 		return
 	}
@@ -150,4 +191,77 @@ func (a *ServeAction) HandleRequest(ctx *RequestContext) {
 	defer body.Close()
 
 	http.ServeContent(ctx.ResponseWriter, ctx.Request, filePath, modTime, body)
+}
+
+func (a *ServeAction) serveIndexView(dirPath string, ctx *RequestContext) {
+	entries, err := a.readIndexEntries(dirPath)
+	if err != nil {
+		ctx.Log.Error("cannot read index entries: %v", err)
+		ctx.ReplyError(500)
+		return
+	}
+
+	// Let us not leak the full server-side path
+	relDirPath := ctx.Subpath
+	if relDirPath == "" {
+		relDirPath = "."
+	}
+
+	tplData := struct {
+		DirectoryPath string            `json:"directory_path"`
+		Entries       []ServeIndexEntry `json:"entries"`
+
+		MaxFilenameLength int `json:"-"`
+		MaxSizeLength     int `json:"-"`
+	}{
+		DirectoryPath: relDirPath,
+		Entries:       entries,
+	}
+
+	for _, e := range entries {
+		tplData.MaxFilenameLength = max(tplData.MaxFilenameLength,
+			len(e.Filename))
+		tplData.MaxSizeLength = max(tplData.MaxSizeLength,
+			int(math.Floor(1.0+math.Log10(float64(e.Size)))))
+	}
+
+	content, err := a.view.Render("index", tplData, ctx)
+	if err != nil {
+		ctx.Log.Error("cannot render index data: %v", err)
+		ctx.ReplyError(500)
+		return
+	}
+
+	ctx.Reply(200, bytes.NewReader(content))
+}
+
+type ServeIndexEntry struct {
+	Filename  string `json:"filename"`
+	Size      int64  `json:"size"`
+	Directory bool   `json:"directory"`
+}
+
+func (a *ServeAction) readIndexEntries(dirPath string) ([]ServeIndexEntry, error) {
+	dirEntries, err := os.ReadDir(dirPath)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read directory %q: %v", dirPath, err)
+	}
+
+	idxEntries := make([]ServeIndexEntry, len(dirEntries))
+	for i, de := range dirEntries {
+		ie := ServeIndexEntry{
+			Filename:  de.Name(),
+			Directory: de.IsDir(),
+		}
+
+		// Do not fail just because we cannot get file information, we will
+		// simply show them as unavailable in the templates.
+		if info, err := de.Info(); err == nil {
+			ie.Size = info.Size()
+		}
+
+		idxEntries[i] = ie
+	}
+
+	return idxEntries, nil
 }

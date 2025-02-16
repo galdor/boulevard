@@ -31,6 +31,10 @@
        padding: 0.15rem 0.30rem;
        text-align: left;
      }
+
+     th.right, td.right {
+       text-align: right;
+     }
     </style>
   </head>
   <body>

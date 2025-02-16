@@ -1,0 +1,8 @@
+DIRECTORY {{.DirectoryPath}}
+{{range .Entries}}
+{{- if .Directory}}
+{{printf "%s/" .Filename}}
+{{- else}}
+{{printf "%-*s  %*d" $.MaxFilenameLength .Filename $.MaxSizeLength .Size}}
+{{- end}}
+{{- end}}

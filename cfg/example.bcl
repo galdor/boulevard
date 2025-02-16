@@ -111,7 +111,10 @@ server "web" {
 
     handler {
       match "/boulevard/"
-      serve "."
+      serve {
+        path "."
+        index_view true
+      }
 
       handler {
         match {
@@ -121,7 +124,8 @@ server "web" {
         serve {
           path "local"
 
-          index_file "index.txt"
+          #index_file "index.txt"
+          index_view true
 
           file_not_found {
             reply 404 "File not found.\n"

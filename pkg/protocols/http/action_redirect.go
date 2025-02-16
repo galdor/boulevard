@@ -105,8 +105,7 @@ func (a *RedirectAction) HandleRequest(ctx *RequestContext) {
 
 			bodyData, err := a.view.Render("redirect", tplData, ctx)
 			if err != nil {
-				ctx.Log.Error("cannot render redirection response data: %v",
-					err)
+				ctx.Log.Error("cannot render redirection data: %v", err)
 				ctx.ReplyError(500)
 				return
 			}
