@@ -47,7 +47,7 @@ func (s *Service) startServer(cfg *boulevard.ServerCfg) error {
 	server, err := boulevard.StartServer(cfg)
 	if err != nil {
 		close(errChan)
-		return fmt.Errorf("cannot start server: %w", err)
+		return fmt.Errorf("cannot start server %q: %w", cfg.Name, err)
 	}
 
 	go func() {

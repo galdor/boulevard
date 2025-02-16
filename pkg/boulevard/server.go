@@ -70,6 +70,8 @@ func StartServer(cfg *ServerCfg) (*Server, error) {
 		for _, l := range s.Listeners {
 			l.Stop()
 		}
+
+		return nil, err
 	}
 
 	return &s, nil

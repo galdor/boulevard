@@ -133,13 +133,17 @@ func StartHandler(p *Protocol, cfg *HandlerCfg) (*Handler, error) {
 
 	h.Action = action
 	if err := h.Action.Start(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot start action: %w", err)
 	}
 
 	h.Handlers = make([]*Handler, len(cfg.Handlers))
 	for i, cfg2 := range cfg.Handlers {
 		h2, err := StartHandler(p, cfg2)
 		if err != nil {
+			for j := range i {
+				h.Handlers[j].Stop()
+			}
+
 			return nil, err
 		}
 
