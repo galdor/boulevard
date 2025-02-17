@@ -212,9 +212,9 @@ func (a *ServeAction) serveIndexView(dirPath string, ctx *RequestContext) {
 		DirectoryPath string            `json:"directory_path"`
 		Entries       []ServeIndexEntry `json:"entries"`
 
-		MaxFilenameLength int `json:"-"`
-		MTimeLength       int `json:"-"`
-		MaxSizeLength     int `json:"-"`
+		MaxDisplayedFilenameLength int `json:"-"`
+		MTimeLength                int `json:"-"`
+		MaxSizeLength              int `json:"-"`
 	}{
 		DirectoryPath: relDirPath,
 		Entries:       entries,
@@ -223,8 +223,8 @@ func (a *ServeAction) serveIndexView(dirPath string, ctx *RequestContext) {
 	}
 
 	for _, e := range entries {
-		tplData.MaxFilenameLength = max(tplData.MaxFilenameLength,
-			len(e.Filename))
+		tplData.MaxDisplayedFilenameLength =
+			max(tplData.MaxDisplayedFilenameLength, len(e.Filename))
 		tplData.MaxSizeLength = max(tplData.MaxSizeLength,
 			int(math.Floor(1.0+math.Log10(float64(e.Size)))))
 	}
@@ -240,9 +240,11 @@ func (a *ServeAction) serveIndexView(dirPath string, ctx *RequestContext) {
 }
 
 type ServeIndexEntry struct {
-	Filename string `json:"filename"`
-	Size     int64  `json:"size,omitempty"`
-	MTime    string `json:"mtime,omitempty"`
+	Filename          string `json:"filename"`
+	DisplayedFilename string `json:"-"`
+	Directory         bool   `json:"directory,omitempty"`
+	Size              int64  `json:"size,omitempty"`
+	MTime             string `json:"mtime,omitempty"`
 }
 
 func (a *ServeAction) readIndexEntries(dirPath string) ([]ServeIndexEntry, error) {
@@ -254,11 +256,13 @@ func (a *ServeAction) readIndexEntries(dirPath string) ([]ServeIndexEntry, error
 	idxEntries := make([]ServeIndexEntry, len(dirEntries))
 	for i, de := range dirEntries {
 		ie := ServeIndexEntry{
-			Filename: de.Name(),
+			Filename:          de.Name(),
+			DisplayedFilename: de.Name(),
+			Directory:         de.IsDir(),
 		}
 
 		if de.IsDir() {
-			ie.Filename += "/"
+			ie.DisplayedFilename += "/"
 		}
 
 		// Do not fail just because we cannot get file information, we will
