@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"math"
 	"net/http"
 	"os"
 	"path"
@@ -16,7 +15,7 @@ import (
 
 const (
 	DefaultServeActionIndexViewMaxFiles = 1000
-	ServeActionTimestampLayout          = "2006-01-02 15:04:05Z"
+	ServeActionTimestampLayout          = "2006-01-02 15:04:05Z"
 )
 
 type ServeActionCfg struct {
@@ -214,7 +213,7 @@ func (a *ServeAction) serveIndexView(dirPath string, ctx *RequestContext) {
 
 		MaxDisplayedFilenameLength int `json:"-"`
 		MTimeLength                int `json:"-"`
-		MaxSizeLength              int `json:"-"`
+		MaxDisplayedSizeLength     int `json:"-"`
 	}{
 		DirectoryPath: relDirPath,
 		Entries:       entries,
@@ -225,8 +224,8 @@ func (a *ServeAction) serveIndexView(dirPath string, ctx *RequestContext) {
 	for _, e := range entries {
 		tplData.MaxDisplayedFilenameLength =
 			max(tplData.MaxDisplayedFilenameLength, len(e.Filename))
-		tplData.MaxSizeLength = max(tplData.MaxSizeLength,
-			int(math.Floor(1.0+math.Log10(float64(e.Size)))))
+		tplData.MaxDisplayedSizeLength = max(tplData.MaxDisplayedSizeLength,
+			len(e.DisplayedSize))
 	}
 
 	content, err := a.view.Render("index", tplData, ctx)
@@ -244,6 +243,7 @@ type ServeIndexEntry struct {
 	DisplayedFilename string `json:"-"`
 	Directory         bool   `json:"directory,omitempty"`
 	Size              int64  `json:"size,omitempty"`
+	DisplayedSize     string `json:"displayed_size,omitempty"`
 	MTime             string `json:"mtime,omitempty"`
 }
 
@@ -256,13 +256,13 @@ func (a *ServeAction) readIndexEntries(dirPath string) ([]ServeIndexEntry, error
 	idxEntries := make([]ServeIndexEntry, len(dirEntries))
 	for i, de := range dirEntries {
 		ie := ServeIndexEntry{
-			Filename:          de.Name(),
-			DisplayedFilename: de.Name(),
-			Directory:         de.IsDir(),
+			Filename: de.Name(),
 		}
 
+		ie.DisplayedFilename = ie.Filename
 		if de.IsDir() {
 			ie.DisplayedFilename += "/"
+			ie.Directory = true
 		}
 
 		// Do not fail just because we cannot get file information, we will
@@ -270,6 +270,7 @@ func (a *ServeAction) readIndexEntries(dirPath string) ([]ServeIndexEntry, error
 		if info, err := de.Info(); err == nil {
 			if !de.IsDir() {
 				ie.Size = info.Size()
+				ie.DisplayedSize = a.formatFileSize(ie.Size)
 			}
 
 			mtime := info.ModTime()
@@ -280,4 +281,19 @@ func (a *ServeAction) readIndexEntries(dirPath string) ([]ServeIndexEntry, error
 	}
 
 	return idxEntries, nil
+}
+
+func (a *ServeAction) formatFileSize(size int64) string {
+	switch {
+	case size < 1_000:
+		return fmt.Sprintf("%d     B", size)
+	case size < 1_000_000:
+		return fmt.Sprintf("%.2fKiB", float64(size)/1e3)
+	case size < 1_000_000_000:
+		return fmt.Sprintf("%.2fMiB", float64(size)/1e6)
+	case size < 1_000_000_000_000:
+		return fmt.Sprintf("%.2fGiB", float64(size)/1e9)
+	default:
+		return fmt.Sprintf("%.2fTiB", float64(size)/1e12)
+	}
 }

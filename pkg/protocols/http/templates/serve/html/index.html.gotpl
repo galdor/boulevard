@@ -10,7 +10,7 @@
   <tr>
     <td>{{.DisplayedFilename}}</td>
     <td>{{with .MTime}}{{.}}{{end}}</td>
-    <td class="right">{{with .Size}}{{.}}{{end}}</td>
+    <td class="right">{{with .DisplayedSize}}{{.}}{{end}}</td>
   </tr>
   {{- end}}
 </table>

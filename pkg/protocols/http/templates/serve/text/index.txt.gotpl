@@ -1,8 +1,8 @@
 DIRECTORY {{.DirectoryPath}}
 
-{{printf "%-*s  %-*s  %-*s" $.MaxDisplayedFilenameLength "FILENAME" $.MTimeLength "LAST MODIFICATION" $.MaxSizeLength "SIZE"}}
-{{charString '-' (sum $.MaxDisplayedFilenameLength 2 $.MTimeLength 2 $.MaxSizeLength) -}}
+{{printf "%-*s  %-*s  %-*s" $.MaxDisplayedFilenameLength "FILENAME" $.MTimeLength "LAST MODIFICATION" $.MaxDisplayedSizeLength "SIZE"}}
+{{charString '-' (sum $.MaxDisplayedFilenameLength 2 $.MTimeLength 2 $.MaxDisplayedSizeLength) -}}
 {{range .Entries}}
 {{printf "%-*s  %s" $.MaxDisplayedFilenameLength .DisplayedFilename .MTime}}
-{{- with .Size -}}{{- printf "  %*d"  $.MaxSizeLength .}}{{- end}}
+{{- with .DisplayedSize -}}{{- printf "  %*s"  $.MaxDisplayedSizeLength .}}{{- end}}
 {{- end}}

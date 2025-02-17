@@ -111,10 +111,7 @@ server "web" {
 
     handler {
       match "/boulevard/"
-      serve {
-        path "."
-        index_view true
-      }
+      serve "."
 
       handler {
         match {
