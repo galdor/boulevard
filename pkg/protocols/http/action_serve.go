@@ -35,7 +35,7 @@ func (cfg *ServeActionCfg) ReadBCLElement(elt *bcl.Element) error {
 			cfg.IndexFiles = append(cfg.IndexFiles, file)
 		}
 
-		elt.Element("index_view", &cfg.IndexView)
+		elt.MaybeElement("index_view", &cfg.IndexView)
 
 		elt.MaybeBlock("file_not_found", &cfg.FileNotFound)
 	} else {
