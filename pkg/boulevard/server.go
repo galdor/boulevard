@@ -28,9 +28,17 @@ func (cfg *ServerCfg) ReadBCLElement(block *bcl.Element) error {
 }
 
 type ServerStatus struct {
-	Name     string `json:"name"`
-	Protocol string `json:"protocol"`
-	Data     any    `json:"data"`
+	Name         string            `json:"name"`
+	Listeners    []*ListenerStatus `json:"listeners"`
+	Protocol     string            `json:"protocol"`
+	ProtocolData any               `json:"protocol_data"`
+}
+
+type ListenerStatus struct {
+	Address     string   `json:"address"`
+	TLS         bool     `json:"tls"`
+	ACME        bool     `json:"acme"`
+	ACMEDomains []string `json:"acme_domains,omitempty"`
 }
 
 type Server struct {
