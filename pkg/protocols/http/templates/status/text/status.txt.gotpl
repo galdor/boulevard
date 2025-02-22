@@ -1,6 +1,6 @@
 BOULEVARD STATUS
-{{- range $i, $server := .Servers}}
-
+{{range $i, $server := .Servers}}
+{{ charString '=' 80}}
 SERVER {{.Name}}
 
 {{printf "%-16s  TLS  ACME" "ADDRESS"}}
@@ -9,7 +9,8 @@ SERVER {{.Name}}
 {{printf "%-16s" .Address}}  {{if .TLS}} x {{else}}   {{end}}  {{join .ACMEDomains ","}}
 {{- end}}
 
-{{if eq .Protocol "http" -}}
+PROTOCOL {{.Protocol}}
+{{ if eq .Protocol "http" -}}
 {{- template "templates/status/text/http" . -}}
 {{- else if eq .Protocol "tcp" -}}
 {{- template "templates/status/text/tcp" . -}}

@@ -1,11 +1,30 @@
 {{template "templates/html/header"}}
+
 <h1>Boulevard status</h1>
 {{range $i, $server := .Servers}}
-<h2>{{.Name}}</h2>
+<h2>Server: {{.Name}}</h2>
+<h3>Listeners</h3>
+<table>
+  <tr>
+    <th>Address</th>
+    <th class="center">TLS</th>
+    <th>ACME</th>
+  </tr>
+  {{range .Listeners}}
+  <tr>
+    <td>{{.Address}}</td>
+    <td class="center">{{if .TLS}}✓{{end}}</td>
+    <td>{{join .ACMEDomains ", "}}</td>
+  </tr>
+  {{end}}
+</table>
+
+<h3>Protocol: {{.Protocol}}</h3>
 {{if eq .Protocol "http" -}}
-{{- template "templates/status/html/http" . -}}
-{{- else if eq .Protocol "tcp" -}}
-{{- template "templates/status/html/tcp" . -}}
-{{- end -}}
-{{- end}}
+{{template "templates/status/html/http" .}}
+{{else if eq .Protocol "tcp"}}
+{{template "templates/status/html/tcp" .}}
+{{end}}
+{{end}}
+
 {{template "templates/html/footer"}}

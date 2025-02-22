@@ -4,7 +4,7 @@
   <tr>
     <th>Filename</th>
     <th>Last modification</th>
-    <th>Size</th>
+    <th class="right">Size</th>
   </tr>
   {{range .Entries -}}
   <tr>

@@ -17,6 +17,10 @@
        background-color: #e0e0e0;
      }
 
+     .center {
+       text-align: center;
+     }
+
      table {
        border-collapse: collapse;
        border-spacing: 0;
@@ -34,6 +38,20 @@
 
      th.right, td.right {
        text-align: right;
+     }
+
+     dl {
+       display: grid;
+       grid-template-columns: max-content auto;
+     }
+
+     dt {
+       grid-column-start: 1;
+       font-weight: bold;
+     }
+
+     dd {
+       grid-column-start: 2;
      }
     </style>
   </head>

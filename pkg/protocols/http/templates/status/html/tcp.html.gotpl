@@ -1,1 +1,6 @@
-TODO
+{{with .ProtocolData}}
+<dl>
+  <dt>Connections</dt>
+  <dd>{{.NbConnections}}</dd>
+</dl>
+{{end}}
