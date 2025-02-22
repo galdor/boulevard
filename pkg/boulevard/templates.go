@@ -12,6 +12,7 @@ import (
 var functions = map[string]any{
 	"charString": charString,
 	"join":       strings.Join,
+	"replace":    replace,
 	"sum":        sum,
 }
 
@@ -112,6 +113,10 @@ func charString(c rune, n int) string {
 		s[i] = c
 	}
 	return string(s)
+}
+
+func replace(s, from, to string) string {
+	return strings.ReplaceAll(s, from, to)
 }
 
 func sum(is ...int) int {

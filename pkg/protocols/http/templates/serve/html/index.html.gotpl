@@ -9,8 +9,8 @@
   {{range .Entries -}}
   <tr>
     <td>{{.DisplayedFilename}}</td>
-    <td>{{with .MTime}}{{.}}{{end}}</td>
-    <td class="right">{{with .DisplayedSize}}{{.}}{{end}}</td>
+    <td>{{with .MTime}}{{replace . " " " "}}{{end}}</td>
+    <td class="right">{{with .DisplayedSize}}{{replace . " " " "}}{{end}}</td>
   </tr>
   {{- end}}
 </table>

@@ -15,7 +15,7 @@ import (
 
 const (
 	DefaultServeActionIndexViewMaxFiles = 1000
-	ServeActionTimestampLayout          = "2006-01-02 15:04:05Z"
+	ServeActionTimestampLayout          = "2006-01-02 15:04:05Z"
 )
 
 type ServeActionCfg struct {
@@ -286,7 +286,7 @@ func (a *ServeAction) readIndexEntries(dirPath string) ([]ServeIndexEntry, error
 func (a *ServeAction) formatFileSize(size int64) string {
 	switch {
 	case size < 1_000:
-		return fmt.Sprintf("%d     B", size)
+		return fmt.Sprintf("%d     B", size)
 	case size < 1_000_000:
 		return fmt.Sprintf("%.2fKiB", float64(size)/1e3)
 	case size < 1_000_000_000:
