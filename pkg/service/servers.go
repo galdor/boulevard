@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"slices"
 	"time"
 
 	"go.n16f.net/boulevard/pkg/boulevard"
@@ -137,17 +136,7 @@ func (s *Service) serverStatuses() map[string]*boulevard.ServerStatus {
 		status.Listeners = make([]*boulevard.ListenerStatus,
 			len(server.Listeners))
 		for i, l := range server.Listeners {
-			lstatus := boulevard.ListenerStatus{
-				Address: l.Cfg.Address,
-			}
-
-			if l.Cfg.TLS != nil {
-				lstatus.TLS = true
-				lstatus.ACME = len(l.Cfg.TLS.Domains) > 0
-				lstatus.ACMEDomains = slices.Clone(l.Cfg.TLS.Domains)
-			}
-
-			status.Listeners[i] = &lstatus
+			status.Listeners[i] = l.Status()
 		}
 
 		statuses[name] = &status

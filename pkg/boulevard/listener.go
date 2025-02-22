@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -198,6 +199,20 @@ func (l *Listener) localTLSCfg() (*tls.Config, error) {
 func (l *Listener) Stop() {
 	l.Listener.Close() // interrupt Accept
 	l.cancel()
+}
+
+func (l *Listener) Status() *ListenerStatus {
+	status := ListenerStatus{
+		Address: l.Cfg.Address,
+	}
+
+	if l.Cfg.TLS != nil {
+		status.TLS = true
+		status.ACME = len(l.Cfg.TLS.Domains) > 0
+		status.ACMEDomains = slices.Clone(l.Cfg.TLS.Domains)
+	}
+
+	return &status
 }
 
 func (l *Listener) acmeCertificateName() string {
