@@ -83,6 +83,15 @@ server "web" {
     }
 
     handler {
+      match {
+        path "/foo"
+        path_regexp "/foo-\\d+$"
+      }
+
+      reply 200 "Foo!\n"
+    }
+
+    handler {
       match "/redirect/"
       redirect 302 "/{http.match.subpath}"
     }

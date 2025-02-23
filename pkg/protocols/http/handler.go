@@ -46,11 +46,11 @@ func (cfg *HandlerCfg) ReadBCLElement(block *bcl.Element) error {
 }
 
 type MatchCfg struct {
-	Methods    []string
-	Host       *netutils.DomainNamePattern
-	HostRegexp *regexp.Regexp
-	Path       *PathPattern
-	PathRegexp *regexp.Regexp
+	Methods     []string
+	Host        *netutils.DomainNamePattern
+	HostRegexp  *regexp.Regexp
+	Paths       []*PathPattern
+	PathRegexps []*regexp.Regexp
 }
 
 func (cfg *MatchCfg) ReadBCLElement(elt *bcl.Element) error {
@@ -64,10 +64,21 @@ func (cfg *MatchCfg) ReadBCLElement(elt *bcl.Element) error {
 
 		elt.MaybeEntryValue("host", &cfg.Host)
 		elt.MaybeEntryValue("host_regexp", &cfg.HostRegexp)
-		elt.MaybeEntryValue("path", &cfg.Path)
-		elt.MaybeEntryValue("path_regexp", &cfg.PathRegexp)
+
+		for _, entry := range elt.FindEntries("path") {
+			var path PathPattern
+			entry.Value(&path)
+			cfg.Paths = append(cfg.Paths, &path)
+		}
+		for _, entry := range elt.FindEntries("path_regexp") {
+			var re *regexp.Regexp
+			entry.Value(&re)
+			cfg.PathRegexps = append(cfg.PathRegexps, re)
+		}
 	} else {
-		elt.Value(&cfg.Path)
+		var path PathPattern
+		elt.Value(&path)
+		cfg.Paths = []*PathPattern{&path}
 	}
 
 	return nil
@@ -174,11 +185,18 @@ func (h *Handler) Stop() {
 }
 
 func (h *Handler) matchRequest(ctx *RequestContext) bool {
-	// Careful here, we only update the request context if we have a full match.
-	// This is important because we try to match handlers recursively and fall
-	// back to the last parent handler which matched.
+	// A request match if all constraint match. However constraints on the same
+	// value are evaluated as disjonction: e.g. if a match block has two "path"
+	// constraints and one "path_regexp" constraint, the request matches the
+	// block if one of these three constraints match.
+	//
+	// Careful, we only update the request context if we have a full match. This
+	// is important because we try to match handlers recursively and fall back
+	// to the last parent handler which matched.
 
 	matchSpec := h.Cfg.Match
+
+	// Method
 	if len(matchSpec.Methods) > 0 {
 		if !slices.Contains(matchSpec.Methods, ctx.Request.Method) {
 			return false
@@ -200,23 +218,37 @@ func (h *Handler) matchRequest(ctx *RequestContext) bool {
 
 	// Path
 	var subpath string
-	if pattern := matchSpec.Path; pattern != nil {
-		refPath := ctx.Request.URL.Path
-		if pattern.Relative {
-			refPath = ctx.Subpath
-		}
+	var pathMatch bool
 
-		var match bool
-		match, subpath = pattern.Match(refPath)
-		if !match {
-			return false
+	if patterns := matchSpec.Paths; len(patterns) > 0 {
+		for _, pattern := range patterns {
+			refPath := ctx.Request.URL.Path
+			if pattern.Relative {
+				refPath = ctx.Subpath
+			}
+
+			var pMatch bool
+			pMatch, subpath = pattern.Match(refPath)
+			if pMatch {
+				pathMatch = true
+				break
+			}
 		}
 	}
 
-	if re := matchSpec.PathRegexp; re != nil {
-		if !re.MatchString(ctx.Request.URL.Path) {
-			return false
+	if !pathMatch {
+		if res := matchSpec.PathRegexps; len(res) > 0 {
+			for _, re := range res {
+				if re.MatchString(ctx.Request.URL.Path) {
+					pathMatch = true
+					break
+				}
+			}
 		}
+	}
+
+	if !pathMatch {
+		return false
 	}
 
 	// We now have a full match, we can update the request context
