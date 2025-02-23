@@ -47,8 +47,8 @@ func (cfg *HandlerCfg) ReadBCLElement(block *bcl.Element) error {
 
 type MatchCfg struct {
 	Methods     []string
-	Host        *netutils.DomainNamePattern
-	HostRegexp  *regexp.Regexp
+	Hosts       []*netutils.DomainNamePattern
+	HostRegexps []*regexp.Regexp
 	Paths       []*PathPattern
 	PathRegexps []*regexp.Regexp
 }
@@ -62,13 +62,21 @@ func (cfg *MatchCfg) ReadBCLElement(elt *bcl.Element) error {
 			cfg.Methods = append(cfg.Methods, method)
 		}
 
-		elt.MaybeEntryValue("host", &cfg.Host)
-		elt.MaybeEntryValue("host_regexp", &cfg.HostRegexp)
+		for _, entry := range elt.FindEntries("host") {
+			var pattern netutils.DomainNamePattern
+			entry.Value(&pattern)
+			cfg.Hosts = append(cfg.Hosts, &pattern)
+		}
+		for _, entry := range elt.FindEntries("host_regexp") {
+			var re *regexp.Regexp
+			entry.Value(&re)
+			cfg.HostRegexps = append(cfg.HostRegexps, re)
+		}
 
 		for _, entry := range elt.FindEntries("path") {
-			var path PathPattern
-			entry.Value(&path)
-			cfg.Paths = append(cfg.Paths, &path)
+			var pattern PathPattern
+			entry.Value(&pattern)
+			cfg.Paths = append(cfg.Paths, &pattern)
 		}
 		for _, entry := range elt.FindEntries("path_regexp") {
 			var re *regexp.Regexp
@@ -204,16 +212,30 @@ func (h *Handler) matchRequest(ctx *RequestContext) bool {
 	}
 
 	// Host
-	if pattern := matchSpec.Host; pattern != nil {
-		if !pattern.Match(ctx.Host) {
-			return false
+	var hostMatch bool
+
+	if patterns := matchSpec.Hosts; len(patterns) > 0 {
+		for _, pattern := range patterns {
+			if pattern.Match(ctx.Host) {
+				hostMatch = true
+				break
+			}
 		}
 	}
 
-	if re := matchSpec.HostRegexp; re != nil {
-		if !re.MatchString(ctx.Host) {
-			return false
+	if !hostMatch {
+		if res := matchSpec.HostRegexps; len(res) > 0 {
+			for _, re := range res {
+				if re.MatchString(ctx.Host) {
+					hostMatch = true
+					break
+				}
+			}
 		}
+	}
+
+	if !hostMatch {
+		return false
 	}
 
 	// Path
