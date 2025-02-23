@@ -31,7 +31,7 @@ func (p *DomainNamePattern) String() string {
 }
 
 func (p *DomainNamePattern) Parse(s string) error {
-	if s[len(s)-1] == '.' {
+	if len(s) > 0 && s[len(s)-1] == '.' {
 		s = s[:len(s)-1]
 	}
 
@@ -44,6 +44,10 @@ func (p *DomainNamePattern) Parse(s string) error {
 
 	for i, labelString := range labelStrings {
 		var label DomainNamePatternLabel
+
+		if len(labelString) == 0 {
+			return fmt.Errorf("invalid empty label")
+		}
 
 		if labelString != "*" {
 			label.Value = labelString
