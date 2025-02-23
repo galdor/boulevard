@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+
+	"go.n16f.net/bcl"
 )
 
 type DomainNamePattern struct {
@@ -54,6 +56,24 @@ func (p *DomainNamePattern) Parse(s string) error {
 		}
 
 		p.Labels[i] = label
+	}
+
+	return nil
+}
+
+// bcl.ValueReader
+func (p *DomainNamePattern) ReadBCLValue(v *bcl.Value) error {
+	var s string
+
+	switch v.Type() {
+	case bcl.ValueTypeString:
+		s = v.Content.(string)
+	default:
+		return bcl.NewValueTypeError(v, bcl.ValueTypeString)
+	}
+
+	if err := p.Parse(s); err != nil {
+		return fmt.Errorf("invalid domain name pattern: %w", err)
 	}
 
 	return nil
