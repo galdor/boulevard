@@ -84,11 +84,21 @@ server "web" {
 
     handler {
       match {
-        path "/foo"
-        path_regexp "/foo-\\d+$"
+        path "/path"
+        path_regexp "^/path-\\d+$"
       }
 
-      reply 200 "Foo!\n"
+      reply 200 "foo\n"
+    }
+
+    handler {
+      match {
+        path "/host"
+        host "localhost"
+        host_regexp "^test\\..+$"
+      }
+
+      reply 200 "localhost\n"
     }
 
     handler {

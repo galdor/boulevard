@@ -62,27 +62,11 @@ func (cfg *MatchCfg) ReadBCLElement(elt *bcl.Element) error {
 			cfg.Methods = append(cfg.Methods, method)
 		}
 
-		for _, entry := range elt.FindEntries("host") {
-			var pattern netutils.DomainNamePattern
-			entry.Value(&pattern)
-			cfg.Hosts = append(cfg.Hosts, &pattern)
-		}
-		for _, entry := range elt.FindEntries("host_regexp") {
-			var re *regexp.Regexp
-			entry.Value(&re)
-			cfg.HostRegexps = append(cfg.HostRegexps, re)
-		}
+		elt.MaybeEntryValue("host", &cfg.Hosts)
+		elt.MaybeEntryValue("host_regexp", &cfg.HostRegexps)
 
-		for _, entry := range elt.FindEntries("path") {
-			var pattern PathPattern
-			entry.Value(&pattern)
-			cfg.Paths = append(cfg.Paths, &pattern)
-		}
-		for _, entry := range elt.FindEntries("path_regexp") {
-			var re *regexp.Regexp
-			entry.Value(&re)
-			cfg.PathRegexps = append(cfg.PathRegexps, re)
-		}
+		elt.MaybeEntryValue("path", &cfg.Paths)
+		elt.MaybeEntryValue("path_regexp", &cfg.PathRegexps)
 	} else {
 		var path PathPattern
 		elt.Value(&path)
@@ -212,65 +196,70 @@ func (h *Handler) matchRequest(ctx *RequestContext) bool {
 	}
 
 	// Host
-	var hostMatch bool
+	if len(matchSpec.Hosts) > 0 || len(matchSpec.HostRegexps) > 0 {
+		var hostMatch bool
 
-	if patterns := matchSpec.Hosts; len(patterns) > 0 {
-		for _, pattern := range patterns {
-			if pattern.Match(ctx.Host) {
-				hostMatch = true
-				break
-			}
-		}
-	}
-
-	if !hostMatch {
-		if res := matchSpec.HostRegexps; len(res) > 0 {
-			for _, re := range res {
-				if re.MatchString(ctx.Host) {
+		if patterns := matchSpec.Hosts; len(patterns) > 0 {
+			for _, pattern := range patterns {
+				if pattern.Match(ctx.Host) {
 					hostMatch = true
 					break
 				}
 			}
 		}
-	}
 
-	if !hostMatch {
-		return false
+		if !hostMatch {
+			if res := matchSpec.HostRegexps; len(res) > 0 {
+				for _, re := range res {
+					if re.MatchString(ctx.Host) {
+						hostMatch = true
+						break
+					}
+				}
+			}
+		}
+
+		if !hostMatch {
+			return false
+		}
 	}
 
 	// Path
 	var subpath string
-	var pathMatch bool
 
-	if patterns := matchSpec.Paths; len(patterns) > 0 {
-		for _, pattern := range patterns {
-			refPath := ctx.Request.URL.Path
-			if pattern.Relative {
-				refPath = ctx.Subpath
-			}
+	if len(matchSpec.Paths) > 0 || len(matchSpec.PathRegexps) > 0 {
+		var pathMatch bool
 
-			var pMatch bool
-			pMatch, subpath = pattern.Match(refPath)
-			if pMatch {
-				pathMatch = true
-				break
-			}
-		}
-	}
+		if patterns := matchSpec.Paths; len(patterns) > 0 {
+			for _, pattern := range patterns {
+				refPath := ctx.Request.URL.Path
+				if pattern.Relative {
+					refPath = ctx.Subpath
+				}
 
-	if !pathMatch {
-		if res := matchSpec.PathRegexps; len(res) > 0 {
-			for _, re := range res {
-				if re.MatchString(ctx.Request.URL.Path) {
+				var pMatch bool
+				pMatch, subpath = pattern.Match(refPath)
+				if pMatch {
 					pathMatch = true
 					break
 				}
 			}
 		}
-	}
 
-	if !pathMatch {
-		return false
+		if !pathMatch {
+			if res := matchSpec.PathRegexps; len(res) > 0 {
+				for _, re := range res {
+					if re.MatchString(ctx.Request.URL.Path) {
+						pathMatch = true
+						break
+					}
+				}
+			}
+		}
+
+		if !pathMatch {
+			return false
+		}
 	}
 
 	// We now have a full match, we can update the request context
