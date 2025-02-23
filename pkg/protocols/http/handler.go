@@ -3,6 +3,7 @@ package http
 import (
 	"fmt"
 	"regexp"
+	"slices"
 
 	"go.n16f.net/bcl"
 	"go.n16f.net/boulevard/pkg/httputils"
@@ -45,7 +46,7 @@ func (cfg *HandlerCfg) ReadBCLElement(block *bcl.Element) error {
 }
 
 type MatchCfg struct {
-	Method     string
+	Methods    []string
 	Host       *netutils.DomainNamePattern
 	HostRegexp *regexp.Regexp
 	Path       *PathPattern
@@ -54,8 +55,13 @@ type MatchCfg struct {
 
 func (cfg *MatchCfg) ReadBCLElement(elt *bcl.Element) error {
 	if elt.IsBlock() {
-		elt.MaybeEntryValue("method",
-			bcl.WithValueValidation(&cfg.Method, httputils.ValidateBCLMethod))
+		for _, entry := range elt.FindEntries("method") {
+			var method string
+			entry.Value(bcl.WithValueValidation(&method,
+				httputils.ValidateBCLMethod))
+			cfg.Methods = append(cfg.Methods, method)
+		}
+
 		elt.MaybeEntryValue("host", &cfg.Host)
 		elt.MaybeEntryValue("host_regexp", &cfg.HostRegexp)
 		elt.MaybeEntryValue("path", &cfg.Path)
@@ -173,8 +179,10 @@ func (h *Handler) matchRequest(ctx *RequestContext) bool {
 	// back to the last parent handler which matched.
 
 	matchSpec := h.Cfg.Match
-	if matchSpec.Method != "" && matchSpec.Method != ctx.Request.Method {
-		return false
+	if len(matchSpec.Methods) > 0 {
+		if !slices.Contains(matchSpec.Methods, ctx.Request.Method) {
+			return false
+		}
 	}
 
 	// Host

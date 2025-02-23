@@ -93,9 +93,10 @@ server "web" {
       handler {
         match {
           method "POST"
+          method "PUT"
         }
 
-        reply 200 "POST!\n"
+        reply 200 "POST or PUT!\n"
       }
 
       handler {
