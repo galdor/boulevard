@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/boulevard/pkg/service"
 	"go.n16f.net/program"
 )
@@ -13,6 +14,7 @@ import (
 var buildId string
 
 func main() {
+
 	p := program.NewProgram("boulevard", "a polyvalent reverse proxy")
 
 	p.AddOption("c", "cfg-file", "path", "",
@@ -31,7 +33,12 @@ func main() {
 func run(p *program.Program) {
 	// Command line
 	if p.IsOptionSet("version") {
-		fmt.Println(buildId)
+		version, err := boulevard.Version(buildId)
+		if err != nil {
+			p.Fatal("%v", err)
+		}
+
+		fmt.Println(version)
 		return
 	}
 

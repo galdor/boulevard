@@ -7,11 +7,17 @@ import (
 
 var (
 	buildId string
+	version string
 
 	client *service.Client
 )
 
 func main() {
+	version = buildId
+	if version[0] == 'v' {
+		version = version[1:]
+	}
+
 	p := program.NewProgram("boulevard-cli",
 		"command line tool for the Boulevard reverse proxy")
 
