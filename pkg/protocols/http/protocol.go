@@ -21,6 +21,8 @@ func ProtocolInfo() *boulevard.ProtocolInfo {
 type ProtocolCfg struct {
 	Handlers     []*HandlerCfg
 	AccessLogger *AccessLoggerCfg
+
+	LogVariables bool
 }
 
 func NewProtocolCfg() boulevard.ProtocolCfg {
@@ -30,6 +32,8 @@ func NewProtocolCfg() boulevard.ProtocolCfg {
 func (cfg *ProtocolCfg) ReadBCLElement(block *bcl.Element) error {
 	block.Blocks("handler", &cfg.Handlers)
 	block.MaybeBlock("access_logs", &cfg.AccessLogger)
+
+	block.MaybeEntryValue("debug_log_variables", &cfg.LogVariables)
 
 	return nil
 }

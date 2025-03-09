@@ -99,4 +99,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	h.Action.HandleRequest(ctx)
+
+	if s.Protocol.Cfg.LogVariables {
+		ctx.LogVariables()
+	}
 }

@@ -68,6 +68,8 @@ server "web" {
       format common
     }
 
+    debug_log_variables true
+
     handler {
       match "/hello"
 

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net"
 	nethttp "net/http"
 	"slices"
@@ -260,4 +261,21 @@ func (ctx *RequestContext) AcceptedMediaRanges() []*MediaRange {
 	}
 
 	return ranges
+}
+
+func (ctx *RequestContext) LogVariables() {
+	keys := slices.Collect(maps.Keys(ctx.Vars))
+	slices.Sort(keys)
+
+	width := 0
+	for _, key := range keys {
+		width = max(width, len(key))
+	}
+
+	lines := make([]string, len(keys))
+	for i, key := range keys {
+		lines[i] = fmt.Sprintf("  %-*s  %s", width, key, ctx.Vars[key])
+	}
+
+	ctx.Log.Debug(1, "variables:\n"+strings.Join(lines, "\n"))
 }
