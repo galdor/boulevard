@@ -1,0 +1,40 @@
+acme {
+  datastore_path "/var/db/boulevard/acme"
+  contact "root@localhost"
+
+  http_challenge_solver {
+    upstream_uri "http://localhost:81"
+  }
+}
+
+control_api {
+  path "/var/run/boulevard/control-api.sock"
+
+  access_logs {
+    path "/var/log/boulevard/control-api.log"
+    format common
+  }
+}
+
+server "web" {
+  listener {
+    address ":81"
+  }
+
+  listener {
+    address ":443"
+
+    tls {
+      acme {
+        domain "localhost"
+      }
+    }
+  }
+
+  http {
+    handler {
+      match "/status"
+      status
+    }
+  }
+}
