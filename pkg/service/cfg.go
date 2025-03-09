@@ -49,28 +49,29 @@ func (cfg *ServiceCfg) Load(filePath string) error {
 }
 
 func (cfg *ServiceCfg) initLogger(doc *bcl.Document) {
+	cfg.Logger = &log.LoggerCfg{
+		BackendType:     log.BackendTypeTerminal,
+		TerminalBackend: &log.TerminalBackendCfg{},
+	}
+
 	block := doc.FindBlock("logs")
 	if block == nil {
 		return
 	}
 
-	var loggerCfg log.LoggerCfg
-	var hasBackend bool
-
 	block.CheckBlocksMaybeOneOf("terminal", "json")
 
 	if block := block.FindBlock("terminal"); block != nil {
-		loggerCfg.BackendType = log.BackendTypeTerminal
+		cfg.Logger.BackendType = log.BackendTypeTerminal
 
 		var backendCfg log.TerminalBackendCfg
 		block.MaybeEntryValue("color", &backendCfg.Color)
 
-		loggerCfg.TerminalBackend = &backendCfg
-		hasBackend = true
+		cfg.Logger.TerminalBackend = &backendCfg
 	}
 
 	if block := block.FindBlock("json"); block != nil {
-		loggerCfg.BackendType = log.BackendTypeJSON
+		cfg.Logger.BackendType = log.BackendTypeJSON
 
 		var backendCfg log.JSONBackendCfg
 		block.MaybeEntryValue("timestamp_key", &backendCfg.TimestampKey)
@@ -80,18 +81,10 @@ func (cfg *ServiceCfg) initLogger(doc *bcl.Document) {
 		block.MaybeEntryValue("message_key", &backendCfg.MessageKey)
 		block.MaybeEntryValue("data_key", &backendCfg.DataKey)
 
-		loggerCfg.JSONBackend = &backendCfg
-		hasBackend = true
+		cfg.Logger.JSONBackend = &backendCfg
 	}
 
-	if !hasBackend {
-		loggerCfg.BackendType = log.BackendTypeTerminal
-		loggerCfg.TerminalBackend = &log.TerminalBackendCfg{}
-	}
-
-	block.MaybeEntryValue("debug_level", &loggerCfg.DebugLevel)
-
-	cfg.Logger = &loggerCfg
+	block.MaybeEntryValue("debug_level", &cfg.Logger.DebugLevel)
 }
 
 func (cfg *ServiceCfg) initPProf(doc *bcl.Document) {
