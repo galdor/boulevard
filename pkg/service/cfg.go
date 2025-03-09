@@ -55,6 +55,7 @@ func (cfg *ServiceCfg) initLogger(doc *bcl.Document) {
 	}
 
 	var loggerCfg log.LoggerCfg
+	var hasBackend bool
 
 	block.CheckBlocksMaybeOneOf("terminal", "json")
 
@@ -65,6 +66,7 @@ func (cfg *ServiceCfg) initLogger(doc *bcl.Document) {
 		block.MaybeEntryValue("color", &backendCfg.Color)
 
 		loggerCfg.TerminalBackend = &backendCfg
+		hasBackend = true
 	}
 
 	if block := block.FindBlock("json"); block != nil {
@@ -79,6 +81,12 @@ func (cfg *ServiceCfg) initLogger(doc *bcl.Document) {
 		block.MaybeEntryValue("data_key", &backendCfg.DataKey)
 
 		loggerCfg.JSONBackend = &backendCfg
+		hasBackend = true
+	}
+
+	if !hasBackend {
+		loggerCfg.BackendType = log.BackendTypeTerminal
+		loggerCfg.TerminalBackend = &log.TerminalBackendCfg{}
 	}
 
 	block.MaybeEntryValue("debug_level", &loggerCfg.DebugLevel)
