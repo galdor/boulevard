@@ -1,0 +1,32 @@
+#!/bin/sh
+
+# PROVIDE: boulevard
+# REQUIRE: DAEMON
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="boulevard"
+
+rcvar="boulevard_enable"
+
+: ${boulevard_enable:="no"}
+: ${boulevard_cfg_path:="/usr/local/etc/boulevard/boulevard.bcl"}
+: ${boulevard_syslog_tag:="boulevard"}
+
+procname="daemon"
+pidfile="/var/run/boulevard/$name.pid"
+
+command="/usr/sbin/daemon"
+command_args="-P $pidfile -u $name -T $boulevard_syslog_tag -R 5 /usr/local/bin/boulevard -c $boulevard_cfg_path"
+
+required_files="$boulevard_cfg_path"
+
+start_precmd="boulevard_precmd"
+
+boulevard_precmd() {
+    install -d -o boulevard /var/run/boulevard/
+}
+
+load_rc_config $name
+run_rc_command "$1"
