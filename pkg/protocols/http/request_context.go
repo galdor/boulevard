@@ -107,7 +107,9 @@ func (ctx *RequestContext) initUpgradeProtocols() {
 
 func (ctx *RequestContext) initVars() {
 	ctx.Vars["http.request.method"] = strings.ToUpper(ctx.Request.Method)
+	ctx.Vars["http.request.uri"] = ctx.Request.URL.String()
 	ctx.Vars["http.request.path"] = ctx.Request.URL.Path
+	ctx.Vars["http.request.query"] = ctx.Request.URL.RawQuery
 }
 
 func (ctx *RequestContext) Recover() {
