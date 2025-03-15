@@ -46,6 +46,7 @@ func (cfg *HandlerCfg) ReadBCLElement(block *bcl.Element) error {
 }
 
 type MatchCfg struct {
+	TLS         *bool
 	Methods     []string
 	Hosts       []*netutils.DomainNamePattern
 	HostRegexps []*regexp.Regexp
@@ -55,6 +56,8 @@ type MatchCfg struct {
 
 func (cfg *MatchCfg) ReadBCLElement(elt *bcl.Element) error {
 	if elt.IsBlock() {
+		elt.MaybeEntryValue("tls", &cfg.TLS)
+
 		for _, entry := range elt.FindEntries("method") {
 			var method string
 			entry.Value(bcl.WithValueValidation(&method,
@@ -187,6 +190,17 @@ func (h *Handler) matchRequest(ctx *RequestContext) bool {
 	// to the last parent handler which matched.
 
 	matchSpec := h.Cfg.Match
+
+	// TLS
+	if matchSpec.TLS != nil {
+		if *matchSpec.TLS == true && ctx.Request.TLS == nil {
+			return false
+		}
+
+		if *matchSpec.TLS == false && ctx.Request.TLS != nil {
+			return false
+		}
+	}
 
 	// Method
 	if len(matchSpec.Methods) > 0 {

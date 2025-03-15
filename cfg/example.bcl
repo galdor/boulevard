@@ -70,6 +70,14 @@ server "web" {
 
     debug_log_variables true
 
+    # handler {
+    #   match {
+    #     tls false
+    #   }
+
+    #   redirect 301 "https://{http.request.host}{http.request.uri}"
+    # }
+
     handler {
       match "/hello"
 
