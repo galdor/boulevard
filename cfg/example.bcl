@@ -71,15 +71,12 @@ server "web" {
     debug_log_variables true
 
     # handler {
-    #   match {
-    #     tls false
-    #   }
-
+    #   match tls false
     #   redirect 301 "https://{http.request.host}{http.request.uri}"
     # }
 
     handler {
-      match "/hello"
+      match path "/hello"
 
       reply {
         status 200
@@ -93,60 +90,46 @@ server "web" {
     }
 
     handler {
-      match {
-        path "/path"
-        path_regexp "^/path-\\d+$"
-      }
-
+      match path "/path" ~re"^/path-\\d+$"
       reply 200 "foo\n"
     }
 
     handler {
-      match {
-        path "/host"
-        host "localhost"
-        host_regexp "^test\\..+$"
-      }
-
+      match path "/host"
+      match host "localhost" ~re"^test\\..+$"
       reply 200 "localhost\n"
     }
 
     handler {
-      match "/redirect/"
+      match path "/redirect/"
       redirect 302 "/{http.match.subpath}"
     }
 
     handler {
-      match "/nested/"
+      match path "/nested/"
 
       handler {
-        match {
-          method "POST"
-          method "PUT"
-        }
-
+        match method "POST" "PUT"
         reply 200 "POST or PUT!\n"
       }
 
       handler {
-        match "/nested/foo/"
+        match path "/nested/foo/"
         reply 200 "Foo!\n"
       }
     }
 
     handler {
-      match "/status"
+      match path "/status"
       status
     }
 
     handler {
-      match "/boulevard/"
+      match path "/boulevard/"
       serve "."
 
       handler {
-        match {
-          path "local/"
-        }
+        match path "local/"
 
         serve {
           path "local"
@@ -162,7 +145,7 @@ server "web" {
     }
 
     handler {
-      match "/private/"
+      match path "/private/"
 
       authentication {
         secrets {
@@ -181,13 +164,12 @@ server "web" {
     }
 
     handler {
-      match "/forbidden/"
-
+      match path "/forbidden/"
       reply 403 "access denied\n"
     }
 
     handler {
-      match "/nginx/"
+      match path "/nginx/"
 
       reverse_proxy {
         uri "http://127.42.1.1:9002"
@@ -199,7 +181,7 @@ server "web" {
     }
 
     # handler {
-    #   match "/nginx-pool/"
+    #   match path "/nginx-pool/"
 
     #   reverse_proxy {
     #     load_balancer {
@@ -221,7 +203,7 @@ server "web" {
     # }
 
     handler {
-      match "/fpm/"
+      match path "/fpm/"
 
       fastcgi {
         address "localhost:9000"

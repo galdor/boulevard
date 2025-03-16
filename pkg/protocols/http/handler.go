@@ -26,7 +26,9 @@ type HandlerCfg struct {
 }
 
 func (cfg *HandlerCfg) ReadBCLElement(block *bcl.Element) error {
-	block.Element("match", &cfg.Match)
+	for _, entry := range block.FindEntries("match") {
+		cfg.Match.ReadBCLEntry(entry)
+	}
 
 	block.MaybeBlock("authentication", &cfg.Auth)
 	block.MaybeBlock("access_logs", &cfg.AccessLogger)
@@ -54,29 +56,63 @@ type MatchCfg struct {
 	PathRegexps []*regexp.Regexp
 }
 
-func (cfg *MatchCfg) ReadBCLElement(elt *bcl.Element) error {
-	if elt.IsBlock() {
-		elt.MaybeEntryValues("tls", &cfg.TLS)
+func (cfg *MatchCfg) ReadBCLEntry(entry *bcl.Element) {
+	entry.CheckValueOneOf(0, "tls", "method", "host", "path")
 
-		for _, entry := range elt.FindEntries("method") {
-			var method string
-			entry.Values(bcl.WithValueValidation(&method,
-				httputils.ValidateBCLMethod))
-			cfg.Methods = append(cfg.Methods, method)
-		}
-
-		elt.MaybeEntryValues("host", &cfg.Hosts)
-		elt.MaybeEntryValues("host_regexp", &cfg.HostRegexps)
-
-		elt.MaybeEntryValues("path", &cfg.Paths)
-		elt.MaybeEntryValues("path_regexp", &cfg.PathRegexps)
-	} else {
-		var path PathPattern
-		elt.Values(&path)
-		cfg.Paths = []*PathPattern{&path}
+	var matchType string
+	if !entry.Value(0, &matchType) {
+		return
 	}
 
-	return nil
+	switch matchType {
+	case "tls":
+		entry.Values(&matchType, &cfg.TLS)
+
+	case "method":
+		cfg.Methods = make([]string, entry.NbValues()-1)
+		for i := 1; i < entry.NbValues(); i++ {
+			entry.Value(i, bcl.WithValueValidation(&cfg.Methods[i-1],
+				httputils.ValidateBCLMethod))
+		}
+
+	case "host":
+		for i := 1; i < entry.NbValues(); i++ {
+			var s bcl.String
+
+			if entry.Value(i, &s) {
+				switch s.Sigil {
+				case "re":
+					var re *regexp.Regexp
+					entry.Value(i, &re)
+					cfg.HostRegexps = append(cfg.HostRegexps, re)
+
+				default:
+					var pattern *netutils.DomainNamePattern
+					entry.Value(i, &pattern)
+					cfg.Hosts = append(cfg.Hosts, pattern)
+				}
+			}
+		}
+
+	case "path":
+		for i := 1; i < entry.NbValues(); i++ {
+			var s bcl.String
+
+			if entry.Value(i, &s) {
+				switch s.Sigil {
+				case "re":
+					var re *regexp.Regexp
+					entry.Value(i, &re)
+					cfg.PathRegexps = append(cfg.PathRegexps, re)
+
+				default:
+					var pattern *PathPattern
+					entry.Value(i, &pattern)
+					cfg.Paths = append(cfg.Paths, pattern)
+				}
+			}
+		}
+	}
 }
 
 type Handler struct {

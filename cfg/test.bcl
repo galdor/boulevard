@@ -37,7 +37,7 @@ server "web" {
 
   http {
     handler {
-      match "/hello"
+      match path "/hello"
 
       reply {
         header {
@@ -50,7 +50,7 @@ server "web" {
 
     # Authentication tests
     handler {
-      match "/auth/basic/credentials"
+      match path "/auth/basic/credentials"
 
       authentication {
         basic {
@@ -61,11 +61,11 @@ server "web" {
     }
 
     handler {
-      match "/auth/global"
+      match path "/auth/global"
     }
 
     handler {
-      match "/auth/basic/credential-file"
+      match path "/auth/basic/credential-file"
 
       authentication {
         basic {
@@ -75,7 +75,7 @@ server "web" {
     }
 
     handler {
-      match "/auth/bearer/tokens"
+      match path "/auth/bearer/tokens"
 
       authentication {
         bearer {
@@ -86,7 +86,7 @@ server "web" {
     }
 
     handler {
-      match "/auth/bearer/token-file"
+      match path "/auth/bearer/token-file"
 
       authentication {
         bearer {
@@ -97,16 +97,16 @@ server "web" {
 
     # Nested handler tests
     handler {
-      match "/nested/"
+      match path "/nested/"
       reply 200 "default"
 
       handler {
-        match "/nested/foo"
+        match path "/nested/foo"
         reply 200 "foo"
       }
 
       handler {
-        match "bar/"
+        match path "bar/"
 
         authentication {
           bearer {
@@ -115,12 +115,12 @@ server "web" {
         }
 
         handler {
-          match "x"
+          match path "x"
           reply 200 "x"
         }
 
         handler {
-          match "/nested/bar/y"
+          match path "/nested/bar/y"
           reply 200 "y"
         }
 
@@ -130,12 +130,12 @@ server "web" {
 
     # Reverse proxy tests
     handler {
-      match "/nginx/"
+      match path "/nginx/"
       reverse_proxy "http://127.42.1.1:9002"
     }
 
     handler {
-      match "/websocket"
+      match path "/websocket"
       reverse_proxy "http://localhost:9003"
     }
   }
