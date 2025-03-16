@@ -19,7 +19,7 @@ type ControlAPICfg struct {
 }
 
 func (cfg *ControlAPICfg) ReadBCLElement(block *bcl.Element) error {
-	block.EntryValue("path", &cfg.Path)
+	block.EntryValues("path", &cfg.Path)
 	block.MaybeBlock("access_logs", &cfg.AccessLogger)
 	return nil
 }

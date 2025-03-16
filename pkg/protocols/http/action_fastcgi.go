@@ -50,7 +50,7 @@ type FastCGIActionCfg struct {
 }
 
 func (cfg *FastCGIActionCfg) ReadBCLElement(block *bcl.Element) error {
-	block.EntryValue("address",
+	block.EntryValues("address",
 		bcl.WithValueValidation(&cfg.Address, netutils.ValidateBCLAddress))
 
 	cfg.Parameters = make(map[string]string)
@@ -61,27 +61,27 @@ func (cfg *FastCGIActionCfg) ReadBCLElement(block *bcl.Element) error {
 		}
 	}
 
-	block.MaybeEntryValue("path", &cfg.Path)
-	block.MaybeEntryValue("default_script", &cfg.DefaultScript)
-	block.MaybeEntryValue("script_regexp", &cfg.ScriptRegexp)
+	block.MaybeEntryValues("path", &cfg.Path)
+	block.MaybeEntryValues("default_script", &cfg.DefaultScript)
+	block.MaybeEntryValues("script_regexp", &cfg.ScriptRegexp)
 
-	block.MaybeEntryValue("temporary_directory", &cfg.TemporaryDirectory)
+	block.MaybeEntryValues("temporary_directory", &cfg.TemporaryDirectory)
 
-	block.MaybeEntryValue("request_body_memory_buffer_size",
+	block.MaybeEntryValues("request_body_memory_buffer_size",
 		bcl.WithValueValidation(&cfg.RequestBodyMemoryBufferSize,
 			bcl.ValidatePositiveInteger))
-	block.MaybeEntryValue("max_request_body_size",
+	block.MaybeEntryValues("max_request_body_size",
 		bcl.WithValueValidation(&cfg.MaxRequestBodySize,
 			bcl.ValidatePositiveInteger))
 
-	block.MaybeEntryValue("response_body_memory_buffer_size",
+	block.MaybeEntryValues("response_body_memory_buffer_size",
 		bcl.WithValueValidation(&cfg.ResponseBodyMemoryBufferSize,
 			bcl.ValidatePositiveInteger))
-	block.MaybeEntryValue("max_response_body_size",
+	block.MaybeEntryValues("max_response_body_size",
 		bcl.WithValueValidation(&cfg.MaxResponseBodySize,
 			bcl.ValidatePositiveInteger))
 
-	block.MaybeEntryValue("request_timeout", &cfg.RequestTimeout)
+	block.MaybeEntryValues("request_timeout", &cfg.RequestTimeout)
 
 	return nil
 }

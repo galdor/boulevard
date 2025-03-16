@@ -19,15 +19,15 @@ func (cfg *ReplyActionCfg) ReadBCLElement(elt *bcl.Element) error {
 	cfg.Status = 200
 
 	if elt.IsBlock() {
-		elt.MaybeEntryValue("status",
+		elt.MaybeEntryValues("status",
 			bcl.WithValueValidation(&cfg.Status, httputils.ValidateBCLStatus))
 		elt.MaybeBlock("header", &cfg.Header)
-		elt.MaybeEntryValue("body", &cfg.Body)
+		elt.MaybeEntryValues("body", &cfg.Body)
 	} else {
 		if elt.CheckMinMaxValues(1, 2) {
 			switch elt.NbValues() {
 			case 1:
-				elt.Value(
+				elt.Values(
 					bcl.WithValueValidation(&cfg.Status,
 						httputils.ValidateBCLStatus))
 			case 2:

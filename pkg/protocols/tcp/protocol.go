@@ -36,12 +36,12 @@ func NewProtocolCfg() boulevard.ProtocolCfg {
 
 func (cfg *ProtocolCfg) ReadBCLElement(block *bcl.Element) error {
 	cfg.ReadBufferSize = DefaultReadBufferSize
-	block.MaybeEntryValue("read_buffer_size",
+	block.MaybeEntryValues("read_buffer_size",
 		bcl.WithValueValidation(&cfg.ReadBufferSize,
 			bcl.ValidatePositiveInteger))
 
 	cfg.WriteBufferSize = DefaultWriteBufferSize
-	block.MaybeEntryValue("write_buffer_size",
+	block.MaybeEntryValues("write_buffer_size",
 		bcl.WithValueValidation(&cfg.WriteBufferSize,
 			bcl.ValidatePositiveInteger))
 
@@ -56,10 +56,10 @@ type ReverseProxyAction struct {
 
 func (cfg *ReverseProxyAction) ReadBCLElement(elt *bcl.Element) error {
 	if elt.IsBlock() {
-		elt.EntryValue("address",
+		elt.EntryValues("address",
 			bcl.WithValueValidation(&cfg.Address, netutils.ValidateBCLAddress))
 	} else {
-		elt.Value(
+		elt.Values(
 			bcl.WithValueValidation(&cfg.Address, netutils.ValidateBCLAddress))
 	}
 

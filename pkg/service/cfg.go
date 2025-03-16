@@ -65,7 +65,7 @@ func (cfg *ServiceCfg) initLogger(doc *bcl.Document) {
 		cfg.Logger.BackendType = log.BackendTypeTerminal
 
 		var backendCfg log.TerminalBackendCfg
-		block.MaybeEntryValue("color", &backendCfg.Color)
+		block.MaybeEntryValues("color", &backendCfg.Color)
 
 		cfg.Logger.TerminalBackend = &backendCfg
 	}
@@ -74,17 +74,17 @@ func (cfg *ServiceCfg) initLogger(doc *bcl.Document) {
 		cfg.Logger.BackendType = log.BackendTypeJSON
 
 		var backendCfg log.JSONBackendCfg
-		block.MaybeEntryValue("timestamp_key", &backendCfg.TimestampKey)
-		block.MaybeEntryValue("timestamp_layout", &backendCfg.TimestampLayout)
-		block.MaybeEntryValue("domain_key", &backendCfg.DomainKey)
-		block.MaybeEntryValue("level_key", &backendCfg.LevelKey)
-		block.MaybeEntryValue("message_key", &backendCfg.MessageKey)
-		block.MaybeEntryValue("data_key", &backendCfg.DataKey)
+		block.MaybeEntryValues("timestamp_key", &backendCfg.TimestampKey)
+		block.MaybeEntryValues("timestamp_layout", &backendCfg.TimestampLayout)
+		block.MaybeEntryValues("domain_key", &backendCfg.DomainKey)
+		block.MaybeEntryValues("level_key", &backendCfg.LevelKey)
+		block.MaybeEntryValues("message_key", &backendCfg.MessageKey)
+		block.MaybeEntryValues("data_key", &backendCfg.DataKey)
 
 		cfg.Logger.JSONBackend = &backendCfg
 	}
 
-	block.MaybeEntryValue("debug_level", &cfg.Logger.DebugLevel)
+	block.MaybeEntryValues("debug_level", &cfg.Logger.DebugLevel)
 }
 
 func (cfg *ServiceCfg) initPProf(doc *bcl.Document) {
@@ -93,7 +93,7 @@ func (cfg *ServiceCfg) initPProf(doc *bcl.Document) {
 		return
 	}
 
-	block.EntryValue("address", &cfg.PProfAddress)
+	block.EntryValues("address", &cfg.PProfAddress)
 }
 
 func (cfg *ServiceCfg) initServers(doc *bcl.Document, protocolsInfo []*boulevard.ProtocolInfo) {

@@ -24,8 +24,8 @@ type AccessLoggerCfg struct {
 }
 
 func (cfg *AccessLoggerCfg) ReadBCLElement(block *bcl.Element) error {
-	block.EntryValue("path", &cfg.Path)
-	block.EntryValue("format", &cfg.Format)
+	block.EntryValues("path", &cfg.Path)
+	block.EntryValues("format", &cfg.Format)
 
 	return nil
 }

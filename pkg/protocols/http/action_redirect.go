@@ -24,11 +24,11 @@ func (cfg *RedirectActionCfg) ReadBCLElement(elt *bcl.Element) error {
 	cfg.Status = 302
 
 	if elt.IsBlock() {
-		elt.MaybeEntryValue("status", bcl.WithValueValidation(&cfg.Status,
+		elt.MaybeEntryValues("status", bcl.WithValueValidation(&cfg.Status,
 			httputils.ValidateBCLStatus))
-		elt.EntryValue("uri", &cfg.URI)
+		elt.EntryValues("uri", &cfg.URI)
 		elt.MaybeBlock("header", &cfg.Header)
-		elt.MaybeEntryValue("body", &cfg.Body)
+		elt.MaybeEntryValues("body", &cfg.Body)
 	} else {
 		elt.Values(bcl.WithValueValidation(&cfg.Status,
 			httputils.ValidateBCLStatus),

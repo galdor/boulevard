@@ -22,12 +22,12 @@ type ReverseProxyActionCfg struct {
 
 func (cfg *ReverseProxyActionCfg) ReadBCLElement(elt *bcl.Element) error {
 	if elt.IsBlock() {
-		elt.EntryValue("uri",
+		elt.EntryValues("uri",
 			bcl.WithValueValidation(&cfg.URI, httputils.ValidateBCLHTTPURI))
 		elt.MaybeBlock("request_header", &cfg.RequestHeader)
 		elt.MaybeBlock("response_header", &cfg.ResponseHeader)
 	} else {
-		elt.Value(
+		elt.Values(
 			bcl.WithValueValidation(&cfg.URI, httputils.ValidateBCLHTTPURI))
 	}
 

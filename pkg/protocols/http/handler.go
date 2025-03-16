@@ -56,23 +56,23 @@ type MatchCfg struct {
 
 func (cfg *MatchCfg) ReadBCLElement(elt *bcl.Element) error {
 	if elt.IsBlock() {
-		elt.MaybeEntryValue("tls", &cfg.TLS)
+		elt.MaybeEntryValues("tls", &cfg.TLS)
 
 		for _, entry := range elt.FindEntries("method") {
 			var method string
-			entry.Value(bcl.WithValueValidation(&method,
+			entry.Values(bcl.WithValueValidation(&method,
 				httputils.ValidateBCLMethod))
 			cfg.Methods = append(cfg.Methods, method)
 		}
 
-		elt.MaybeEntryValue("host", &cfg.Hosts)
-		elt.MaybeEntryValue("host_regexp", &cfg.HostRegexps)
+		elt.MaybeEntryValues("host", &cfg.Hosts)
+		elt.MaybeEntryValues("host_regexp", &cfg.HostRegexps)
 
-		elt.MaybeEntryValue("path", &cfg.Paths)
-		elt.MaybeEntryValue("path_regexp", &cfg.PathRegexps)
+		elt.MaybeEntryValues("path", &cfg.Paths)
+		elt.MaybeEntryValues("path_regexp", &cfg.PathRegexps)
 	} else {
 		var path PathPattern
-		elt.Value(&path)
+		elt.Values(&path)
 		cfg.Paths = []*PathPattern{&path}
 	}
 

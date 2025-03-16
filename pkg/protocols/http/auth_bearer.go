@@ -18,7 +18,7 @@ func (cfg *BearerAuthCfg) ReadBCLElement(block *bcl.Element) error {
 
 	for _, entry := range block.FindEntries("token") {
 		var token string
-		entry.Value(&token)
+		entry.Values(&token)
 		cfg.Tokens = append(cfg.Tokens, token)
 	}
 

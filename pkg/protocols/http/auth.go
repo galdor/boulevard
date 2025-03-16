@@ -40,7 +40,7 @@ func (a *HashAlgorithm) ReadBCLValue(v *bcl.Value) error {
 
 	switch v.Type() {
 	case bcl.ValueTypeString:
-		s = v.Content.(string)
+		s = v.Content.(bcl.String).String
 	default:
 		return bcl.NewValueTypeError(v, bcl.ValueTypeString)
 	}
@@ -81,7 +81,7 @@ type SecretsCfg struct {
 func (cfg *SecretsCfg) ReadBCLElement(block *bcl.Element) error {
 	block.CheckElementsOneOf("hash", "hmac")
 
-	block.MaybeEntryValue("hash", &cfg.Hash)
+	block.MaybeEntryValues("hash", &cfg.Hash)
 
 	if entry := block.FindEntry("hmac"); entry != nil {
 		cfg.HMAC = new(HMACSecretsCfg)
@@ -106,7 +106,7 @@ type AuthCfg struct {
 
 func (cfg *AuthCfg) ReadBCLElement(block *bcl.Element) error {
 	block.MaybeBlock("secrets", &cfg.Secrets)
-	block.MaybeEntryValue("realm", &cfg.Realm)
+	block.MaybeEntryValues("realm", &cfg.Realm)
 
 	block.CheckBlocksOneOf("basic", "bearer")
 	block.MaybeBlock("basic", &cfg.Basic)

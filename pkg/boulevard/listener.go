@@ -28,7 +28,7 @@ type ListenerCfg struct {
 }
 
 func (cfg *ListenerCfg) ReadBCLElement(block *bcl.Element) error {
-	block.EntryValue("address",
+	block.EntryValues("address",
 		bcl.WithValueValidation(&cfg.Address, netutils.ValidateBCLAddress))
 	block.MaybeBlock("tls", &cfg.TLS)
 	return nil

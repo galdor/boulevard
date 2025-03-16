@@ -150,7 +150,7 @@ func (s *FormatString) ReadBCLValue(v *bcl.Value) error {
 
 	switch v.Type() {
 	case bcl.ValueTypeString:
-		vs = v.Content.(string)
+		vs = v.Content.(bcl.String).String
 	case bcl.ValueTypeSymbol:
 		vs = string(v.Content.(bcl.Symbol))
 	default:

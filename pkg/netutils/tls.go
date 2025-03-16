@@ -33,7 +33,8 @@ func (cfg *TLSCfg) ReadBCLElement(block *bcl.Element) error {
 	if acmeBlock := block.FindBlock("acme"); acmeBlock != nil {
 		for _, entry := range acmeBlock.FindEntries("domain") {
 			var domain string
-			entry.Value(bcl.WithValueValidation(&domain, ValidateBCLDomainName))
+			entry.Values(bcl.WithValueValidation(&domain,
+				ValidateBCLDomainName))
 			cfg.Domains = append(cfg.Domains, domain)
 		}
 
@@ -41,23 +42,23 @@ func (cfg *TLSCfg) ReadBCLElement(block *bcl.Element) error {
 			return fmt.Errorf("ACME configuration does no contain any domain")
 		}
 	} else {
-		block.EntryValue("certificate_file", &cfg.CertificateFile)
-		block.EntryValue("private_key_file", &cfg.PrivateKeyFile)
+		block.EntryValues("certificate_file", &cfg.CertificateFile)
+		block.EntryValues("private_key_file", &cfg.PrivateKeyFile)
 	}
 
 	var minVersion string
-	block.MaybeEntryValue("min_version",
+	block.MaybeEntryValues("min_version",
 		bcl.WithValueValidation(&minVersion, ValidateBCLTLSVersion))
 	cfg.MinVersion, _ = ParseTLSVersion(minVersion)
 
 	var maxVersion string
-	block.MaybeEntryValue("max_version",
+	block.MaybeEntryValues("max_version",
 		bcl.WithValueValidation(&maxVersion, ValidateBCLTLSVersion))
 	cfg.MaxVersion, _ = ParseTLSVersion(maxVersion)
 
 	for _, entry := range block.FindEntries("cipher_suite") {
 		var name string
-		entry.Value(bcl.WithValueValidation(&name,
+		entry.Values(bcl.WithValueValidation(&name,
 			ValidateBCLTLSCipherSuite))
 		cfg.CipherSuites = append(cfg.CipherSuites, tlsCipherSuites[name])
 	}

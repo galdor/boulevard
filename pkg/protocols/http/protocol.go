@@ -33,7 +33,7 @@ func (cfg *ProtocolCfg) ReadBCLElement(block *bcl.Element) error {
 	block.Blocks("handler", &cfg.Handlers)
 	block.MaybeBlock("access_logs", &cfg.AccessLogger)
 
-	block.MaybeEntryValue("debug_log_variables", &cfg.LogVariables)
+	block.MaybeEntryValues("debug_log_variables", &cfg.LogVariables)
 
 	return nil
 }

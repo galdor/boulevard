@@ -27,11 +27,11 @@ type ServeActionCfg struct {
 
 func (cfg *ServeActionCfg) ReadBCLElement(elt *bcl.Element) error {
 	if elt.IsBlock() {
-		elt.EntryValue("path", &cfg.Path)
+		elt.EntryValues("path", &cfg.Path)
 
 		for _, entry := range elt.FindEntries("index_file") {
 			var file string
-			entry.Value(&file)
+			entry.Values(&file)
 			cfg.IndexFiles = append(cfg.IndexFiles, file)
 		}
 
@@ -55,9 +55,9 @@ func (cfg *ServeActionIndexViewCfg) ReadBCLElement(elt *bcl.Element) error {
 		cfg.Enabled = true
 
 		cfg.MaxFiles = DefaultServeActionIndexViewMaxFiles
-		elt.MaybeEntryValue("max_files", &cfg.MaxFiles)
+		elt.MaybeEntryValues("max_files", &cfg.MaxFiles)
 	} else {
-		elt.Value(&cfg.Enabled)
+		elt.Values(&cfg.Enabled)
 	}
 
 	return nil

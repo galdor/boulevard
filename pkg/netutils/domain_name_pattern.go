@@ -67,7 +67,7 @@ func (p *DomainNamePattern) ReadBCLValue(v *bcl.Value) error {
 
 	switch v.Type() {
 	case bcl.ValueTypeString:
-		s = v.Content.(string)
+		s = v.Content.(bcl.String).String
 	default:
 		return bcl.NewValueTypeError(v, bcl.ValueTypeString)
 	}
