@@ -88,6 +88,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	s.handleHSTS(ctx)
+
 	h := s.Protocol.findHandler(ctx)
 	if h == nil {
 		ctx.ReplyError(404)
@@ -162,4 +164,20 @@ func (s *Server) handleTLS(ctx *RequestContext) bool {
 	}
 
 	return false
+}
+
+func (s *Server) handleHSTS(ctx *RequestContext) {
+	if !s.Protocol.Cfg.HSTS {
+		return
+	}
+
+	// RFC 6797 7.2. "An HSTS Host MUST NOT include the STS header field in HTTP
+	// responses conveyed over non-secure transport".
+	if ctx.Request.TLS == nil {
+		return
+	}
+
+	header := ctx.ResponseWriter.Header()
+	header.Set("Strict-Transport-Security",
+		"max-age=31536000; includeSubDomains")
 }

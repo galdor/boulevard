@@ -31,6 +31,7 @@ type ProtocolCfg struct {
 	Handlers     []*HandlerCfg
 	AccessLogger *AccessLoggerCfg
 	TLSHandling  TLSHandling
+	HSTS         bool
 
 	DebugLogVariables bool
 }
@@ -51,6 +52,8 @@ func (cfg *ProtocolCfg) ReadBCLElement(block *bcl.Element) error {
 		entry.Values(&s)
 		cfg.TLSHandling = TLSHandling(s)
 	}
+
+	block.MaybeEntryValues("hsts", &cfg.HSTS)
 
 	block.MaybeEntryValues("debug_log_variables", &cfg.DebugLogVariables)
 
