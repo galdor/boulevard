@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"go.n16f.net/bcl"
+	"go.n16f.net/program"
 )
 
 var tlsCipherSuites map[string]uint16
@@ -66,6 +67,41 @@ func (cfg *TLSCfg) ReadBCLElement(block *bcl.Element) error {
 	return nil
 }
 
+func (cfg *TLSCfg) SupportedTLSVersions() []uint16 {
+	versions := []uint16{
+		tls.VersionTLS10,
+		tls.VersionTLS11,
+		tls.VersionTLS12,
+		tls.VersionTLS13,
+	}
+
+	start := 0
+	switch cfg.MinVersion {
+	case tls.VersionTLS11:
+		start = 1
+	case tls.VersionTLS12:
+		start = 2
+	case tls.VersionTLS13:
+		start = 3
+	}
+
+	end := 4
+	switch cfg.MaxVersion {
+	case tls.VersionTLS10:
+		end = 1
+	case tls.VersionTLS11:
+		end = 2
+	case tls.VersionTLS12:
+		end = 3
+	}
+
+	if end < start {
+		return nil
+	}
+
+	return versions[start:end]
+}
+
 func ValidateBCLTLSVersion(v any) error {
 	name := v.(string)
 	_, err := ParseTLSVersion(name)
@@ -95,4 +131,21 @@ func ValidateBCLTLSCipherSuite(v any) error {
 	}
 
 	return nil
+}
+
+func HTTPTLSProtocolString(version uint16) (s string) {
+	switch version {
+	case tls.VersionTLS10:
+		s = "TLS/1.0"
+	case tls.VersionTLS11:
+		s = "TLS/1.1"
+	case tls.VersionTLS12:
+		s = "TLS/1.2"
+	case tls.VersionTLS13:
+		s = "TLS/1.3"
+	default:
+		program.Panic("unhandled TLS version %d", version)
+	}
+
+	return
 }

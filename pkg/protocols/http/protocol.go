@@ -18,9 +18,19 @@ func ProtocolInfo() *boulevard.ProtocolInfo {
 	}
 }
 
+type TLSHandling string
+
+const (
+	TLSHandlingAccept   TLSHandling = "accept"
+	TLSHandlingReject   TLSHandling = "reject"
+	TLSHandlingRequire  TLSHandling = "require"
+	TLSHandlingRedirect TLSHandling = "redirect"
+)
+
 type ProtocolCfg struct {
 	Handlers     []*HandlerCfg
 	AccessLogger *AccessLoggerCfg
+	TLSHandling  TLSHandling
 
 	DebugLogVariables bool
 }
@@ -32,6 +42,15 @@ func NewProtocolCfg() boulevard.ProtocolCfg {
 func (cfg *ProtocolCfg) ReadBCLElement(block *bcl.Element) error {
 	block.Blocks("handler", &cfg.Handlers)
 	block.MaybeBlock("access_logs", &cfg.AccessLogger)
+
+	cfg.TLSHandling = TLSHandlingAccept
+	if entry := block.FindEntry("tls"); entry != nil {
+		entry.CheckValueOneOf(0, "accept", "reject", "require", "redirect")
+
+		var s string
+		entry.Values(&s)
+		cfg.TLSHandling = TLSHandling(s)
+	}
 
 	block.MaybeEntryValues("debug_log_variables", &cfg.DebugLogVariables)
 
@@ -47,10 +66,11 @@ type Protocol struct {
 	tcpConnections     map[*TCPConnection]struct{}
 	tcpConnectionMutex sync.Mutex
 
-	vars         map[string]string
-	accessLogger *AccessLogger
-	handlers     []*Handler
-	servers      []*Server
+	vars               map[string]string
+	accessLogger       *AccessLogger
+	handlers           []*Handler
+	servers            []*Server
+	defaultTLSListener *boulevard.Listener
 
 	wg sync.WaitGroup
 }
@@ -104,6 +124,10 @@ func (p *Protocol) Start(server *boulevard.Server) error {
 		}
 
 		p.servers[i] = server
+
+		if l.Cfg.TLS != nil && p.defaultTLSListener == nil {
+			p.defaultTLSListener = l
+		}
 	}
 
 	return nil

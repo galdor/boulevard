@@ -4,8 +4,12 @@ import (
 	"net"
 	"net/http"
 	nethttp "net/http"
+	"sort"
+	"strconv"
+	"strings"
 
 	"go.n16f.net/boulevard/pkg/boulevard"
+	"go.n16f.net/boulevard/pkg/netutils"
 	"go.n16f.net/log"
 )
 
@@ -80,6 +84,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if s.handleTLS(ctx) {
+		return
+	}
+
 	h := s.Protocol.findHandler(ctx)
 	if h == nil {
 		ctx.ReplyError(404)
@@ -103,4 +111,55 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if s.Protocol.Cfg.DebugLogVariables {
 		ctx.LogVariables()
 	}
+}
+
+func (s *Server) handleTLS(ctx *RequestContext) bool {
+	// There is no clear specification about how a server should behave in those
+	// situations. We use 426 with a Upgrade header field because it represent
+	// what the server expects from the client the best.
+
+	tlsListener := s.Protocol.defaultTLSListener
+	tlsHandling := s.Protocol.Cfg.TLSHandling
+	header := ctx.ResponseWriter.Header()
+
+	if tlsHandling == TLSHandlingReject && ctx.Request.TLS != nil {
+		header.Add("Upgrade", "HTTP/2.0, HTTP/1.1, HTTP/1.0")
+		ctx.ReplyError(426)
+		return true
+	}
+
+	if tlsHandling == TLSHandlingRequire && ctx.Request.TLS == nil {
+		if tlsListener != nil {
+			versions := tlsListener.Cfg.TLS.SupportedTLSVersions()
+			sort.Slice(versions, func(i, j int) bool {
+				return versions[i] > versions[j]
+			})
+
+			protocols := make([]string, len(versions))
+			for i, version := range versions {
+				protocols[i] = netutils.HTTPTLSProtocolString(version)
+			}
+
+			header.Add("Upgrade", strings.Join(protocols, ", "))
+		}
+
+		ctx.ReplyError(426)
+		return true
+	}
+
+	if tlsHandling == TLSHandlingRedirect && ctx.Request.TLS == nil {
+		uri := *ctx.Request.URL
+		uri.Scheme = "https"
+
+		uri.Host = ctx.Host
+		if tlsListener != nil && tlsListener.Port != 443 {
+			uri.Host += ":" + strconv.Itoa(tlsListener.Port)
+		}
+
+		header.Add("Location", uri.String())
+		ctx.Reply(301, nil)
+		return true
+	}
+
+	return false
 }
