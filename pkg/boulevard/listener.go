@@ -134,10 +134,11 @@ func (l *Listener) acmeTLSCfg() (*tls.Config, error) {
 		}
 	}
 
-	validity := 30
-
-	eventChan, err := client.RequestCertificate(l.Ctx, certName, ids,
-		validity)
+	// No point to bother with a validity period, Let's Encrypt does not support
+	// NotBefore/NotAfter. We will make it a setting if someone wants to use
+	// another ACME provider that supports it.
+	validity := 0
+	eventChan, err := client.RequestCertificate(l.Ctx, certName, ids, validity)
 	if err != nil {
 		return nil, fmt.Errorf("cannot request TLS certificate: %v", err)
 	}

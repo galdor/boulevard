@@ -10,8 +10,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOfJA=
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
-go.n16f.net/acme v0.0.0-20241128145057-c46e439ad6df h1:vaJyUlVBAFD1TptMaQrzyeE13pjnzF9CYKN4eOBNlAI=
-go.n16f.net/acme v0.0.0-20241128145057-c46e439ad6df/go.mod h1:W9hREPBdpsPBAvkoOGag4TMMcjd+1Zmxpef/0ilR474=
+go.n16f.net/acme v0.0.0-20250329160845-5354071e470b h1:dC0fpmXGq1IrPW1UJNywsacINQ23BQ1tkoU75Glve8Q=
+go.n16f.net/acme v0.0.0-20250329160845-5354071e470b/go.mod h1:W9hREPBdpsPBAvkoOGag4TMMcjd+1Zmxpef/0ilR474=
 go.n16f.net/bcl v0.0.0-20250316151809-274f8150e950 h1:7yRBc31E0WlRoduYAUKw0sLRezhPGtvlyiHH4lKcbSM=
 go.n16f.net/bcl v0.0.0-20250316151809-274f8150e950/go.mod h1:kGybQztV60nUVXehZrebYS0qd9vkl32/EDnZaTUUE7E=
 go.n16f.net/ejson v0.0.0-20250113095929-6d03bba880f7 h1:Gc/Ag1gl0xXaxFiNy5nBbsiOVtDWDgJQ8Ro5m91l0gc=
