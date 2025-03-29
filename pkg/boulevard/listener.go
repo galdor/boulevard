@@ -91,11 +91,13 @@ func (l *Listener) listen() error {
 			tlsCfg, err = l.localTLSCfg()
 		}
 
-		tlsCfg.MinVersion = cfg.MinVersion
-		tlsCfg.MaxVersion = cfg.MaxVersion
+		if err == nil {
+			tlsCfg.MinVersion = cfg.MinVersion
+			tlsCfg.MaxVersion = cfg.MaxVersion
 
-		if len(cfg.CipherSuites) > 0 {
-			tlsCfg.CipherSuites = cfg.CipherSuites
+			if len(cfg.CipherSuites) > 0 {
+				tlsCfg.CipherSuites = cfg.CipherSuites
+			}
 		}
 	}
 	if err != nil {
