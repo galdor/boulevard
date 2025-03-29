@@ -5,7 +5,7 @@ go 1.23.2
 require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/stretchr/testify v1.10.0
-	go.n16f.net/acme v0.0.0-20250329160845-5354071e470b
+	go.n16f.net/acme v0.0.0-20250329170837-70423e681dec
 	go.n16f.net/bcl v0.0.0-20250316151809-274f8150e950
 	go.n16f.net/ejson v0.0.0-20250113095929-6d03bba880f7
 	go.n16f.net/log v0.0.0-20240820155337-9eef10dcf842
