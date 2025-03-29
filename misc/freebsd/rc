@@ -13,12 +13,13 @@ rcvar="boulevard_enable"
 : ${boulevard_enable:="no"}
 : ${boulevard_cfg_path:="/usr/local/etc/boulevard/boulevard.bcl"}
 : ${boulevard_syslog_tag:="boulevard"}
+: ${boulevard_user:="root"}
 
 procname="daemon"
 pidfile="/var/run/boulevard/$name.pid"
 
 command="/usr/sbin/daemon"
-command_args="-P $pidfile -u $name -T $boulevard_syslog_tag -R 5 /usr/local/bin/boulevard -c $boulevard_cfg_path"
+command_args="-P $pidfile -u $boulevard_user -T $boulevard_syslog_tag -R 5 /usr/local/bin/boulevard -c $boulevard_cfg_path"
 
 required_files="$boulevard_cfg_path"
 
