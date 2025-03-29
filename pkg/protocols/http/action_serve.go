@@ -126,7 +126,13 @@ func (a *ServeAction) Stop() {
 func (a *ServeAction) HandleRequest(ctx *RequestContext) {
 	basePath := a.Cfg.Path.Expand(ctx.Vars)
 
-	filePath := path.Join(basePath, ctx.Subpath)
+	subpath := ctx.Subpath
+	if subpath == "" {
+		// If the handler did not match a path, there is no subpath in the
+		// context, meaning that we are serving what the request URL contains.
+		subpath = ctx.Request.URL.Path
+	}
+	filePath := path.Join(basePath, subpath)
 
 	info, err := os.Stat(filePath)
 	if err != nil {
