@@ -153,7 +153,7 @@ func (a *ServeAction) HandleRequest(ctx *RequestContext) {
 
 	if info.Mode().IsDir() {
 		for _, indexFile := range a.Cfg.IndexFiles {
-			indexFilePath := path.Join(basePath, indexFile)
+			indexFilePath := path.Join(filePath, indexFile)
 			indexInfo, err := os.Stat(indexFilePath)
 			if err == nil {
 				body, err := os.Open(indexFilePath)
