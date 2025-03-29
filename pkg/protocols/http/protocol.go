@@ -34,6 +34,7 @@ type ProtocolCfg struct {
 	HSTS         bool
 
 	DebugLogVariables bool
+	LogGoServerErrors bool
 }
 
 func NewProtocolCfg() boulevard.ProtocolCfg {
@@ -56,6 +57,7 @@ func (cfg *ProtocolCfg) ReadBCLElement(block *bcl.Element) error {
 	block.MaybeEntryValues("hsts", &cfg.HSTS)
 
 	block.MaybeEntryValues("debug_log_variables", &cfg.DebugLogVariables)
+	block.MaybeEntryValues("log_go_server_errors", &cfg.LogGoServerErrors)
 
 	return nil
 }

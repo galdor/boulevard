@@ -1,6 +1,8 @@
 package http
 
 import (
+	"io"
+	stdlog "log"
 	"net"
 	"net/http"
 	nethttp "net/http"
@@ -29,8 +31,12 @@ func StartServer(p *Protocol, l *boulevard.Listener) (*Server, error) {
 	s.server = http.Server{
 		Addr:      l.Cfg.Address,
 		Handler:   &s,
-		ErrorLog:  p.Log.StdLogger(log.LevelError),
+		ErrorLog:  stdlog.New(io.Discard, "", 0),
 		ConnState: s.connState,
+	}
+
+	if p.Cfg.LogGoServerErrors {
+		s.server.ErrorLog = p.Log.StdLogger(log.LevelError)
 	}
 
 	p.wg.Add(1)
