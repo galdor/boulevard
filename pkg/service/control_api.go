@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"fmt"
+	"io"
+	stdlog "log"
 	"net"
 	nethttp "net/http"
 	"strings"
@@ -14,13 +16,15 @@ import (
 )
 
 type ControlAPICfg struct {
-	Path         string
-	AccessLogger *http.AccessLoggerCfg
+	Path              string
+	AccessLogger      *http.AccessLoggerCfg
+	LogGoServerErrors bool
 }
 
 func (cfg *ControlAPICfg) ReadBCLElement(block *bcl.Element) error {
 	block.EntryValues("path", &cfg.Path)
 	block.MaybeBlock("access_logs", &cfg.AccessLogger)
+	block.MaybeEntryValues("log_go_server_errors", &cfg.LogGoServerErrors)
 	return nil
 }
 
@@ -106,7 +110,11 @@ func (api *ControlAPI) Start() error {
 
 	api.httpServer = &nethttp.Server{
 		Handler:  api,
-		ErrorLog: api.Log.StdLogger(log.LevelError),
+		ErrorLog: stdlog.New(io.Discard, "", 0),
+	}
+
+	if api.Cfg.LogGoServerErrors {
+		api.httpServer.ErrorLog = api.Log.StdLogger(log.LevelError)
 	}
 
 	api.wg.Add(1)

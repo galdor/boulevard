@@ -24,6 +24,8 @@ control_api {
     path "local/logs/control-api.log"
     format common
   }
+
+  log_go_server_errors true
 }
 
 pprof {
@@ -69,6 +71,7 @@ server "web" {
     }
 
     debug_log_variables true
+    log_go_server_errors true
 
     # handler {
     #   match tls false
