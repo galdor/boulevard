@@ -16,5 +16,6 @@ type Protocol interface {
 	Start(*Server) error
 	Stop()
 
+	RotateLogFiles()
 	StatusData() any
 }

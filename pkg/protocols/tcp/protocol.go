@@ -106,6 +106,9 @@ func (p *Protocol) Stop() {
 	p.wg.Wait()
 }
 
+func (p *Protocol) RotateLogFiles() {
+}
+
 func (p *Protocol) listen(l *boulevard.Listener) {
 	defer p.wg.Done()
 

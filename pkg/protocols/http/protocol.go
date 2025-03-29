@@ -160,6 +160,32 @@ func (p *Protocol) Stop() {
 	p.wg.Wait()
 }
 
+func (p *Protocol) RotateLogFiles() {
+	reopen := func(accessLogger *AccessLogger) {
+		if accessLogger == nil {
+			return
+		}
+
+		p.Log.Info("rotating %q", accessLogger.FilePath())
+
+		if err := accessLogger.Reopen(); err != nil {
+			p.Log.Info("cannot reopen %q: %v", accessLogger.FilePath(), err)
+		}
+	}
+
+	reopen(p.accessLogger)
+
+	var rotateHandlerLoggers func(handlers []*Handler)
+	rotateHandlerLoggers = func(handlers []*Handler) {
+		for _, h := range handlers {
+			reopen(h.AccessLogger)
+			rotateHandlerLoggers(h.Handlers)
+		}
+	}
+
+	rotateHandlerLoggers(p.handlers)
+}
+
 func (p *Protocol) findHandler(ctx *RequestContext) *Handler {
 	var find func([]*Handler, *Handler) *Handler
 

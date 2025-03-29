@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 
 	"go.n16f.net/acme"
 	"go.n16f.net/boulevard/pkg/boulevard"
@@ -75,6 +78,9 @@ func (s *Service) Start() error {
 		return err
 	}
 
+	s.wg.Add(1)
+	go s.handleSignals()
+
 	s.Log.Debug(1, "running")
 	return nil
 }
@@ -101,4 +107,34 @@ func (s *Service) startPProf() {
 			s.Log.Error("cannot start pprof: %v", err)
 		}
 	}()
+}
+
+func (s *Service) handleSignals() {
+	defer s.wg.Done()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGUSR1)
+
+	for {
+		select {
+		case <-s.stopChan:
+			return
+		case signo := <-sigChan:
+			switch signo {
+			case syscall.SIGUSR1:
+				s.rotateLogFiles()
+			default:
+				s.Log.Error("unhandled signal %d (%v)", signo, signo)
+			}
+		}
+	}
+}
+
+func (s *Service) rotateLogFiles() {
+	s.serverMutex.Lock()
+	defer s.serverMutex.Unlock()
+
+	for _, server := range s.servers {
+		server.Cfg.Protocol.RotateLogFiles()
+	}
 }

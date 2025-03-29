@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"go.n16f.net/bcl"
@@ -33,28 +34,50 @@ func (cfg *AccessLoggerCfg) ReadBCLElement(block *bcl.Element) error {
 type AccessLogger struct {
 	Cfg *AccessLoggerCfg
 
-	w io.WriteCloser
+	filePath string
+	file     io.WriteCloser
+	fileLock sync.RWMutex
 }
 
 func NewAccessLogger(cfg *AccessLoggerCfg, vars map[string]string) (*AccessLogger, error) {
 	l := AccessLogger{
 		Cfg: cfg,
+
+		filePath: cfg.Path.Expand(vars),
 	}
 
-	filePath := cfg.Path.Expand(vars)
-
-	flags := os.O_WRONLY | os.O_CREATE | os.O_APPEND
-	file, err := os.OpenFile(filePath, flags, 0644)
-	if err != nil {
-		return nil, fmt.Errorf("cannot open %q: %w", filePath, err)
+	if err := l.Reopen(); err != nil {
+		return nil, err
 	}
-	l.w = file
 
 	return &l, nil
 }
 
+func (l *AccessLogger) FilePath() string {
+	return l.filePath
+}
+
 func (l *AccessLogger) Close() error {
-	return l.w.Close()
+	return l.file.Close()
+}
+
+func (l *AccessLogger) Reopen() error {
+	flags := os.O_WRONLY | os.O_CREATE | os.O_APPEND
+	file, err := os.OpenFile(l.filePath, flags, 0644)
+	if err != nil {
+		return fmt.Errorf("cannot open %q: %w", l.filePath, err)
+	}
+
+	l.fileLock.Lock()
+
+	if l.file != nil {
+		l.file.Close()
+	}
+	l.file = file
+
+	l.fileLock.Unlock()
+
+	return nil
 }
 
 func (l *AccessLogger) Log(ctx *RequestContext) error {
@@ -71,7 +94,10 @@ func (l *AccessLogger) Log(ctx *RequestContext) error {
 
 	buf.WriteByte('\n')
 
-	_, err := l.w.Write(buf.Bytes())
+	l.fileLock.RLock()
+	_, err := l.file.Write(buf.Bytes())
+	l.fileLock.RUnlock()
+
 	return err
 }
 
