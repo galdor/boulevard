@@ -18,6 +18,8 @@ acme {
 
 control_api {
   path "/tmp/boulevard.sock"
+
+  log_go_server_errors true
 }
 
 server "web" {
@@ -36,6 +38,8 @@ server "web" {
   }
 
   http {
+    log_go_server_errors true
+
     handler {
       match path "/hello"
 
@@ -137,6 +141,18 @@ server "web" {
     handler {
       match path "/websocket"
       reverse_proxy "http://localhost:9003"
+    }
+  }
+}
+
+server "tcp" {
+  listener {
+    address ":9010"
+  }
+
+  tcp {
+    reverse_proxy {
+      address "localhost:9011"
     }
   }
 }

@@ -69,7 +69,7 @@ func (c *Connection) read() {
 
 		if _, err := c.upstreamConn.Write(buf[:n]); err != nil {
 			err = netutils.UnwrapOpError(err, "write")
-			c.abort("cannot write proxy connection: %w", err)
+			c.abort("cannot write upstream connection: %w", err)
 			return
 		}
 	}
@@ -84,7 +84,7 @@ func (c *Connection) write() {
 		n, err := c.upstreamConn.Read(buf)
 		if err != nil {
 			err = netutils.UnwrapOpError(err, "read")
-			c.abort("cannot read proxy connection: %w", err)
+			c.abort("cannot read upstream connection: %w", err)
 			return
 		}
 
