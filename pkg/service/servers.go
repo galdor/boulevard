@@ -50,13 +50,15 @@ func (s *Service) startServer(cfg *boulevard.ServerCfg) error {
 		return fmt.Errorf("cannot start server %q: %w", cfg.Name, err)
 	}
 
+	// The server must be in the server table for the whole time the goroutine
+	// running s.handleServerError is up.
+	s.servers[cfg.Name] = server
+
 	go func() {
 		if err := <-errChan; err != nil {
 			s.handleServerError(cfg.Name, err)
 		}
 	}()
-
-	s.servers[cfg.Name] = server
 
 	return nil
 }
