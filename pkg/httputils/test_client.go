@@ -67,8 +67,14 @@ func (c *TestClient) SendRequest(method, uriRefString string, header http.Header
 	}
 
 	for name, values := range header {
-		for _, value := range values {
-			req.Header.Add(name, value)
+		switch strings.ToLower(name) {
+		case "host":
+			req.Host = values[0]
+
+		default:
+			for _, value := range values {
+				req.Header.Add(name, value)
+			}
 		}
 	}
 

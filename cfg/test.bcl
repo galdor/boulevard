@@ -142,6 +142,36 @@ server "web" {
       match path "/websocket"
       reverse_proxy "http://localhost:9003"
     }
+
+    # Serve tests
+    handler {
+      match path "/serve/"
+      serve "test/serve"
+
+      handler {
+        match path "d/"
+        serve {
+          path "test/serve/d"
+          index_file "index.txt"
+        }
+      }
+    }
+
+    handler {
+      # Used to test path handling for handlers that do not match on the path
+      # (they behave differently since the subpath is always empty).
+
+      match host "boulevard-serve.localhost"
+      serve "test/serve"
+
+      handler {
+        match path "/serve/d/"
+        serve {
+          path "test/serve/d"
+          index_file "index.txt"
+        }
+      }
+    }
   }
 }
 
