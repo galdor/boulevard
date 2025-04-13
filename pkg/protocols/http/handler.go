@@ -115,6 +115,11 @@ func (cfg *MatchCfg) ReadBCLEntry(entry *bcl.Element) {
 	}
 }
 
+func (cfg *MatchCfg) HasPaths() bool {
+	return len(cfg.Paths) > 0 || len(cfg.PathRegexps) > 0
+
+}
+
 type Handler struct {
 	Protocol *Protocol
 	Cfg      *HandlerCfg
@@ -277,7 +282,7 @@ func (h *Handler) matchRequest(ctx *RequestContext) bool {
 	// Path
 	var subpath string
 
-	if len(matchSpec.Paths) > 0 || len(matchSpec.PathRegexps) > 0 {
+	if matchSpec.HasPaths() {
 		var pathMatch bool
 
 		if patterns := matchSpec.Paths; len(patterns) > 0 {

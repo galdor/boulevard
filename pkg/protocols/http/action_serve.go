@@ -127,7 +127,7 @@ func (a *ServeAction) HandleRequest(ctx *RequestContext) {
 	basePath := a.Cfg.Path.Expand(ctx.Vars)
 
 	subpath := ctx.Subpath
-	if subpath == "" {
+	if subpath == "" && !a.Handler.Cfg.Match.HasPaths() {
 		// If the handler did not match a path, there is no subpath in the
 		// context, meaning that we are serving what the request URL contains.
 		subpath = ctx.Request.URL.Path
