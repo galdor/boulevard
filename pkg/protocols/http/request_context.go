@@ -277,5 +277,5 @@ func (ctx *RequestContext) LogVariables() {
 		lines[i] = fmt.Sprintf("  %-*s  %s", width, key, ctx.Vars[key])
 	}
 
-	ctx.Log.Debug(1, "variables:\n"+strings.Join(lines, "\n"))
+	ctx.Log.Debug(1, "variables:\n%s", strings.Join(lines, "\n"))
 }
