@@ -48,16 +48,18 @@ func (cfg *HandlerCfg) ReadBCLElement(block *bcl.Element) error {
 }
 
 type MatchCfg struct {
-	TLS         *bool
-	Methods     []string
-	Hosts       []*netutils.DomainNamePattern
-	HostRegexps []*regexp.Regexp
-	Paths       []*PathPattern
-	PathRegexps []*regexp.Regexp
+	TLS           *bool
+	Methods       []string
+	Hosts         []*netutils.DomainNamePattern
+	HostRegexps   []*regexp.Regexp
+	HeaderValues  map[string][]string
+	HeaderRegexps map[string][]*regexp.Regexp
+	Paths         []*PathPattern
+	PathRegexps   []*regexp.Regexp
 }
 
 func (cfg *MatchCfg) ReadBCLEntry(entry *bcl.Element) {
-	entry.CheckValueOneOf(0, "tls", "method", "host", "path")
+	entry.CheckValueOneOf(0, "tls", "method", "host", "header", "path")
 
 	var matchType string
 	if !entry.Value(0, &matchType) {
@@ -90,6 +92,42 @@ func (cfg *MatchCfg) ReadBCLEntry(entry *bcl.Element) {
 					var pattern *netutils.DomainNamePattern
 					entry.Value(i, &pattern)
 					cfg.Hosts = append(cfg.Hosts, pattern)
+				}
+			}
+		}
+
+	case "header":
+		if cfg.HeaderValues == nil {
+			cfg.HeaderValues = make(map[string][]string)
+		}
+		if cfg.HeaderRegexps == nil {
+			cfg.HeaderRegexps = make(map[string][]*regexp.Regexp)
+		}
+
+		var name string
+
+		if entry.Value(1, &name) {
+			if entry.NbValues() == 1 {
+				cfg.HeaderValues[name] = nil
+			}
+
+			for i := 2; i < entry.NbValues(); i++ {
+				var s bcl.String
+
+				if entry.Value(i, &s) {
+					switch s.Sigil {
+					case "re":
+						var re *regexp.Regexp
+						entry.Value(i, &re)
+						cfg.HeaderRegexps[name] =
+							append(cfg.HeaderRegexps[name], re)
+
+					default:
+						var value string
+						entry.Value(i, &value)
+						cfg.HeaderValues[name] =
+							append(cfg.HeaderValues[name], value)
+					}
 				}
 			}
 		}
@@ -275,6 +313,44 @@ func (h *Handler) matchRequest(ctx *RequestContext) bool {
 		}
 
 		if !hostMatch {
+			return false
+		}
+	}
+
+	// Header
+	if len(matchSpec.HeaderValues) > 0 || len(matchSpec.HeaderRegexps) > 0 {
+		header := ctx.Request.Header
+		var headerMatch bool
+
+	outer1:
+		for name, expectedValues := range matchSpec.HeaderValues {
+			if len(expectedValues) == 0 {
+				headerMatch = len(header.Values(name)) > 0
+			} else {
+				for _, value := range header.Values(name) {
+					if slices.Contains(expectedValues, value) {
+						headerMatch = true
+						break outer1
+					}
+				}
+			}
+		}
+
+		if !headerMatch {
+		outer2:
+			for name, res := range matchSpec.HeaderRegexps {
+				for _, value := range header.Values(name) {
+					for _, re := range res {
+						if re.MatchString(value) {
+							headerMatch = true
+							break outer2
+						}
+					}
+				}
+			}
+		}
+
+		if !headerMatch {
 			return false
 		}
 	}

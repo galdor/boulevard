@@ -123,6 +123,27 @@ server "web" {
     }
 
     handler {
+      match path "/header"
+
+      handler {
+        match header "User-Agent" ~re"(?i)\\bfirefox/"
+        reply 200 "Firefox\n"
+      }
+
+      handler {
+        match header "User-Agent" ~re"(?i)\\bcurl/"
+        reply 200 "Curl\n"
+      }
+
+      handler {
+        match header "User-Agent"
+        reply 200 "unknown user agent\n"
+      }
+
+      reply 200 "no user agent\n"
+    }
+
+    handler {
       match path "/status"
       status
     }
