@@ -80,7 +80,7 @@ func (p *DomainNamePattern) ReadBCLValue(v *bcl.Value) error {
 }
 
 func (p *DomainNamePattern) Match(domainName string) bool {
-	if domainName[len(domainName)-1] == '.' {
+	if len(domainName) > 0 && domainName[len(domainName)-1] == '.' {
 		domainName = domainName[:len(domainName)-1]
 	}
 
