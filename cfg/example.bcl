@@ -123,6 +123,17 @@ server "web" {
     }
 
     handler {
+      match path "/version"
+
+      handler {
+        match http_version "HTTP/1.0" "HTTP/1.1"
+        reply 200 "HTTP 1.x\n"
+      }
+
+      reply 200 "HTTP 2 or 3\n"
+    }
+
+    handler {
       match path "/header"
 
       handler {

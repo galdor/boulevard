@@ -49,6 +49,7 @@ func (cfg *HandlerCfg) ReadBCLElement(block *bcl.Element) error {
 
 type MatchCfg struct {
 	TLS           *bool
+	HTTPVersions  []HTTPVersion
 	Methods       []string
 	Hosts         []*netutils.DomainNamePattern
 	HostRegexps   []*regexp.Regexp
@@ -59,7 +60,8 @@ type MatchCfg struct {
 }
 
 func (cfg *MatchCfg) ReadBCLEntry(entry *bcl.Element) {
-	entry.CheckValueOneOf(0, "tls", "method", "host", "header", "path")
+	entry.CheckValueOneOf(0, "tls", "http_version", "method", "host", "header",
+		"path")
 
 	var matchType string
 	if !entry.Value(0, &matchType) {
@@ -69,6 +71,15 @@ func (cfg *MatchCfg) ReadBCLEntry(entry *bcl.Element) {
 	switch matchType {
 	case "tls":
 		entry.Values(&matchType, &cfg.TLS)
+
+	case "http_version":
+		for i := 1; i < entry.NbValues(); i++ {
+			if entry.CheckValueOneOf(i, HTTPVersionStringsAny...) {
+				var version HTTPVersion
+				entry.Value(i, &version)
+				cfg.HTTPVersions = append(cfg.HTTPVersions, version)
+			}
+		}
 
 	case "method":
 		cfg.Methods = make([]string, entry.NbValues()-1)
@@ -277,6 +288,22 @@ func (h *Handler) matchRequest(ctx *RequestContext) bool {
 		}
 
 		if *matchSpec.TLS == false && ctx.Request.TLS != nil {
+			return false
+		}
+	}
+
+	// HTTP version
+	if len(matchSpec.HTTPVersions) > 0 {
+		var versionMatch bool
+
+		for _, version := range matchSpec.HTTPVersions {
+			if version.Match(ctx.Request.ProtoMajor, ctx.Request.ProtoMinor) {
+				versionMatch = true
+				break
+			}
+		}
+
+		if !versionMatch {
 			return false
 		}
 	}
