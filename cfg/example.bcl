@@ -72,6 +72,7 @@ server "web" {
 
     debug_log_variables true
     log_go_server_errors true
+    unencrypted_http2 true
 
     # handler {
     #   match tls false

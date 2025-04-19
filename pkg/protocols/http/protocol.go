@@ -35,6 +35,7 @@ type ProtocolCfg struct {
 
 	DebugLogVariables bool
 	LogGoServerErrors bool
+	UnencryptedHTTP2  bool
 }
 
 func NewProtocolCfg() boulevard.ProtocolCfg {
@@ -58,6 +59,7 @@ func (cfg *ProtocolCfg) ReadBCLElement(block *bcl.Element) error {
 
 	block.MaybeEntryValues("debug_log_variables", &cfg.DebugLogVariables)
 	block.MaybeEntryValues("log_go_server_errors", &cfg.LogGoServerErrors)
+	block.MaybeEntryValues("unencrypted_http2", &cfg.UnencryptedHTTP2)
 
 	return nil
 }

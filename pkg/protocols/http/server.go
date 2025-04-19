@@ -28,11 +28,19 @@ func StartServer(p *Protocol, l *boulevard.Listener) (*Server, error) {
 		Listener: l,
 	}
 
+	var protocols http.Protocols
+	protocols.SetHTTP1(true)
+	protocols.SetHTTP2(true)
+	if p.Cfg.UnencryptedHTTP2 {
+		protocols.SetUnencryptedHTTP2(true)
+	}
+
 	s.server = http.Server{
 		Addr:      l.Cfg.Address,
 		Handler:   &s,
 		ErrorLog:  stdlog.New(io.Discard, "", 0),
 		ConnState: s.connState,
+		Protocols: &protocols,
 	}
 
 	if p.Cfg.LogGoServerErrors {
