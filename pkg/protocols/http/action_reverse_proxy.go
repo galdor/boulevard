@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -98,7 +99,13 @@ func (a *ReverseProxyAction) HandleRequest(ctx *RequestContext) {
 	conn, err := a.client.AcquireConn()
 	if err != nil {
 		ctx.Log.Error("cannot acquire upstream connection: %v", err)
-		ctx.ReplyError(500)
+
+		status := 500
+		if errors.Is(err, httputils.ErrNoConnectionAvailable) {
+			status = 503
+		}
+
+		ctx.ReplyError(status)
 		return
 	}
 	defer func() {
