@@ -141,6 +141,10 @@ func (c *Client) AcquireConn() (*ClientConn, error) {
 	}
 	c.idleConnMutex.Unlock()
 
+	// If there no immediately available idle connection but we have not reached
+	// the limit, establish an new connection immediately: there is no point in
+	// waiting for a connection to be released.
+	//
 	// Of course this is not perfectly accurate since multiple goroutines
 	// can connect concurrently, but the last thing we want is to lock the
 	// whole client during a connection.
