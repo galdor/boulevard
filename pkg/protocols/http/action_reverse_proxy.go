@@ -97,7 +97,7 @@ func (a *ReverseProxyAction) HandleRequest(ctx *RequestContext) {
 
 	conn, err := a.client.AcquireConn()
 	if err != nil {
-		ctx.Log.Error("cannot acquire connection: %v", err)
+		ctx.Log.Error("cannot acquire upstream connection: %v", err)
 		ctx.ReplyError(500)
 		return
 	}
@@ -111,7 +111,7 @@ func (a *ReverseProxyAction) HandleRequest(ctx *RequestContext) {
 
 	res, err := conn.SendRequest(req)
 	if err != nil {
-		ctx.Log.Error("cannot send request: %v", err)
+		ctx.Log.Error("cannot send request upstream: %v", err)
 		ctx.ReplyError(500)
 		conn.Close()
 		return
