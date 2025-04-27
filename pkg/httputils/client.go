@@ -187,6 +187,7 @@ func (c *Client) ReleaseConn(conn *ClientConn) {
 
 	select {
 	case c.releasedConns <- conn:
+
 	default:
 		c.idleConnMutex.Lock()
 		c.idleConns = append(c.idleConns, conn)
@@ -256,6 +257,7 @@ func (c *Client) closeIdleConnections() {
 
 		if connTimeout.Before(now) {
 			conn.Close()
+			c.nbConns.Add(-1)
 		} else {
 			idleConns = append(idleConns, conn)
 
