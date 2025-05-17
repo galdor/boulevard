@@ -12,7 +12,7 @@ require (
 	go.n16f.net/ejson v0.0.0-20250113095929-6d03bba880f7
 	go.n16f.net/log v0.0.0-20240820155337-9eef10dcf842
 	go.n16f.net/program v0.0.0-20241208190041-4d0013a2857b
-	golang.org/x/crypto v0.37.0
+	golang.org/x/crypto v0.38.0
 )
 
 require (
@@ -20,10 +20,10 @@ require (
 	github.com/go-jose/go-jose/v4 v4.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.n16f.net/uuid v0.0.0-20240707135755-e4fd26b968ad // indirect
-	golang.org/x/exp v0.0.0-20250408133849-7e4ce0ab07d0 // indirect
-	golang.org/x/net v0.39.0 // indirect
-	golang.org/x/sys v0.32.0 // indirect
-	golang.org/x/term v0.31.0 // indirect
-	golang.org/x/text v0.24.0 // indirect
+	golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6 // indirect
+	golang.org/x/net v0.40.0 // indirect
+	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/term v0.32.0 // indirect
+	golang.org/x/text v0.25.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
