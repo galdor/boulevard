@@ -1,12 +1,7 @@
 package http
 
 import (
-	"bytes"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
-	"strings"
 
 	"go.n16f.net/bcl"
 	"go.n16f.net/boulevard/pkg/boulevard"
@@ -70,52 +65,5 @@ func (a *RedirectAction) Stop() {
 
 func (a *RedirectAction) HandleRequest(ctx *RequestContext) {
 	uriString := a.Cfg.URI.Expand(ctx.Vars)
-	uri, err := url.Parse(uriString)
-	if err != nil {
-		ctx.Log.Error("cannot parse redirection URI %q: %v", uriString, err)
-		ctx.ReplyError(500)
-		return
-	}
-
-	ctx.Vars["http.redirect.uri"] = uri.String()
-
-	status := 302
-	if a.Cfg.Status != 0 {
-		status = a.Cfg.Status
-	}
-
-	header := ctx.ResponseWriter.Header()
-	header.Set("Location", uri.String())
-	a.Cfg.Header.Apply(header, ctx.Vars)
-
-	var body io.Reader
-	if ctx.Request.Method == "GET" {
-		if a.Cfg.Body == nil {
-			header.Set("Content-Type", MediaTypeHTML.String())
-
-			tplData := struct {
-				Status int    `json:"status"`
-				Reason string `json:"reason"`
-				URI    string `json:"uri"`
-			}{
-				Status: status,
-				Reason: http.StatusText(status),
-				URI:    uri.String(),
-			}
-
-			bodyData, err := a.view.Render("redirect", tplData, ctx)
-			if err != nil {
-				ctx.Log.Error("cannot render redirection data: %v", err)
-				ctx.ReplyError(500)
-				return
-			}
-
-			body = bytes.NewReader(bodyData)
-		} else {
-			bodyString := a.Cfg.Body.Expand(ctx.Vars)
-			body = strings.NewReader(bodyString)
-		}
-	}
-
-	ctx.Reply(status, body)
+	redirect(a.Cfg.Status, uriString, a.Cfg.Header, a.Cfg.Body, a.view, ctx)
 }

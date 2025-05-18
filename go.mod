@@ -8,7 +8,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/stretchr/testify v1.10.0
 	go.n16f.net/acme v0.0.0-20250518135109-1587baef652d
-	go.n16f.net/bcl v0.0.0-20250419125640-ff3275f51aaa
+	go.n16f.net/bcl v0.0.0-20250518155319-be71099ddd8a
 	go.n16f.net/ejson v0.0.0-20250113095929-6d03bba880f7
 	go.n16f.net/log v0.0.0-20240820155337-9eef10dcf842
 	go.n16f.net/program v0.0.0-20241208190041-4d0013a2857b

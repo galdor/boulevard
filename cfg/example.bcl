@@ -170,7 +170,8 @@ server "web" {
         serve {
           path "local"
 
-          #index_file "index.txt"
+          # index_file "index.txt"
+          # index_redirect 302 "/hello"
           index_view true
 
           file_not_found {

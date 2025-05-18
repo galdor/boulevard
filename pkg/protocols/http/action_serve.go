@@ -11,6 +11,7 @@ import (
 
 	"go.n16f.net/bcl"
 	"go.n16f.net/boulevard/pkg/boulevard"
+	"go.n16f.net/boulevard/pkg/httputils"
 )
 
 const (
@@ -19,20 +20,32 @@ const (
 )
 
 type ServeActionCfg struct {
-	Path         *boulevard.FormatString
-	IndexFiles   []string
-	IndexView    ServeActionIndexViewCfg
+	Path *boulevard.FormatString
+
+	IndexFiles          []string
+	IndexRedirectStatus int
+	IndexRedirectURI    *boulevard.FormatString
+	IndexView           ServeActionIndexViewCfg
+
 	FileNotFound *ServeActionFileNotFoundCfg
 }
 
 func (cfg *ServeActionCfg) ReadBCLElement(elt *bcl.Element) error {
 	if elt.IsBlock() {
+		elt.CheckEntriesMaybeOneOf("index_file", "index_redirect")
+
 		elt.EntryValues("path", &cfg.Path)
 
 		for _, entry := range elt.FindEntries("index_file") {
 			var file string
 			entry.Values(&file)
 			cfg.IndexFiles = append(cfg.IndexFiles, file)
+		}
+
+		if entry := elt.FindEntry("index_redirect"); entry != nil {
+			entry.Values(bcl.WithValueValidation(&cfg.IndexRedirectStatus,
+				httputils.ValidateBCLStatus),
+				&cfg.IndexRedirectURI)
 		}
 
 		elt.MaybeElement("index_view", &cfg.IndexView)
@@ -77,11 +90,17 @@ type ServeAction struct {
 	Cfg               *ServeActionCfg
 	FileNotFoundReply *ReplyAction
 
-	view *View
+	serveView    *View
+	redirectView *View
 }
 
 func NewServeAction(h *Handler, cfg *ServeActionCfg) (*ServeAction, error) {
-	view, err := NewView("templates/serve")
+	serveView, err := NewView("templates/serve")
+	if err != nil {
+		return nil, fmt.Errorf("cannot create view: %w", err)
+	}
+
+	redirectView, err := NewView("templates/redirect")
 	if err != nil {
 		return nil, fmt.Errorf("cannot create view: %w", err)
 	}
@@ -90,7 +109,8 @@ func NewServeAction(h *Handler, cfg *ServeActionCfg) (*ServeAction, error) {
 		Handler: h,
 		Cfg:     cfg,
 
-		view: view,
+		serveView:    serveView,
+		redirectView: redirectView,
 	}
 
 	if cfg.FileNotFound != nil && cfg.FileNotFound.Reply != nil {
@@ -152,17 +172,24 @@ func (a *ServeAction) HandleRequest(ctx *RequestContext) {
 	}
 
 	if info.Mode().IsDir() {
-		for _, indexFile := range a.Cfg.IndexFiles {
-			indexFilePath := path.Join(filePath, indexFile)
-			indexInfo, err := os.Stat(indexFilePath)
-			if err == nil {
-				body, err := os.Open(indexFilePath)
+		if a.Cfg.IndexRedirectURI != nil {
+			uriString := a.Cfg.IndexRedirectURI.Expand(ctx.Vars)
+			redirect(a.Cfg.IndexRedirectStatus, uriString, nil, nil,
+				a.redirectView, ctx)
+			return
+		} else {
+			for _, indexFile := range a.Cfg.IndexFiles {
+				indexFilePath := path.Join(filePath, indexFile)
+				indexInfo, err := os.Stat(indexFilePath)
 				if err == nil {
-					defer body.Close()
+					body, err := os.Open(indexFilePath)
+					if err == nil {
+						defer body.Close()
 
-					http.ServeContent(ctx.ResponseWriter, ctx.Request,
-						indexFilePath, indexInfo.ModTime(), body)
-					return
+						http.ServeContent(ctx.ResponseWriter, ctx.Request,
+							indexFilePath, indexInfo.ModTime(), body)
+						return
+					}
 				}
 			}
 		}
@@ -234,7 +261,7 @@ func (a *ServeAction) serveIndexView(dirPath string, ctx *RequestContext) {
 			len(e.DisplayedSize))
 	}
 
-	content, err := a.view.Render("index", tplData, ctx)
+	content, err := a.serveView.Render("index", tplData, ctx)
 	if err != nil {
 		ctx.Log.Error("cannot render index data: %v", err)
 		ctx.ReplyError(500)
