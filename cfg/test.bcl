@@ -132,6 +132,34 @@ server "web" {
       }
     }
 
+    # Next-handler tests
+    handler {
+      match path "/next-handler/"
+      reply 200 "default"
+
+      handler {
+        match path "a"
+
+        authentication {
+          basic {
+            user "bob" "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
+          }
+        }
+
+        next_handler
+      }
+
+      handler {
+        match path "b"
+        next_handler
+      }
+
+      handler {
+        match path "a"
+        reply 200 "a"
+      }
+    }
+
     # Reverse proxy tests
     handler {
       match path "/nginx/"

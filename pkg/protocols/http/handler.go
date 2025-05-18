@@ -22,7 +22,8 @@ type HandlerCfg struct {
 	Status       *StatusActionCfg
 	FastCGI      *FastCGIActionCfg
 
-	Handlers []*HandlerCfg
+	Handlers    []*HandlerCfg
+	NextHandler bool
 }
 
 func (cfg *HandlerCfg) ReadBCLElement(block *bcl.Element) error {
@@ -43,6 +44,9 @@ func (cfg *HandlerCfg) ReadBCLElement(block *bcl.Element) error {
 	block.MaybeElement("fastcgi", &cfg.FastCGI)
 
 	block.Blocks("handler", &cfg.Handlers)
+	if block.FindEntry("next_handler") != nil {
+		cfg.NextHandler = true
+	}
 
 	return nil
 }
@@ -418,8 +422,11 @@ func (h *Handler) matchRequest(ctx *RequestContext) bool {
 	}
 
 	// We now have a full match, we can update the request context
-	ctx.Subpath = subpath
-	ctx.Vars["http.match.subpath"] = subpath
+	//
+	// If next_handler is set, we update inheritable settings (e.g.
+	// authentication) but we do not return true because we need to find another
+	// matching handler. We also do not update context variables associated with
+	// a match for the same reason.
 
 	if h.Auth != nil {
 		ctx.Auth = h.Auth
@@ -428,6 +435,13 @@ func (h *Handler) matchRequest(ctx *RequestContext) bool {
 	if h.AccessLogger != nil {
 		ctx.AccessLogger = h.AccessLogger
 	}
+
+	if h.Cfg.NextHandler {
+		return false
+	}
+
+	ctx.Subpath = subpath
+	ctx.Vars["http.match.subpath"] = subpath
 
 	return true
 }
