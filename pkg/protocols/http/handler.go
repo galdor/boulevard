@@ -270,10 +270,7 @@ func (h *Handler) Stop() {
 }
 
 func (h *Handler) matchRequest(ctx *RequestContext) bool {
-	// A request match if all constraint match. However constraints on the same
-	// value are evaluated as disjonction: e.g. if a match block has two "path"
-	// constraints and one "path_regexp" constraint, the request matches the
-	// block if one of these three constraints match.
+	// A request matches if all constraints match.
 	//
 	// Careful, we only update the request context if we have a full match. This
 	// is important because we try to match handlers recursively and fall back
