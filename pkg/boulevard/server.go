@@ -3,7 +3,7 @@ package boulevard
 import (
 	"fmt"
 
-	"go.n16f.net/acme"
+	"go.n16f.net/acme/pkg/acme"
 	"go.n16f.net/bcl"
 	"go.n16f.net/log"
 )

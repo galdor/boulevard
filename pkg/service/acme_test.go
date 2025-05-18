@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"go.n16f.net/acme"
+	"go.n16f.net/acme/pkg/acme"
 	"go.n16f.net/boulevard/pkg/httputils"
 )
 

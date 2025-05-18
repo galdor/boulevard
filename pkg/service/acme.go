@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"go.n16f.net/acme"
+	"go.n16f.net/acme/pkg/acme"
 	"go.n16f.net/bcl"
 	"go.n16f.net/boulevard/pkg/httputils"
 	"go.n16f.net/boulevard/pkg/netutils"
