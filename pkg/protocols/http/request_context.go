@@ -22,14 +22,15 @@ import (
 )
 
 type RequestContext struct {
-	Log            *log.Logger
-	Ctx            context.Context
-	Request        *nethttp.Request
-	ResponseWriter *httputils.ResponseWriter
-	Protocol       *Protocol
-	Listener       *boulevard.Listener
-	AccessLogger   *AccessLogger
-	Auth           Auth
+	Log                *log.Logger
+	Ctx                context.Context
+	Request            *nethttp.Request
+	ResponseWriter     *httputils.ResponseWriter
+	Protocol           *Protocol
+	Listener           *boulevard.Listener
+	AccessLogger       *AccessLogger
+	Auth               Auth
+	RequestRateLimiter *netutils.RateLimiter
 
 	ClientAddress     net.IP
 	Host              string

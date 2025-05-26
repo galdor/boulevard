@@ -110,6 +110,13 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if rl := ctx.RequestRateLimiter; rl != nil {
+		if rl.Update(1, ctx.ClientAddress, ctx.StartTime) == false {
+			ctx.ReplyError(429)
+			return
+		}
+	}
+
 	if ctx.Auth != nil {
 		if err := ctx.Auth.AuthenticateRequest(ctx); err != nil {
 			ctx.Log.Error("cannot authenticate request: %v", err)

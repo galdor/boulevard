@@ -206,6 +206,23 @@ server "web" {
     }
 
     handler {
+      match path "/request-rate-limits/"
+
+      request_rate_limits {
+        global 100 60
+        per_address 5 60
+        per_ipv4_address 10 60
+        per_ipv4_network "/8" 20 60
+        per_ipv6_network "/48" 30 60
+
+        address "127.0.0.1" 1 60
+        address "::1" 1 60
+        network "127.0.0.0/8" 2 60
+        network "::1/64" 2 60
+      }
+    }
+
+    handler {
       match path "/nginx/"
 
       reverse_proxy {

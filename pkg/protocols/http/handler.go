@@ -11,9 +11,10 @@ import (
 )
 
 type HandlerCfg struct {
-	Match        MatchCfg
-	Auth         *AuthCfg
-	AccessLogger *AccessLoggerCfg
+	Match              MatchCfg
+	AccessLogger       *AccessLoggerCfg
+	Auth               *AuthCfg
+	RequestRateLimiter *netutils.RateLimiterCfg
 
 	Reply        *ReplyActionCfg
 	Redirect     *RedirectActionCfg
@@ -31,8 +32,9 @@ func (cfg *HandlerCfg) ReadBCLElement(block *bcl.Element) error {
 		cfg.Match.ReadBCLEntry(entry)
 	}
 
-	block.MaybeBlock("authentication", &cfg.Auth)
 	block.MaybeBlock("access_logs", &cfg.AccessLogger)
+	block.MaybeBlock("authentication", &cfg.Auth)
+	block.MaybeElement("request_rate_limits", &cfg.RequestRateLimiter)
 
 	block.CheckElementsMaybeOneOf("reply", "redirect", "serve", "reverse_proxy",
 		"status", "fastcgi")
@@ -177,9 +179,10 @@ type Handler struct {
 	Protocol *Protocol
 	Cfg      *HandlerCfg
 
-	AccessLogger *AccessLogger
-	Auth         Auth
-	Action       Action
+	AccessLogger       *AccessLogger
+	Auth               Auth
+	RequestRateLimiter *netutils.RateLimiter
+	Action             Action
 
 	Handlers []*Handler
 }
@@ -210,6 +213,10 @@ func StartHandler(p *Protocol, cfg *HandlerCfg) (*Handler, error) {
 		}
 
 		h.Auth = auth
+	}
+
+	if rlCfg := cfg.RequestRateLimiter; rlCfg != nil {
+		h.RequestRateLimiter = netutils.NewRateLimiter(rlCfg)
 	}
 
 	var action Action
@@ -428,12 +435,20 @@ func (h *Handler) matchRequest(ctx *RequestContext) bool {
 	// matching handler. We also do not update context variables associated with
 	// a match for the same reason.
 
+	if h.AccessLogger != nil {
+		ctx.AccessLogger = h.AccessLogger
+	}
+
 	if h.Auth != nil {
 		ctx.Auth = h.Auth
 	}
 
-	if h.AccessLogger != nil {
-		ctx.AccessLogger = h.AccessLogger
+	if h.RequestRateLimiter != nil {
+		if h.RequestRateLimiter.Cfg.IsEmpty() {
+			ctx.RequestRateLimiter = nil
+		} else {
+			ctx.RequestRateLimiter = h.RequestRateLimiter
+		}
 	}
 
 	if h.Cfg.NextHandler {

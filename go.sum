@@ -12,8 +12,8 @@ github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOf
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 go.n16f.net/acme v0.0.0-20250518135109-1587baef652d h1:hRAOQEevJ3VuhPGLszVhMvuj21Z2sbwPoWbKN2K5F4M=
 go.n16f.net/acme v0.0.0-20250518135109-1587baef652d/go.mod h1:W9hREPBdpsPBAvkoOGag4TMMcjd+1Zmxpef/0ilR474=
-go.n16f.net/bcl v0.0.0-20250518155319-be71099ddd8a h1:F63pP+nD5SBhtMTEeM5hKnnRCVPsO6BZWFiaKyR0wdI=
-go.n16f.net/bcl v0.0.0-20250518155319-be71099ddd8a/go.mod h1:kGybQztV60nUVXehZrebYS0qd9vkl32/EDnZaTUUE7E=
+go.n16f.net/bcl v0.0.0-20250622135237-b5dfa74b3e37 h1:EYfMQhuxdpaBtYjG/QR0ue3Z+BsbcP1uukocQwAdFBc=
+go.n16f.net/bcl v0.0.0-20250622135237-b5dfa74b3e37/go.mod h1:kGybQztV60nUVXehZrebYS0qd9vkl32/EDnZaTUUE7E=
 go.n16f.net/ejson v0.0.0-20250113095929-6d03bba880f7 h1:Gc/Ag1gl0xXaxFiNy5nBbsiOVtDWDgJQ8Ro5m91l0gc=
 go.n16f.net/ejson v0.0.0-20250113095929-6d03bba880f7/go.mod h1:96wBQ6dI+0R4sM0LK5OVPqQGRFoWyVtiLRendDKLAJ4=
 go.n16f.net/log v0.0.0-20240820155337-9eef10dcf842 h1:fd8Yoy3KkR2LXQhej8cjGdp37PSUArlF1lDGI6SKFEA=

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"go.n16f.net/bcl"
 	"go.n16f.net/boulevard/pkg/boulevard"
@@ -79,11 +80,14 @@ type Protocol struct {
 	servers            []*Server
 	defaultTLSListener *boulevard.Listener
 
-	wg sync.WaitGroup
+	stopChan chan struct{}
+	wg       sync.WaitGroup
 }
 
 func NewProtocol() boulevard.Protocol {
-	return &Protocol{}
+	return &Protocol{
+		stopChan: make(chan struct{}),
+	}
 }
 
 func (p *Protocol) Start(server *boulevard.Server) error {
@@ -137,10 +141,15 @@ func (p *Protocol) Start(server *boulevard.Server) error {
 		}
 	}
 
+	p.wg.Add(1)
+	go p.rateLimiterGC()
+
 	return nil
 }
 
 func (p *Protocol) Stop() {
+	close(p.stopChan)
+
 	for _, server := range p.servers {
 		server.Stop()
 	}
@@ -220,4 +229,36 @@ func (p *Protocol) unregisterTCPConnection(c *TCPConnection) {
 	p.tcpConnectionMutex.Lock()
 	delete(p.tcpConnections, c)
 	p.tcpConnectionMutex.Unlock()
+}
+
+func (p *Protocol) rateLimiterGC() {
+	defer p.wg.Done()
+
+	ticker := time.NewTicker(60 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			p.gcRateLimiters()
+
+		case <-p.stopChan:
+			return
+		}
+	}
+}
+
+func (p *Protocol) gcRateLimiters() {
+	var gc func([]*Handler)
+	gc = func(handlers []*Handler) {
+		for _, handler := range handlers {
+			if rl := handler.RequestRateLimiter; rl != nil {
+				rl.GC()
+			}
+
+			gc(handler.Handlers)
+		}
+	}
+
+	gc(p.handlers)
 }

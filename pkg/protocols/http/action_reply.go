@@ -24,7 +24,7 @@ func (cfg *ReplyActionCfg) ReadBCLElement(elt *bcl.Element) error {
 		elt.MaybeBlock("header", &cfg.Header)
 		elt.MaybeEntryValues("body", &cfg.Body)
 	} else {
-		if elt.CheckMinMaxValues(1, 2) {
+		if elt.CheckMinMaxNbValues(1, 2) {
 			switch elt.NbValues() {
 			case 1:
 				elt.Values(
