@@ -164,13 +164,14 @@ func (ctx *RequestContext) IdentifyRequestHost() error {
 	//
 	// Note that it can contain a port (see RFC 9110 7.2. Host and :authority).
 
-	if ctx.Request.Host == "" {
-		return fmt.Errorf("missing or empty host")
+	hostAddr := ctx.Request.Host
+	if hostAddr == "" {
+		hostAddr = ctx.Request.URL.Host
 	}
 
-	host, _, err := net.SplitHostPort(ctx.Request.Host)
+	host, err := httputils.ParseHostHeaderField(hostAddr)
 	if err != nil {
-		host = ctx.Request.Host
+		return fmt.Errorf("invalid Host header field %q: %w", hostAddr, err)
 	}
 
 	ctx.Host = host

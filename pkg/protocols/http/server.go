@@ -87,14 +87,16 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	defer ctx.OnRequestHandled()
 
 	if err := ctx.IdentifyClient(); err != nil {
+		// The RemoteAddr field of the Request object not being parsable is an
+		// internal issue.
 		ctx.Log.Error("cannot identify client: %v", err)
 		ctx.ReplyError(500)
 		return
 	}
 
 	if err := ctx.IdentifyRequestHost(); err != nil {
-		ctx.Log.Error("cannot identify request host: %v", err)
-		ctx.ReplyError(500)
+		// The Host header field being invalid is a client issue
+		ctx.ReplyError(400)
 		return
 	}
 
