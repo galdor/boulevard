@@ -96,7 +96,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if err := ctx.IdentifyRequestHost(); err != nil {
 		// The Host header field being invalid is a client issue
-		ctx.ReplyError(400)
+		ctx.ReplyError2(400, "%v", err)
 		return
 	}
 
@@ -108,13 +108,13 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	h := s.Protocol.findHandler(ctx)
 	if h == nil {
-		ctx.ReplyError(404)
+		ctx.ReplyError2(404, "unhandled request")
 		return
 	}
 
 	if rl := ctx.RequestRateLimiter; rl != nil {
 		if rl.Update(1, ctx.ClientAddress, ctx.StartTime) == false {
-			ctx.ReplyError(429)
+			ctx.ReplyError2(429, "rate limit reached")
 			return
 		}
 	}
@@ -149,7 +149,7 @@ func (s *Server) handleTLS(ctx *RequestContext) bool {
 
 	if tlsHandling == TLSHandlingReject && ctx.Request.TLS != nil {
 		header.Add("Upgrade", "HTTP/2.0, HTTP/1.1, HTTP/1.0")
-		ctx.ReplyError(426)
+		ctx.ReplyError2(426, "TLS not supported")
 		return true
 	}
 
@@ -168,7 +168,7 @@ func (s *Server) handleTLS(ctx *RequestContext) bool {
 			header.Add("Upgrade", strings.Join(protocols, ", "))
 		}
 
-		ctx.ReplyError(426)
+		ctx.ReplyError2(426, "TLS required")
 		return true
 	}
 

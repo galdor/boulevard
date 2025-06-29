@@ -230,11 +230,16 @@ func (ctx *RequestContext) ReplyJSON(status int, value any) {
 }
 
 func (ctx *RequestContext) ReplyError(status int) {
+	ctx.ReplyError2(status, "%d %s\n", status, nethttp.StatusText(status))
+}
+
+func (ctx *RequestContext) ReplyError2(status int, format string, args ...any) {
 	header := ctx.ResponseWriter.Header()
 	header.Set("Content-Type", MediaTypeText.String())
 
-	msg := fmt.Sprintf("%d %s\n", status, nethttp.StatusText(status))
-	ctx.Reply(status, strings.NewReader(msg))
+	msg := fmt.Sprintf(format, args...)
+	body := io.MultiReader(strings.NewReader(msg), strings.NewReader("\n"))
+	ctx.Reply(status, body)
 }
 
 func (ctx *RequestContext) NegotiateMediaType(supportedTypes []*MediaType) *MediaType {

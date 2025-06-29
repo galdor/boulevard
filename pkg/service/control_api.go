@@ -154,7 +154,7 @@ func (api *ControlAPI) ServeHTTP(w nethttp.ResponseWriter, req *nethttp.Request)
 	default:
 		header := ctx.ResponseWriter.Header()
 		header.Set("Allow", "GET, POST")
-		ctx.ReplyError(405)
+		ctx.ReplyError2(405, "HTTP method not supported")
 		return
 	}
 

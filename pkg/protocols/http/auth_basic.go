@@ -56,36 +56,41 @@ func (a *BasicAuth) AuthenticateRequest(ctx *RequestContext) error {
 	authorization := ctx.Request.Header.Get("Authorization")
 	if authorization == "" {
 		a.setWWWAuthenticate(ctx)
-		ctx.ReplyError(401)
-		return errors.New("missing or empty Authorization header field")
+		err := errors.New("missing or empty Authorization header field")
+		ctx.ReplyError2(401, "%v", err)
+		return err
 	}
 
 	space := strings.IndexByte(authorization, ' ')
 	if space == -1 {
 		a.setWWWAuthenticate(ctx)
-		ctx.ReplyError(401)
-		return errors.New("invalid authorization format")
+		err := errors.New("invalid authorization format")
+		ctx.ReplyError2(401, "%v", err)
+		return err
 	}
 
 	scheme := authorization[:space]
 
 	if strings.ToLower(scheme) != "basic" {
 		a.setWWWAuthenticate(ctx)
-		ctx.ReplyError(401)
-		return fmt.Errorf("invalid authorization scheme %q", scheme)
+		err := fmt.Errorf("invalid authorization scheme %q", scheme)
+		ctx.ReplyError2(401, "%v", err)
+		return err
 	}
 
 	credentialsData, err := base64.StdEncoding.DecodeString(
 		authorization[space+1:])
 	if err != nil {
-		ctx.ReplyError(403)
-		return fmt.Errorf("cannot decode base64-encoded credentials")
+		err := fmt.Errorf("cannot decode base64-encoded credentials")
+		ctx.ReplyError2(403, "%v", err)
+		return err
 	}
 
 	username, password, found := strings.Cut(string(credentialsData), ":")
 	if !found {
-		ctx.ReplyError(403)
-		return fmt.Errorf("invalid authorization: missing ':' separator")
+		err := fmt.Errorf("invalid authorization: missing ':' separator")
+		ctx.ReplyError2(403, "%v", err)
+		return err
 	}
 
 	ctx.Username = username
@@ -94,8 +99,9 @@ func (a *BasicAuth) AuthenticateRequest(ctx *RequestContext) error {
 	credentials := username + ":" + transformAuthSecret(password, a.Cfg)
 
 	if _, found := a.Users[credentials]; !found {
-		ctx.ReplyError(403)
-		return fmt.Errorf("invalid credentials")
+		err := fmt.Errorf("invalid credentials")
+		ctx.ReplyError2(403, "%v", err)
+		return err
 	}
 
 	return nil

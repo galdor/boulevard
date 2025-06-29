@@ -158,7 +158,7 @@ func (a *ServeAction) HandleRequest(ctx *RequestContext) {
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			if a.FileNotFoundReply == nil {
-				ctx.ReplyError(404)
+				ctx.ReplyError2(404, "file not found")
 			} else {
 				a.FileNotFoundReply.HandleRequest(ctx)
 			}
@@ -199,12 +199,12 @@ func (a *ServeAction) HandleRequest(ctx *RequestContext) {
 			return
 		}
 
-		ctx.ReplyError(403)
+		ctx.ReplyError2(403, "directory access denied")
 		return
 	}
 
 	if !info.Mode().IsRegular() {
-		ctx.ReplyError(403)
+		ctx.ReplyError2(403, "file access denied")
 		return
 	}
 
@@ -213,7 +213,7 @@ func (a *ServeAction) HandleRequest(ctx *RequestContext) {
 	body, err := os.Open(filePath)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			ctx.ReplyError(404)
+			ctx.ReplyError2(404, "file not found")
 			return
 		}
 

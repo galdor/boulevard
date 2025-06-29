@@ -55,30 +55,34 @@ func (a *BearerAuth) AuthenticateRequest(ctx *RequestContext) error {
 	authorization := ctx.Request.Header.Get("Authorization")
 	if authorization == "" {
 		a.setWWWAuthenticate(ctx)
-		ctx.ReplyError(401)
-		return errors.New("missing or empty Authorization header field")
+		err := errors.New("missing or empty Authorization header field")
+		ctx.ReplyError2(401, "%v", err)
+		return err
 	}
 
 	space := strings.IndexByte(authorization, ' ')
 	if space == -1 {
 		a.setWWWAuthenticate(ctx)
-		ctx.ReplyError(401)
-		return errors.New("invalid authorization format")
+		err := errors.New("invalid authorization format")
+		ctx.ReplyError2(401, "%v", err)
+		return err
 	}
 
 	scheme := authorization[:space]
 
 	if strings.ToLower(scheme) != "bearer" {
 		a.setWWWAuthenticate(ctx)
-		ctx.ReplyError(401)
-		return fmt.Errorf("invalid authorization scheme %q", scheme)
+		err := fmt.Errorf("invalid authorization scheme %q", scheme)
+		ctx.ReplyError2(401, "%v", err)
+		return err
 	}
 
 	token := transformAuthSecret(authorization[space+1:], a.Cfg)
 
 	if _, found := a.Tokens[token]; !found {
-		ctx.ReplyError(403)
-		return errors.New("invalid token")
+		err := errors.New("invalid token")
+		ctx.ReplyError2(403, "%v", err)
+		return err
 	}
 
 	return nil
