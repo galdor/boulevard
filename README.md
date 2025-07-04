@@ -32,7 +32,8 @@ bug.
 
 ### Ideas and feature suggestions
 Ideas about current systems and suggestions for new ones are welcome, either on
-GitHub discussions or by [email](mailto:nicolas@n16f.net).
+GitHub discussions, on the #boulevard IRC chan on
+[Libera.Chat](https://libera.chat) or by [email](mailto:nicolas@n16f.net).
 
 You can also [hire me](mailto:nicolas@exograd.com) for support or to develop
 specific features.
