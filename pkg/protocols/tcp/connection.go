@@ -97,7 +97,11 @@ func (c *Connection) write() {
 }
 
 func isSilentIOError(err error) bool {
-	if errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) {
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+		return true
+	}
+
+	if errors.Is(err, net.ErrClosed) {
 		return true
 	}
 
@@ -105,7 +109,8 @@ func isSilentIOError(err error) bool {
 	if errors.As(err, &syscallErr) {
 		errno := syscallErr.Err
 
-		if errno == syscall.EPIPE {
+		switch errno {
+		case syscall.ECONNRESET, syscall.EPIPE:
 			return true
 		}
 	}
