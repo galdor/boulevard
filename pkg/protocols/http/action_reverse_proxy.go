@@ -13,6 +13,7 @@ import (
 
 	"go.n16f.net/bcl"
 	"go.n16f.net/boulevard/pkg/httputils"
+	"go.n16f.net/boulevard/pkg/netutils"
 )
 
 type ReverseProxyActionCfg struct {
@@ -146,7 +147,11 @@ func (a *ReverseProxyAction) HandleRequest(ctx *RequestContext) {
 		hijack = true
 	} else {
 		if _, err := io.Copy(ctx.ResponseWriter, res.Body); err != nil {
-			ctx.Log.Error("cannot copy response body: %v", err)
+			if netutils.IsSilentIOError(err) {
+				ctx.Log.Debug(1, "cannot copy response body: %v", err)
+			} else {
+				ctx.Log.Error("cannot copy response body: %v", err)
+			}
 			return
 		}
 	}

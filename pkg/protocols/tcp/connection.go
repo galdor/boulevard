@@ -1,13 +1,9 @@
 package tcp
 
 import (
-	"errors"
 	"fmt"
-	"io"
 	"net"
-	"os"
 	"sync"
-	"syscall"
 
 	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/boulevard/pkg/netutils"
@@ -44,7 +40,7 @@ func (c *Connection) Close() {
 func (c *Connection) abort(format string, args ...any) {
 	err := fmt.Errorf(format, args...)
 
-	if isSilentIOError(err) {
+	if netutils.IsSilentIOError(err) {
 		c.Log.Debug(1, "%v", err)
 	} else {
 		c.Log.Error("%v", err)
@@ -94,26 +90,4 @@ func (c *Connection) write() {
 			return
 		}
 	}
-}
-
-func isSilentIOError(err error) bool {
-	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-		return true
-	}
-
-	if errors.Is(err, net.ErrClosed) {
-		return true
-	}
-
-	var syscallErr *os.SyscallError
-	if errors.As(err, &syscallErr) {
-		errno := syscallErr.Err
-
-		switch errno {
-		case syscall.ECONNRESET, syscall.EPIPE:
-			return true
-		}
-	}
-
-	return false
 }
