@@ -1,3 +1,13 @@
+BUILD_ID = $(shell git describe --tags HEAD)
+ifndef BUILD_ID
+$(error Cannot identify build id from Git repository data)
+endif
+
+GIT_REF = $(shell git rev-parse HEAD)
+ifndef GIT_REF
+$(error Cannot resolve Git HEAD)
+endif
+
 prefix = /usr/local
 bindir = $(DESTDIR)$(prefix)/bin
 sharedir = $(DESTDIR)$(prefix)/share
@@ -65,9 +75,20 @@ install-flat:
 	mkdir -p $(DESTDIR)/doc/html
 	cp -r $(DOC_MANUAL_HTML)/* $(DESTDIR)/doc/html
 
+docker-image: build
+	DOCKER_BUILDKIT=1 \
+	docker build --no-cache \
+	  --label org.opencontainers.image.created=$(shell date -u +%FT%TZ) \
+	  --label org.opencontainers.image.version=$(BUILD_ID) \
+	  --label org.opencontainers.image.revision=$(GIT_REF) \
+	  --tag exograd/boulevard:$(BUILD_ID) \
+	  --tag exograd/boulevard:latest \
+	  -f Dockerfile \
+	  .
+
 clean:
 	$(RM) $(wildcard bin/*) $(DOC_MANUAL_HTML)/*
 
 FORCE:
 
-.PHONY: all build check vet test doc install install-flat clean
+.PHONY: all build check vet test doc install install-flat docker-image clean

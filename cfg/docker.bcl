@@ -1,0 +1,22 @@
+control_api {
+  path "/var/run/boulevard.sock"
+}
+
+pprof {
+  address ":6060"
+}
+
+server "main" {
+  listener {
+    address ":8080"
+  }
+
+  http {
+    handler {
+      reply {
+        status 200
+        body "Hello world!\n"
+      }
+    }
+  }
+}
