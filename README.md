@@ -8,6 +8,27 @@ TCP proxy without having to recompile the program.
 Boulevard is not released yet, and I have a long list of interesting features to
 develop. Star the repository on GitHub if you are interested!
 
+## Running Boulevard
+### Packages
+#### Ubuntu
+_TODO_
+
+#### FreeBSD
+_TODO_
+
+### Docker
+Boulevard is available as `exograd/boulevard` on
+[DockerHub](https://hub.docker.com/r/exograd/boulevard).
+
+Just start a container:
+
+    docker run -it --name boulevard --rm -p 8080:8080 exograd/boulevard:latest
+
+Mount `/etc/boulevard/boulevard.bcl` to set your own configuration file.
+
+## Documentation
+_TODO_
+
 ## Licensing
 Boulevard is open source software distributed under the
 [ISC](https://opensource.org/licenses/ISC) license.
