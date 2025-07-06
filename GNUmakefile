@@ -75,20 +75,9 @@ install-flat:
 	mkdir -p $(DESTDIR)/doc/html
 	cp -r $(DOC_MANUAL_HTML)/* $(DESTDIR)/doc/html
 
-docker-image: build
-	DOCKER_BUILDKIT=1 \
-	docker build --no-cache \
-	  --label org.opencontainers.image.created=$(shell date -u +%FT%TZ) \
-	  --label org.opencontainers.image.version=$(BUILD_ID) \
-	  --label org.opencontainers.image.revision=$(GIT_REF) \
-	  --tag exograd/boulevard:$(BUILD_ID) \
-	  --tag exograd/boulevard:latest \
-	  -f Dockerfile \
-	  .
-
 clean:
 	$(RM) $(wildcard bin/*) $(DOC_MANUAL_HTML)/*
 
 FORCE:
 
-.PHONY: all build check vet test doc install install-flat docker-image clean
+.PHONY: all build check vet test doc install install-flat clean
