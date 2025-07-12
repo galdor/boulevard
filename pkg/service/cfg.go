@@ -16,11 +16,12 @@ type ServiceCfg struct {
 	ProtocolInfo []*boulevard.ProtocolInfo
 
 	// Set by ServiceCfg.Load
-	Logger       *log.LoggerCfg
-	ACME         *ACMECfg
-	ControlAPI   *ControlAPICfg
-	PProfAddress string
-	Servers      []*boulevard.ServerCfg
+	Logger        *log.LoggerCfg
+	ACME          *ACMECfg
+	ControlAPI    *ControlAPICfg
+	PProfAddress  string
+	LoadBalancers []*boulevard.LoadBalancerCfg
+	Servers       []*boulevard.ServerCfg
 }
 
 func (cfg *ServiceCfg) Load(filePath string) error {
@@ -39,6 +40,7 @@ func (cfg *ServiceCfg) Load(filePath string) error {
 
 	cfg.initLogger(doc)
 	cfg.initPProf(doc)
+	cfg.initLoadBalancers(doc)
 	cfg.initServers(doc, cfg.ProtocolInfo)
 
 	if err := doc.ValidationErrors(); err != nil {
@@ -94,6 +96,17 @@ func (cfg *ServiceCfg) initPProf(doc *bcl.Document) {
 	}
 
 	block.EntryValues("address", &cfg.PProfAddress)
+}
+
+func (cfg *ServiceCfg) initLoadBalancers(doc *bcl.Document) {
+	for _, block := range doc.FindBlocks("load_balancer") {
+		lbCfg := boulevard.LoadBalancerCfg{
+			Name: block.BlockName(),
+		}
+
+		block.Extract(&lbCfg)
+		cfg.LoadBalancers = append(cfg.LoadBalancers, &lbCfg)
+	}
 }
 
 func (cfg *ServiceCfg) initServers(doc *bcl.Document, protocolsInfo []*boulevard.ProtocolInfo) {

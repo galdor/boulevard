@@ -18,10 +18,12 @@ type Service struct {
 	Cfg ServiceCfg
 	Log *log.Logger
 
-	acmeClient  *acme.Client
-	controlAPI  *ControlAPI
-	servers     map[string]*boulevard.Server
-	serverMutex sync.Mutex
+	acmeClient        *acme.Client
+	controlAPI        *ControlAPI
+	loadBalancers     map[string]*boulevard.LoadBalancer
+	loadBalancerMutex sync.Mutex
+	servers           map[string]*boulevard.Server
+	serverMutex       sync.Mutex
 
 	httpUserAgent string
 
@@ -70,6 +72,10 @@ func (s *Service) Start() error {
 
 	s.startPProf()
 
+	if err := s.startLoadBalancers(); err != nil {
+		return err
+	}
+
 	if err := s.startServers(); err != nil {
 		return err
 	}
@@ -93,6 +99,7 @@ func (s *Service) Stop() {
 
 	s.stopControlAPI()
 	s.stopServers()
+	s.stopLoadBalancers()
 	s.stopACMEClient()
 }
 

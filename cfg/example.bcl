@@ -32,6 +32,26 @@ pprof {
   address ":6060"
 }
 
+load_balancer "nginx-pool" {
+  server "127.42.2.1"
+  server "127.42.2.2"
+  server "127.42.2.3"
+
+  # health {
+  #   # TODO count for unhealthy->healthy and healthy->unhealthy
+
+  #   http {
+  #     method "GET"
+  #     path "/nginx/ping"
+
+  #     success {
+  #       status 200
+  #       # body ~re"/ok/i"
+  #     }
+  #   }
+  # }
+}
+
 server "web" {
   listener {
     address ":8080"
@@ -233,28 +253,6 @@ server "web" {
         }
       }
     }
-
-    # handler {
-    #   match path "/nginx-pool/"
-
-    #   reverse_proxy {
-    #     load_balancer {
-    #       server "127.42.2.1"
-    #       server "127.42.2.2"
-    #       server "127.42.2.3"
-
-    #       health {
-    #         http {
-    #           path "/nginx/ping"
-    #         }
-    #       }
-    #     }
-
-    #     response_header {
-    #       set "Server" "Boulevard"
-    #     }
-    #   }
-    # }
 
     handler {
       match path "/fpm/"
