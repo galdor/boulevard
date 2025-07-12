@@ -40,7 +40,8 @@ func (cfg *TLSCfg) ReadBCLElement(block *bcl.Element) error {
 		}
 
 		if len(cfg.Domains) == 0 {
-			return fmt.Errorf("ACME configuration does no contain any domain")
+			acmeBlock.AddSimpleValidationError("ACME configuration does no " +
+				"contain any domain")
 		}
 	} else {
 		block.EntryValues("certificate_file", &cfg.CertificateFile)
