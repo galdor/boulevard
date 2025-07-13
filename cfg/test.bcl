@@ -22,6 +22,12 @@ control_api {
   log_go_server_errors true
 }
 
+load_balancer "nginx-pool" {
+  server "127.42.2.1:9002"
+  server "127.42.2.2:9002"
+  server "127.42.2.3:9002"
+}
+
 server "web" {
   listener {
     address ":8080"
@@ -169,6 +175,14 @@ server "web" {
     handler {
       match path "/websocket"
       reverse_proxy "http://localhost:9003"
+    }
+
+    handler {
+      match path "/nginx-pool/"
+
+      reverse_proxy {
+        load_balancer "nginx-pool"
+      }
     }
 
     # Serve tests

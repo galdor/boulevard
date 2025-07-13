@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -85,4 +86,19 @@ func TestHTTPReverseProxyWebSocket(t *testing.T) {
 	msg3, err := roundtrip("hello world!")
 	require.NoError(err)
 	require.Equal("12", msg3)
+}
+
+func TestHTTPReverseProxyLoadBalancing(t *testing.T) {
+	require := require.New(t)
+
+	c := testHTTPClient(t)
+
+	var res *http.Response
+	var resBody string
+
+	for i := range 6 {
+		res = c.SendRequest("GET", "/nginx-pool/instance", nil, nil, &resBody)
+		require.Equal(200, res.StatusCode)
+		require.Equal("i"+strconv.Itoa(i%3+1)+"\n", resBody)
+	}
 }
