@@ -19,8 +19,8 @@ var (
 )
 
 type ClientCfg struct {
-	Scheme string
-	Host   string
+	Scheme  string
+	Address string
 
 	TLS *tls.Config
 
@@ -155,7 +155,8 @@ func (c *Client) AcquireConn() (*ClientConn, error) {
 		var err error
 		conn, err = c.connect()
 		if err != nil {
-			return nil, fmt.Errorf("cannot connect to %q: %w", c.Cfg.Host, err)
+			return nil, fmt.Errorf("cannot connect to %q: %w",
+				c.Cfg.Address, err)
 		}
 
 		c.nbConns.Add(1)
@@ -209,9 +210,9 @@ func (c *Client) connect() (*ClientConn, error) {
 	var err error
 
 	if c.tls {
-		conn, err = tls.DialWithDialer(&dialer, "tcp", c.Cfg.Host, c.Cfg.TLS)
+		conn, err = tls.DialWithDialer(&dialer, "tcp", c.Cfg.Address, c.Cfg.TLS)
 	} else {
-		conn, err = dialer.Dial("tcp", c.Cfg.Host)
+		conn, err = dialer.Dial("tcp", c.Cfg.Address)
 	}
 	if err != nil {
 		return nil, err

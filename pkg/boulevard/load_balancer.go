@@ -9,12 +9,12 @@ import (
 
 type LoadBalancerCfg struct {
 	Name    string
-	Servers []netutils.Host
+	Servers []netutils.HostAddress
 }
 
 func (cfg *LoadBalancerCfg) ReadBCLElement(block *bcl.Element) error {
 	for _, elt := range block.FindEntries("server") {
-		var host netutils.Host
+		var host netutils.HostAddress
 		elt.Values(&host)
 		cfg.Servers = append(cfg.Servers, host)
 	}
@@ -28,7 +28,7 @@ func (cfg *LoadBalancerCfg) ReadBCLElement(block *bcl.Element) error {
 }
 
 type LoadBalancerServer struct {
-	Host netutils.Host
+	Address netutils.HostAddress
 }
 
 type LoadBalancer struct {
@@ -44,9 +44,9 @@ func StartLoadBalancer(cfg *LoadBalancerCfg) (*LoadBalancer, error) {
 	}
 
 	lb.Servers = make([]*LoadBalancerServer, len(cfg.Servers))
-	for i, host := range cfg.Servers {
+	for i, address := range cfg.Servers {
 		s := LoadBalancerServer{
-			Host: host,
+			Address: address,
 		}
 
 		lb.Servers[i] = &s
@@ -58,13 +58,9 @@ func StartLoadBalancer(cfg *LoadBalancerCfg) (*LoadBalancer, error) {
 func (lb *LoadBalancer) Stop() {
 }
 
-func (lb *LoadBalancer) Address() (string, error) {
+func (lb *LoadBalancer) Address() string {
 	server := lb.Servers[lb.NextServerIndex]
 	lb.NextServerIndex = (lb.NextServerIndex + 1) % len(lb.Servers)
 
-	if addr := server.Host.Address; addr != nil {
-		return addr.String(), nil
-	}
-
-	return server.Host.Hostname, nil
+	return server.Address.String()
 }

@@ -41,6 +41,7 @@ func (s *Service) startServer(cfg *boulevard.ServerCfg) error {
 	cfg.Log = s.Log.Child("server", log.Data{"server": cfg.Name})
 	cfg.ACMEClient = s.acmeClient
 	cfg.ServerStatuses = s.serverStatuses
+	cfg.LoadBalancers = s.loadBalancers
 
 	s.Log.Debug(1, "starting server %q", cfg.Name)
 

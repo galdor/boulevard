@@ -20,6 +20,7 @@ type ServerCfg struct {
 	BoulevardBuildId string
 	ACMEClient       *acme.Client
 	ServerStatuses   func() map[string]*ServerStatus
+	LoadBalancers    map[string]*LoadBalancer
 }
 
 func (cfg *ServerCfg) ReadBCLElement(block *bcl.Element) error {

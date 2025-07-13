@@ -6,26 +6,34 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"slices"
 	"strings"
 
 	"go.n16f.net/bcl"
+	"go.n16f.net/boulevard/pkg/boulevard"
 	"go.n16f.net/boulevard/pkg/httputils"
 	"go.n16f.net/boulevard/pkg/netutils"
 )
 
 type ReverseProxyActionCfg struct {
-	URI            string
+	// One or the other
+	URI              string
+	LoadBalancerName string
+
 	RequestHeader  HeaderOps
 	ResponseHeader HeaderOps
 }
 
 func (cfg *ReverseProxyActionCfg) ReadBCLElement(elt *bcl.Element) error {
 	if elt.IsBlock() {
-		elt.EntryValues("uri",
+		elt.CheckElementsOneOf("uri", "load_balancer")
+		elt.MaybeEntryValues("uri",
 			bcl.WithValueValidation(&cfg.URI, httputils.ValidateBCLHTTPURI))
+		elt.MaybeEntryValues("load_balancer", &cfg.LoadBalancerName)
+
 		elt.MaybeBlock("request_header", &cfg.RequestHeader)
 		elt.MaybeBlock("response_header", &cfg.ResponseHeader)
 	} else {
@@ -40,44 +48,99 @@ type ReverseProxyAction struct {
 	Handler *Handler
 	Cfg     *ReverseProxyActionCfg
 
+	// Single upstream server
 	uri    *url.URL
 	client *httputils.Client
+
+	// Load balancer
+	loadBalancer *boulevard.LoadBalancer
+	clients      map[string]*httputils.Client // address -> client
 }
 
 func NewReverseProxyAction(h *Handler, cfg *ReverseProxyActionCfg) (*ReverseProxyAction, error) {
-	uri, err := url.Parse(cfg.URI)
-	if err != nil {
-		return nil, fmt.Errorf("cannot parse URI: %w", err)
-	}
-	if uri.Scheme == "" {
-		uri.Scheme = "http"
-	}
-	if uri.Host == "" {
-		uri.Host = "localhost"
-	}
-	uri.Path = ""
-	uri.Fragment = ""
-
 	tlsCfg := tls.Config{}
-
-	clientCfg := httputils.ClientCfg{
-		Scheme: uri.Scheme,
-		Host:   uri.Host,
-
-		TLS: &tlsCfg,
-	}
-
-	client, err := httputils.NewClient(clientCfg)
-	if err != nil {
-		return nil, fmt.Errorf("cannot create client: %w", err)
-	}
 
 	a := ReverseProxyAction{
 		Handler: h,
 		Cfg:     cfg,
+	}
 
-		uri:    uri,
-		client: client,
+	if cfg.URI != "" {
+		// URI
+		uri, err := url.Parse(cfg.URI)
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse URI: %w", err)
+		}
+		if uri.Scheme == "" {
+			uri.Scheme = "http"
+		}
+		if uri.Host == "" {
+			uri.Host = "localhost"
+		}
+		uri.Path = ""
+		uri.Fragment = ""
+
+		port := uri.Port()
+		if port == "" {
+			if strings.ToLower(uri.Scheme) == "http" {
+				port = "80"
+			} else {
+				port = "443"
+			}
+		}
+		address := net.JoinHostPort(uri.Hostname(), port)
+
+		clientCfg := httputils.ClientCfg{
+			Scheme:  uri.Scheme,
+			Address: address,
+
+			TLS: &tlsCfg,
+		}
+
+		client, err := httputils.NewClient(clientCfg)
+		if err != nil {
+			return nil, fmt.Errorf("cannot create client: %w", err)
+		}
+
+		a.uri = uri
+		a.client = client
+	} else {
+		// Load balancer
+		serverCfg := h.Protocol.Server.Cfg
+
+		lb := serverCfg.LoadBalancers[cfg.LoadBalancerName]
+		if lb == nil {
+			return nil, fmt.Errorf("unknown load balancer %q",
+				cfg.LoadBalancerName)
+		}
+
+		a.clients = make(map[string]*httputils.Client)
+		var startedClients []string
+
+		for _, srv := range lb.Servers {
+			address := srv.Address.String()
+
+			clientCfg := httputils.ClientCfg{
+				Scheme:  "http",
+				Address: address,
+
+				TLS: &tlsCfg,
+			}
+
+			client, err := httputils.NewClient(clientCfg)
+			if err != nil {
+				for _, addr := range startedClients {
+					a.clients[addr].Stop()
+				}
+
+				return nil, fmt.Errorf("cannot create client: %w", err)
+			}
+
+			a.clients[address] = client
+			startedClients = append(startedClients, address)
+		}
+
+		a.loadBalancer = lb
 	}
 
 	return &a, nil
@@ -88,16 +151,43 @@ func (a *ReverseProxyAction) Start() error {
 }
 
 func (a *ReverseProxyAction) Stop() {
-	a.client.Stop()
+	if a.client != nil {
+		a.client.Stop()
+	} else {
+		for _, client := range a.clients {
+			client.Stop()
+		}
+	}
 }
 
 func (a *ReverseProxyAction) HandleRequest(ctx *RequestContext) {
-	req := a.rewriteRequest(ctx)
+	var client *httputils.Client
+	var scheme, address string
+
+	if a.client != nil {
+		// Single upstream server
+		client = a.client
+		scheme = a.uri.Scheme
+		address = a.uri.Host
+	} else {
+		// Load balancer
+		address = a.loadBalancer.Address()
+		if address == "" {
+			ctx.Log.Error("no available upstream server found")
+			ctx.ReplyError(503)
+			return
+		}
+
+		client = a.clients[address]
+		scheme = "http"
+	}
+
+	req := a.rewriteRequest(ctx, scheme, address)
 	a.maybeSetConnectionUpgrade(ctx, req)
 
 	var hijack bool
 
-	conn, err := a.client.AcquireConn()
+	conn, err := client.AcquireConn()
 	if err != nil {
 		ctx.Log.Error("cannot acquire upstream connection: %v", err)
 
@@ -111,9 +201,9 @@ func (a *ReverseProxyAction) HandleRequest(ctx *RequestContext) {
 	}
 	defer func() {
 		if hijack {
-			a.client.HijackConn(conn)
+			client.HijackConn(conn)
 		} else {
-			a.client.ReleaseConn(conn)
+			client.ReleaseConn(conn)
 		}
 	}()
 
@@ -157,13 +247,13 @@ func (a *ReverseProxyAction) HandleRequest(ctx *RequestContext) {
 	}
 }
 
-func (a *ReverseProxyAction) rewriteRequest(ctx *RequestContext) *http.Request {
+func (a *ReverseProxyAction) rewriteRequest(ctx *RequestContext, scheme, address string) *http.Request {
 	req := ctx.Request.Clone(context.Background())
 	header := req.Header
 
 	// Rewrite the URI to target the upstream server
-	req.URL.Scheme = a.uri.Scheme
-	req.URL.Host = a.uri.Host
+	req.URL.Scheme = scheme
+	req.URL.Host = address
 
 	a.initRequestHeader(ctx, header)
 

@@ -33,9 +33,9 @@ pprof {
 }
 
 load_balancer "nginx-pool" {
-  server "127.42.2.1"
-  server "127.42.2.2"
-  server "127.42.2.3"
+  server "127.42.2.1:9002"
+  server "127.42.2.2:9002"
+  server "127.42.2.3:9002"
 
   # health {
   #   # TODO count for unhealthy->healthy and healthy->unhealthy
@@ -247,6 +247,18 @@ server "web" {
 
       reverse_proxy {
         uri "http://127.42.1.1:9002"
+
+        response_header {
+          set "Server" "Boulevard"
+        }
+      }
+    }
+
+    handler {
+      match path "/nginx-pool/"
+
+      reverse_proxy {
+        load_balancer "nginx-pool"
 
         response_header {
           set "Server" "Boulevard"
