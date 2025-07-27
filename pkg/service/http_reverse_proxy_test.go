@@ -99,6 +99,6 @@ func TestHTTPReverseProxyLoadBalancing(t *testing.T) {
 	for i := range 6 {
 		res = c.SendRequest("GET", "/nginx-pool/instance", nil, nil, &resBody)
 		require.Equal(200, res.StatusCode)
-		require.Equal("i"+strconv.Itoa(i%3+1)+"\n", resBody)
+		require.Equal("i"+strconv.Itoa(i%3+1), resBody)
 	}
 }
