@@ -12,8 +12,19 @@ import (
 	"go.n16f.net/boulevard/pkg/netutils"
 )
 
+type HealthProbeState string
+
+const (
+	HealthProbeStateSuccessful HealthProbeState = "successful"
+	HealthProbeStateFailing    HealthProbeState = "failing"
+	HealthProbeStateFailed     HealthProbeState = "failed"
+	HealthProbeStateRecovering HealthProbeState = "recovering"
+)
+
 type HealthProbeCfg struct {
-	Period int // seconds
+	Period           int // seconds
+	SuccessThreshold int
+	FailureThreshold int
 
 	TCP  *TCPHealthTestCfg
 	HTTP *HTTPHealthTestCfg
@@ -22,6 +33,11 @@ type HealthProbeCfg struct {
 func (p *HealthProbeCfg) ReadBCLElement(elt *bcl.Element) error {
 	p.Period = 5
 	elt.MaybeEntryValues("period", &p.Period)
+
+	p.SuccessThreshold = 1
+	elt.MaybeEntryValues("success_threshold", &p.SuccessThreshold)
+	p.FailureThreshold = 1
+	elt.MaybeEntryValues("failure_threshold", &p.FailureThreshold)
 
 	elt.MaybeElement("tcp", &p.TCP)
 	elt.MaybeBlock("http", &p.HTTP)
@@ -34,12 +50,20 @@ type HealthTest interface {
 }
 
 type HealthProbe struct {
+	Cfg *HealthProbeCfg
+
 	address string
 	tests   []HealthTest
+
+	state HealthProbeState
+	count int
 }
 
 func NewHealthProbe(address string, cfg *HealthProbeCfg) *HealthProbe {
 	probe := HealthProbe{
+		Cfg: cfg,
+
+		state:   HealthProbeStateSuccessful,
 		address: address,
 	}
 
@@ -55,13 +79,55 @@ func NewHealthProbe(address string, cfg *HealthProbeCfg) *HealthProbe {
 }
 
 func (p *HealthProbe) Execute() (bool, error) {
+	successful := true
+	var err error
+
 	for _, test := range p.tests {
-		if err := test.Execute(p.address); err != nil {
-			return false, err
+		if err = test.Execute(p.address); err != nil {
+			successful = false
+			break
 		}
 	}
 
-	return true, nil
+	switch p.state {
+	case HealthProbeStateSuccessful:
+		if !successful {
+			p.state = HealthProbeStateFailing
+			p.count = 1
+		}
+
+	case HealthProbeStateFailing:
+		if successful {
+			p.state = HealthProbeStateSuccessful
+			p.count = 0
+		} else {
+			p.count++
+			if p.count >= p.Cfg.FailureThreshold {
+				p.state = HealthProbeStateFailed
+			}
+		}
+
+	case HealthProbeStateFailed:
+		if successful {
+			p.state = HealthProbeStateRecovering
+			p.count = 1
+		}
+
+	case HealthProbeStateRecovering:
+		if successful {
+			p.count++
+			if p.count >= p.Cfg.SuccessThreshold {
+				p.state = HealthProbeStateSuccessful
+			}
+		} else {
+			p.state = HealthProbeStateFailed
+			p.count = 0
+		}
+	}
+
+	ok := p.state == HealthProbeStateSuccessful ||
+		p.state == HealthProbeStateFailing
+	return ok, err
 }
 
 type TCPHealthTestCfg struct {
