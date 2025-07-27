@@ -37,19 +37,20 @@ load_balancer "nginx-pool" {
   server "127.42.2.2:9002"
   server "127.42.2.3:9002"
 
-  # health {
-  #   # TODO count for unhealthy->healthy and healthy->unhealthy
+  health_probe {
+    period 5
 
-  #   http {
-  #     method "GET"
-  #     path "/nginx/ping"
+    #tcp
 
-  #     success {
-  #       status 200
-  #       # body ~re"/ok/i"
-  #     }
-  #   }
-  # }
+    http {
+      method "GET"
+      path "/nginx/ping"
+
+      success {
+        status 200
+      }
+    }
+  }
 }
 
 server "web" {

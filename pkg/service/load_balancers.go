@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"go.n16f.net/boulevard/pkg/boulevard"
+	"go.n16f.net/log"
 )
 
 func (s *Service) startLoadBalancers() error {
@@ -31,6 +32,8 @@ func (s *Service) startLoadBalancer(cfg *boulevard.LoadBalancerCfg) error {
 	if _, found := s.loadBalancers[cfg.Name]; found {
 		return fmt.Errorf("duplicate load balancer %q", cfg.Name)
 	}
+
+	cfg.Log = s.Log.Child("load_balancer", log.Data{"load_balancer": cfg.Name})
 
 	s.Log.Debug(1, "starting load balancer %q", cfg.Name)
 
