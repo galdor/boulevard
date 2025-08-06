@@ -7,6 +7,7 @@ import (
 	stdlog "log"
 	"net"
 	nethttp "net/http"
+	"os"
 	"strings"
 	"sync"
 
@@ -101,6 +102,21 @@ func (s *Service) stopControlAPI() {
 }
 
 func (api *ControlAPI) Start() error {
+	// UNIX socket remain after program termination, and no amount of shutdown
+	// code will change the fact that the program (or the underlying machine)
+	// crashing will lead to a stray socket file preventing Boulevard from
+	// restarting.
+	//
+	// The only fix is to always delete existing socket files on startup. The
+	// only downside is that you could accidentally mess with another running
+	// Boulevard instance. Not really a problem for a daemon supposed to be
+	// managed by the init system of the host.
+	if err := os.Remove(api.Cfg.Path); err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("cannot delete %q: %w", api.Cfg.Path, err)
+		}
+	}
+
 	listener, err := net.Listen("unix", api.Cfg.Path)
 	if err != nil {
 		return fmt.Errorf("cannot listen on %q: %w", api.Cfg.Path, err)
