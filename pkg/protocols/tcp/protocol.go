@@ -28,6 +28,8 @@ type ProtocolCfg struct {
 	WriteBufferSize int
 
 	ReverseProxy ReverseProxyAction
+
+	LogTLSErrors bool
 }
 
 func NewProtocolCfg() boulevard.ProtocolCfg {
@@ -46,6 +48,8 @@ func (cfg *ProtocolCfg) ReadBCLElement(block *bcl.Element) error {
 			bcl.ValidatePositiveInteger))
 
 	block.Element("reverse_proxy", &cfg.ReverseProxy)
+
+	block.MaybeEntryValues("log_tls_errors", &cfg.LogTLSErrors)
 
 	return nil
 }

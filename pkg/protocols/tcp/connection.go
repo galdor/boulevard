@@ -38,9 +38,14 @@ func (c *Connection) Close() {
 }
 
 func (c *Connection) abort(format string, args ...any) {
+	protocolCfg := c.Protocol.Cfg
+
 	err := fmt.Errorf(format, args...)
 
-	if netutils.IsSilentIOError(err) {
+	silent := netutils.IsSilentIOError(err)
+	silent = silent || !(protocolCfg.LogTLSErrors && netutils.IsTLSError(err))
+
+	if silent {
 		c.Log.Debug(1, "%v", err)
 	} else {
 		c.Log.Error("%v", err)

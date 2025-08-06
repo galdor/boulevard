@@ -299,6 +299,7 @@ server "irc" {
   }
 
   tcp {
+    log_tls_errors false
     reverse_proxy "localhost:6698"
   }
 }

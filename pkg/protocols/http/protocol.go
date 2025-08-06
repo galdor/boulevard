@@ -35,8 +35,11 @@ type ProtocolCfg struct {
 	HSTS         bool
 
 	DebugLogVariables bool
-	LogGoServerErrors bool
+	LogGoServerErrors bool // [1]
 	UnencryptedHTTP2  bool
+
+	// [1] Note that http/server logs TLS errors as part of HTTP server logs;
+	// this is why there is no log_tls_errors setting as for TCP servers.
 }
 
 func NewProtocolCfg() boulevard.ProtocolCfg {

@@ -1,6 +1,7 @@
 package netutils
 
 import (
+	"crypto/tls"
 	"errors"
 	"io"
 	"net"
@@ -30,6 +31,16 @@ func IsSilentIOError(err error) bool {
 		case syscall.ECONNRESET, syscall.EPIPE:
 			return true
 		}
+	}
+
+	return false
+}
+
+func IsTLSError(err error) bool {
+	var recordHeaderErr tls.RecordHeaderError
+
+	if errors.As(err, &recordHeaderErr) {
+		return true
 	}
 
 	return false
